@@ -273,7 +273,11 @@ namespace ClientGUI
                 case "getWidth":
                     return GetControl(paramName).Width;
                 case "getHeight":
-                    return GetControl(paramName).Height;
+                    return GetControl(paramName).Width;
+                case "getWindowWidth":
+                    return primaryControl.WindowManager.WindowWidth;
+                case "getWindowHeight":
+                    return primaryControl.WindowManager.WindowHeight;
                 case "getBottom":
                     return GetControl(paramName).Bottom;
                 case "getRight":
