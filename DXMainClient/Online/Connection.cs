@@ -264,7 +264,7 @@ namespace DTAClient.Online
                     continue;
                 }
 
-                if (errorTimes > 30)
+                if (errorTimes > MAX_RECONNECT_COUNT)
                 {
                     string errorMessage = FormattableString.Invariant($"Disconnected from CnCNet after {errorTimes} failed retries.");
                     Logger.Log(errorMessage);
