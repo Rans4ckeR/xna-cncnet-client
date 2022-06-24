@@ -74,6 +74,7 @@ public class GameLobbyDropDown : XNAClientDropDown
                 }
 
                 return;
+
             case "DataWriteMode":
                 if (value.ToUpper() == "INDEX")
                     dataWriteMode = DropDownDataWriteMode.INDEX;
@@ -81,15 +82,18 @@ public class GameLobbyDropDown : XNAClientDropDown
                     ? DropDownDataWriteMode.BOOLEAN
                     : value.ToUpper() == "MAPCODE" ? DropDownDataWriteMode.MAPCODE : DropDownDataWriteMode.STRING;
                 return;
+
             case "SpawnIniOption":
                 spawnIniOption = value;
                 return;
+
             case "DefaultIndex":
                 SelectedIndex = int.Parse(value);
                 defaultIndex = SelectedIndex;
                 HostSelectedIndex = SelectedIndex;
                 UserSelectedIndex = SelectedIndex;
                 return;
+
             case "OptionName":
                 OptionName = value;
                 return;
@@ -118,9 +122,11 @@ public class GameLobbyDropDown : XNAClientDropDown
             case DropDownDataWriteMode.BOOLEAN:
                 spawnIni.SetBooleanValue("Settings", spawnIniOption, SelectedIndex > 0);
                 break;
+
             case DropDownDataWriteMode.INDEX:
                 spawnIni.SetIntValue("Settings", spawnIniOption, SelectedIndex);
                 break;
+
             default:
             case DropDownDataWriteMode.STRING:
                 if (Items[SelectedIndex].Tag != null)

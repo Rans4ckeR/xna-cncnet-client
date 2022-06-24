@@ -12,7 +12,6 @@ public class GameModeMap
         IsFavorite = isFavorite;
     }
 
-
     public GameMode GameMode { get; }
 
     public Map Map { get; }

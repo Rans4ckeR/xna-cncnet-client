@@ -27,6 +27,7 @@ public class LANPlayerInfo : PlayerInfo
     public event EventHandler ConnectionLost;
 
     public event EventHandler PlayerPinged;
+
     private const double SEND_PING_TIMEOUT = 10.0;
     private const double DROP_TIMEOUT = 20.0;
     private const int LAN_PING_TIMEOUT = 1000;

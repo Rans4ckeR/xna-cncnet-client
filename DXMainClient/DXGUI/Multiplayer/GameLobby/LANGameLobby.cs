@@ -102,6 +102,7 @@ public class LANGameLobby : MultiplayerGameLobby
     public event EventHandler GameLeft;
 
     public event EventHandler<GameBroadcastEventArgs> GameBroadcast;
+
     private TcpClient client;
 
     private IPEndPoint hostEndPoint;

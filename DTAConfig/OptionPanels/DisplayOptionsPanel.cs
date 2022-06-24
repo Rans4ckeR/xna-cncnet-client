@@ -10,6 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
+
 #if TS
 using Microsoft.Win32;
 using System.Diagnostics;
@@ -29,6 +30,7 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         : base(windowManager, iniSettings)
     {
     }
+
     private XNAClientDropDown ddDetailLevel;
     private XNAClientDropDown ddRenderer;
     private XNAClientCheckBox chkWindowedMode;
@@ -645,7 +647,6 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
             return;
         }
-
 
         try
         {

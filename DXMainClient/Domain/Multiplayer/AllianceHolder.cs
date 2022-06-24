@@ -35,12 +35,15 @@ public static class AllianceHolder
                     case 1:
                         team1MultiMemberIds.Add(multiCmbIndexes.FindIndex(c => c == pId) + 1);
                         break;
+
                     case 2:
                         team2MultiMemberIds.Add(multiCmbIndexes.FindIndex(c => c == pId) + 1);
                         break;
+
                     case 3:
                         team3MultiMemberIds.Add(multiCmbIndexes.FindIndex(c => c == pId) + 1);
                         break;
+
                     case 4:
                         team4MultiMemberIds.Add(multiCmbIndexes.FindIndex(c => c == pId) + 1);
                         break;
@@ -64,12 +67,15 @@ public static class AllianceHolder
                     case 1:
                         team1MultiMemberIds.Add(multiId);
                         break;
+
                     case 2:
                         team2MultiMemberIds.Add(multiId);
                         break;
+
                     case 3:
                         team3MultiMemberIds.Add(multiId);
                         break;
+
                     case 4:
                         team4MultiMemberIds.Add(multiId);
                         break;

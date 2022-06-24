@@ -103,7 +103,7 @@ public class ClientConfiguration
 
     public string HoverOnGameColor => dTACnCNetClient_ini.GetStringValue(GENERAL, "HoverOnGameColor", "32,32,84");
 
-    #endregion
+    #endregion Color settings
 
     #region Tool tip settings
 
@@ -121,7 +121,7 @@ public class ClientConfiguration
 
     public float ToolTipAlphaRatePerSecond => dTACnCNetClient_ini.GetSingleValue(GENERAL, "ToolTipAlphaRate", 4.0f);
 
-    #endregion
+    #endregion Tool tip settings
 
     #region Audio options
 
@@ -137,9 +137,9 @@ public class ClientConfiguration
 
     public float SoundGameLobbyReturnCooldown => dTACnCNetClient_ini.GetSingleValue(AUDIO, "SoundGameLobbyReturnCooldown", 1.0f);
 
-    #endregion
+    #endregion Audio options
 
-    #endregion
+    #endregion Client settings
 
     #region Game options
 
@@ -149,7 +149,7 @@ public class ClientConfiguration
 
     public string SpectatorInternalSideIndex => gameOptions_ini.GetStringValue(GENERAL, nameof(SpectatorInternalSideIndex), string.Empty);
 
-    #endregion
+    #endregion Game options
 
     #region Client definitions
 
@@ -300,7 +300,7 @@ public class ClientConfiguration
     /// </summary>
     public string[] ForbiddenFiles => clientDefinitionsIni.GetStringValue(SETTINGS, "ForbiddenFiles", string.Empty).Split(',');
 
-    #endregion
+    #endregion Client definitions
 
     public static OSVersion GetOperatingSystemVersion()
     {

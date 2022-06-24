@@ -103,22 +103,28 @@ public class GameLobbyCheckBox : XNAClientCheckBox
             case "SpawnIniOption":
                 spawnIniOption = value;
                 return;
+
             case "EnabledSpawnIniValue":
                 enabledSpawnIniValue = value;
                 return;
+
             case "DisabledSpawnIniValue":
                 disabledSpawnIniValue = value;
                 return;
+
             case "CustomIniPath":
                 customIniPath = value;
                 return;
+
             case "Reversed":
                 reversed = Conversions.BooleanFromString(value, false);
                 return;
+
             case "CheckedMP":
                 if (IsMultiplayer)
                     Checked = Conversions.BooleanFromString(value, false);
                 return;
+
             case "Checked":
                 bool checkedValue = Conversions.BooleanFromString(value, false);
                 Checked = checkedValue;
@@ -126,12 +132,14 @@ public class GameLobbyCheckBox : XNAClientCheckBox
                 HostChecked = checkedValue;
                 UserChecked = checkedValue;
                 return;
+
             case "DisallowedSideIndex":
             case "DisallowedSideIndices":
                 List<int> sides = value.Split(',').ToList()
                     .Select(s => Conversions.IntFromString(s, -1)).Distinct().ToList();
                 DisallowedSideIndices.AddRange(sides.Where(s => !DisallowedSideIndices.Contains(s)));
                 return;
+
             case "MapScoringMode":
                 MapScoringMode = (CheckBoxMapScoringMode)Enum.Parse(typeof(CheckBoxMapScoringMode), value);
                 return;

@@ -44,6 +44,7 @@ public class GameListBox : XNAListBox
     /// Gets a predicate for setting a filter expression for displayed games.
     /// </summary>
     private Predicate<GenericHostedGame> GameMatchesFilter { get; }
+
     private Texture2D txIncompatibleGame;
     private Texture2D txPasswordedGame;
 
@@ -142,6 +143,7 @@ public class GameListBox : XNAListBox
             case SortDirection.Asc:
                 sortedGames = sortedGames.ThenBy(hg => hg.RoomName);
                 break;
+
             case SortDirection.Desc:
                 sortedGames = sortedGames.ThenByDescending(hg => hg.RoomName);
                 break;

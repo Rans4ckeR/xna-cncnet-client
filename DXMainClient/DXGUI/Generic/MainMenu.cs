@@ -110,6 +110,7 @@ internal class MainMenu : XNAWindow, ISwitchable
 
     // Main Menu Buttons
     private XNAClientButton btnNewCampaign;
+
     private XNAClientButton btnLoadGame;
     private XNAClientButton btnSkirmish;
     private XNAClientButton btnCnCNet;
@@ -786,7 +787,7 @@ internal class MainMenu : XNAWindow, ISwitchable
     private void ManualUpdateQueryWindow_Closed(object sender, EventArgs e)
         => innerPanel.Hide();
 
-    #endregion
+    #endregion Updating / versioning system
 
     private void BtnOptions_LeftClick(object sender, EventArgs e)
         => optionsWindow.Open();

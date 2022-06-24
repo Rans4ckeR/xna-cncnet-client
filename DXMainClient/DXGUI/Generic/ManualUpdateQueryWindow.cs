@@ -20,7 +20,6 @@ public class ManualUpdateQueryWindow : XNAWindow
     {
     }
 
-
     public delegate void ClosedEventHandler(object sender, EventArgs e);
 
     public event ClosedEventHandler Closed;

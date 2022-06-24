@@ -31,6 +31,7 @@ internal class MapSharingConfirmationPanel : XNAPanel
     private XNALabel lblDescription;
 
     public event EventHandler MapDownloadConfirmed;
+
     private XNAClientButton btnDownload;
 
     public override void Initialize()

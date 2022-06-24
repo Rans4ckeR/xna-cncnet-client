@@ -19,6 +19,7 @@ public class XNAChatTextBox : XNASuggestionTextBox
     {
         EnterPressed += XNAChatTextBox_EnterPressed;
     }
+
     private LinkedListNode<string> currentNode;
 
     protected override bool HandleKeyPress(Keys key)

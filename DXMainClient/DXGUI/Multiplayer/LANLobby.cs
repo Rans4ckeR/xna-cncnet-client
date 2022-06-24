@@ -42,6 +42,7 @@ internal class LANLobby : XNAWindow
     }
 
     public event EventHandler Exited;
+
     private ChatListBox lbChatMessages;
     private GameListBox lbGameList;
     private XNAClientButton btnMainMenu;
@@ -469,6 +470,7 @@ internal class LANLobby : XNAWindow
                 user.TimeWithoutRefresh = TimeSpan.Zero;
 
                 break;
+
             case "CHAT":
                 if (user == null)
                     return;
@@ -486,6 +488,7 @@ internal class LANLobby : XNAWindow
                     chatColors[colorIndex].XNAColor, DateTime.Now, parameters[1]));
 
                 break;
+
             case "QUIT":
                 if (user == null)
                     return;
@@ -495,6 +498,7 @@ internal class LANLobby : XNAWindow
                 players.RemoveAt(index);
                 lbPlayerList.Items.RemoveAt(index);
                 break;
+
             case "GAME":
                 if (user == null)
                     return;

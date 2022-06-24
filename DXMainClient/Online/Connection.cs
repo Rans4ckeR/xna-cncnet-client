@@ -100,6 +100,7 @@ public class Connection
     /// right afterwards from preventing online play.
     /// </summary>
     private readonly List<string> failedServerIPs = new();
+
     private volatile string currentConnectedServerIP;
     private static readonly object MessageQueueLocker = new();
     private static readonly object IdLocker = new();
@@ -563,6 +564,7 @@ public class Connection
                         connectionManager.OnWelcomeMessageReceived(message);
                         reconnectCount = 0;
                         break;
+
                     case 002: // "Your host is x, running version y"
                     case 003: // "This server was created..."
                     case 251: // There are <int> users and <int> invisible on <int> servers
@@ -584,14 +586,17 @@ public class Connection
 
                         connectionManager.OnGenericServerMessageReceived(displayedMessage.ToString());
                         break;
+
                     case 439: // Attempt to send messages too fast
                         connectionManager.OnTargetChangeTooFast(parameters[1], parameters[2]);
                         break;
+
                     case 252: // Number of operators online
                     case 254: // Number of channels formed
                         message = serverMessagePart + parameters[1] + " " + parameters[2];
                         connectionManager.OnGenericServerMessageReceived(message);
                         break;
+
                     case 301: // AWAY message
                         string awayTarget = parameters[0];
                         if (awayTarget != ProgramConstants.PLAYERNAME)
@@ -600,12 +605,14 @@ public class Connection
                         string awayReason = parameters[2];
                         connectionManager.OnAwayMessageReceived(awayPlayer, awayReason);
                         break;
+
                     case 332: // Channel topic message
                         string _target = parameters[0];
                         if (_target != ProgramConstants.PLAYERNAME)
                             break;
                         connectionManager.OnChannelTopicReceived(parameters[1], parameters[2]);
                         break;
+
                     case 353: // User list (reply to NAMES)
                         string target = parameters[0];
                         if (target != ProgramConstants.PLAYERNAME)
@@ -614,6 +621,7 @@ public class Connection
                         string[] users = parameters[3].Split(new char[1] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                         connectionManager.OnUserListReceived(channelName, users);
                         break;
+
                     case 352: // Reply to WHO query
                         string ident = parameters[2];
                         string host = parameters[3];
@@ -621,28 +629,35 @@ public class Connection
                         string extraInfo = parameters[7];
                         connectionManager.OnWhoReplyReceived(ident, host, wUserName, extraInfo);
                         break;
+
                     case 311: // Reply to WHOIS NAME query
                         connectionManager.OnWhoReplyReceived(parameters[2], parameters[3], parameters[1], string.Empty);
                         break;
+
                     case 433: // Name already in use
                         message = serverMessagePart + parameters[1] + ": " + parameters[2];
 
                         //connectionManager.OnGenericServerMessageReceived(message);
                         connectionManager.OnNameAlreadyInUse();
                         break;
+
                     case 451: // Not registered
                         Register();
                         connectionManager.OnGenericServerMessageReceived(message);
                         break;
+
                     case 471: // Returned when attempting to join a channel that is full (basically, player limit met)
                         connectionManager.OnChannelFull(parameters[1]);
                         break;
+
                     case 473: // Returned when attempting to join an invite-only channel (locked games)
                         connectionManager.OnChannelInviteOnly(parameters[1]);
                         break;
+
                     case 474: // Returned when attempting to join a channel a user is banned from
                         connectionManager.OnBannedFromChannel(parameters[1]);
                         break;
+
                     case 475: // Returned when attempting to join a key-locked channel either without a key or with the wrong key
                         connectionManager.OnIncorrectChannelPassword(parameters[1]);
                         break;
@@ -682,6 +697,7 @@ public class Connection
                         noticeParamString = noticeParamString + param + " ";
                     connectionManager.OnGenericServerMessageReceived(prefix + " " + noticeParamString);
                     break;
+
                 case "JOIN":
                     string channel = parameters[0];
                     int atIndex = prefix.IndexOf('@');
@@ -691,15 +707,18 @@ public class Connection
                     string host = prefix.Substring(atIndex + 1);
                     connectionManager.OnUserJoinedChannel(channel, host, userName, ident);
                     break;
+
                 case "PART":
                     string pChannel = parameters[0];
                     string pUserName = prefix.Substring(0, prefix.IndexOf('!'));
                     connectionManager.OnUserLeftChannel(pChannel, pUserName);
                     break;
+
                 case "QUIT":
                     string qUserName = prefix.Substring(0, prefix.IndexOf('!'));
                     connectionManager.OnUserQuitIRC(qUserName);
                     break;
+
                 case "PRIVMSG":
                     if (parameters.Count > 1 && Convert.ToInt32(parameters[1][0]) == 1 && !parameters[1].Contains("ACTION"))
                     {
@@ -728,6 +747,7 @@ public class Connection
                     }
 
                     break;
+
                 case "MODE":
                     string modeUserName = prefix.Substring(0, prefix.IndexOf('!'));
                     string modeChannelName = parameters[0];
@@ -736,14 +756,17 @@ public class Connection
                         parameters.Count > 2 ? parameters.GetRange(2, parameters.Count - 2) : new List<string>();
                     connectionManager.OnChannelModesChanged(modeUserName, modeChannelName, modeString, modeParameters);
                     break;
+
                 case "KICK":
                     string kickChannelName = parameters[0];
                     string kickUserName = parameters[1];
                     connectionManager.OnUserKicked(kickChannelName, kickUserName);
                     break;
+
                 case "ERROR":
                     connectionManager.OnErrorReceived(message);
                     break;
+
                 case "PING":
                     if (parameters.Count > 0)
                     {
@@ -757,6 +780,7 @@ public class Connection
                     }
 
                     break;
+
                 case "TOPIC":
                     if (parameters.Count < 2)
                         break;
@@ -765,6 +789,7 @@ public class Connection
                         prefix.Substring(0, prefix.IndexOf('!')),
                         parameters[0], parameters[1]);
                     break;
+
                 case "NICK":
                     int nickExclamIndex = prefix.IndexOf('!');
                     if (nickExclamIndex > -1 || parameters.Count < 1)
@@ -857,7 +882,7 @@ public class Connection
             parameters.Add(trailing);
     }
 
-    #endregion
+    #endregion Handling commands
 
     #region Sending commands
 
@@ -985,9 +1010,11 @@ public class Connection
                 case QueuedMessageType.GAMECHEATERMESSAGE:
                     AddSpecialQueuedMessage(qm);
                     break;
+
                 case QueuedMessageType.INSTANTMESSAGE:
                     SendMessage(qm.Command);
                     break;
+
                 default:
                     int placeInQueue = messageQueue.FindIndex(m => m.Priority < qm.Priority);
                     if (ProgramConstants.LOG_LEVEL > 1)
@@ -1074,5 +1101,5 @@ public class Connection
         }
     }
 
-    #endregion
+    #endregion Sending commands
 }

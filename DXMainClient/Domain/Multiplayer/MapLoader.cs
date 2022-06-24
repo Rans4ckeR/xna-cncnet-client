@@ -14,6 +14,7 @@ namespace DTAClient.Domain.Multiplayer;
 public class MapLoader
 {
     public const string MAPFILEEXTENSION = ".map";
+
     /// <summary>
     /// List of game modes.
     /// </summary>

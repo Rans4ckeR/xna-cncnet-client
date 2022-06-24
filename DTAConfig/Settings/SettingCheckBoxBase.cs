@@ -85,6 +85,7 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
     /// Gets or sets a value indicating whether value required from parent check-box control if set.
     /// </summary>
     public bool ParentCheckBoxRequiredValue { get; set; } = true;
+
     protected string defaultKeySuffix = "_Checked";
     protected bool originalState;
 
@@ -96,18 +97,23 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
             case "DefaultValue":
                 DefaultValue = Conversions.BooleanFromString(value, false);
                 return;
+
             case "SettingSection":
                 SettingSection = string.IsNullOrEmpty(value) ? SettingSection : value;
                 return;
+
             case "SettingKey":
                 SettingKey = string.IsNullOrEmpty(value) ? SettingKey : value;
                 return;
+
             case "RestartRequired":
                 RestartRequired = Conversions.BooleanFromString(value, false);
                 return;
+
             case "ParentCheckBoxName":
                 ParentCheckBoxName = value;
                 return;
+
             case "ParentCheckBoxRequiredValue":
                 ParentCheckBoxRequiredValue = Conversions.BooleanFromString(value, true);
                 return;

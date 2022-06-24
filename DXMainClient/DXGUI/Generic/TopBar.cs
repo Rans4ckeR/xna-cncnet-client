@@ -34,6 +34,7 @@ public class TopBar : XNAPanel
     /// lost input focus.
     /// </summary>
     private const double DOWN_TIME_WAIT_SECONDS = 1.0;
+
     private const double EVENT_DOWN_TIME_WAIT_SECONDS = 2.0;
     private const double STARTUP_DOWN_TIME_WAIT_SECONDS = 3.5;
     private const double DOWN_MOVEMENT_RATE = 1.7;
@@ -386,15 +387,19 @@ public class TopBar : XNAPanel
             case Keys.F1:
                 BringDown();
                 break;
+
             case Keys.F2 when btnMainButton.AllowClick:
                 BtnMainButton_LeftClick(this, EventArgs.Empty);
                 break;
+
             case Keys.F3 when btnCnCNetLobby.AllowClick:
                 BtnCnCNetLobby_LeftClick(this, EventArgs.Empty);
                 break;
+
             case Keys.F4 when btnPrivateMessages.AllowClick:
                 BtnPrivateMessages_LeftClick(this, EventArgs.Empty);
                 break;
+
             case Keys.F12 when btnOptions.AllowClick:
                 BtnOptions_LeftClick(this, EventArgs.Empty);
                 break;

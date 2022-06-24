@@ -9,6 +9,5 @@ public class JoinUserEventArgs : EventArgs
         IrcUser = ircUser;
     }
 
-
     public IRCUser IrcUser { get; }
 }

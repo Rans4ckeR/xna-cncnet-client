@@ -20,6 +20,7 @@ internal class ComponentsPanel : XNAOptionsPanel
         : base(windowManager, iniSettings)
     {
     }
+
     private bool downloadCancelled = false;
 
     public override void Initialize()

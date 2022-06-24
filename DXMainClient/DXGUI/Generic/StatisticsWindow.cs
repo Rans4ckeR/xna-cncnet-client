@@ -37,6 +37,7 @@ public class StatisticsWindow : XNAWindow
 
     // Controls for game statistics
     private XNAMultiColumnListBox lbGameList;
+
     private XNAMultiColumnListBox lbGameStatistics;
 
     private Texture2D[] sideTextures;
@@ -49,6 +50,7 @@ public class StatisticsWindow : XNAWindow
 
     // Controls for total statistics
     private XNALabel lblGamesStartedValue;
+
     private XNALabel lblGamesFinishedValue;
     private XNALabel lblWinsValue;
     private XNALabel lblLossesValue;
@@ -663,15 +665,19 @@ public class StatisticsWindow : XNAWindow
             case 0:
                 ListAllGames();
                 break;
+
             case 1:
                 ListOnlineGames();
                 break;
+
             case 2:
                 ListPvPGames();
                 break;
+
             case 3:
                 ListCoOpGames();
                 break;
+
             case 4:
                 ListSkirmishGames();
                 break;
@@ -1023,7 +1029,7 @@ public class StatisticsWindow : XNAWindow
         ListGames();
     }
 
-    #endregion
+    #endregion Statistics reading / game listing code
 
     private void BtnReturnToMenu_LeftClick(object sender, EventArgs e)
     {

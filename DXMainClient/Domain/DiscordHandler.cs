@@ -93,7 +93,7 @@ public class DiscordHandler : GameComponent
         base.Dispose(disposing);
     }
 
-    #endregion
+    #endregion overrides
 
     #region methods
 
@@ -286,7 +286,7 @@ public class DiscordHandler : GameComponent
         };
     }
 
-    #endregion
+    #endregion methods
 
     #region eventhandlers
 
@@ -331,5 +331,5 @@ public class DiscordHandler : GameComponent
         Logger.Log($"Discord: Unsubscribed: {args.Event}");
     }
 
-    #endregion
+    #endregion eventhandlers
 }

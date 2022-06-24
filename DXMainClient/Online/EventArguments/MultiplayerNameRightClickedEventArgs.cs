@@ -9,6 +9,5 @@ public class MultiplayerNameRightClickedEventArgs : EventArgs
         PlayerName = playerName;
     }
 
-
     public string PlayerName { get; }
 }

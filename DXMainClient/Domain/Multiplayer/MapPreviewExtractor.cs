@@ -187,7 +187,6 @@ public static class MapPreviewExtractor
             bitmap.UnlockBits(bitmapData);
             errorMessage = null;
             return bitmap;
-
         }
         catch (Exception e)
         {

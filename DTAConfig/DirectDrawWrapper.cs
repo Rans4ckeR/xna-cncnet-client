@@ -78,6 +78,7 @@ internal class DirectDrawWrapper
     /// Gets the filename of the configuration INI of the renderer in the game directory.
     /// </summary>
     public string ConfigFileName { get; private set; }
+
     private string resConfigFileName;
     private List<string> filesToCopy = new();
 

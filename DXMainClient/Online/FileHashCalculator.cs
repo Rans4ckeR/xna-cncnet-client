@@ -42,11 +42,13 @@ internal struct FileHashes
             "FHCConfig Hash: " + FHCConfigHash;
     }
 }
+
 public class FileHashCalculator
 {
     private const string CONFIGNAME = "FHCConfig.ini";
     private FileHashes fh;
     private bool calculateGameExeHash = true;
+
     private string[] fileNamesToCheck = new string[]
     {
 #if ARES

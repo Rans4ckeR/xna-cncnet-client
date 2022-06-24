@@ -9,6 +9,5 @@ public class GameOptionPresetEventArgs : EventArgs
         PresetName = presetName;
     }
 
-
     public string PresetName { get; }
 }

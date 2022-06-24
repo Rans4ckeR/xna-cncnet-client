@@ -72,6 +72,7 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
     }
 
     public event EventHandler<GameBroadcastEventArgs> GameBroadcast;
+
     private TcpClient client;
 
     private IPEndPoint hostEndPoint;
@@ -321,7 +322,7 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         lpInfo.TcpClient.Close();
     }
 
-    #endregion
+    #endregion Server code
 
     private void HandleServerCommunication()
     {
@@ -495,7 +496,7 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         }
     }
 
-    #endregion
+    #endregion Server's command handlers
 
     #region Client's command handlers
 
@@ -571,7 +572,7 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         LoadGame();
     }
 
-    #endregion
+    #endregion Client's command handlers
 
     /// <summary>
     /// Broadcasts a command to all players in the game as the game host.

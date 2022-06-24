@@ -57,6 +57,7 @@ public class TunnelHandler : GameComponent
     public event EventHandler CurrentTunnelPinged;
 
     public event Action<int> TunnelPinged;
+
     private readonly CnCNetManager connectionManager;
 
     private TimeSpan timeSinceTunnelRefresh = TimeSpan.MaxValue;

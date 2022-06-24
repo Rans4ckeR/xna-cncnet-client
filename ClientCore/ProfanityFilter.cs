@@ -29,7 +29,6 @@ public class ProfanityFilter
         };
     }
 
-
     public IList<string> CensoredWords { get; private set; }
 
     public ProfanityFilter(IEnumerable<string> censoredWords!!)

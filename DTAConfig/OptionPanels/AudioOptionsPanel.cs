@@ -16,6 +16,7 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         : base(windowManager, iniSettings)
     {
     }
+
     private XNATrackbar trbSoundVolume;
     private XNATrackbar trbVoiceVolume;
 

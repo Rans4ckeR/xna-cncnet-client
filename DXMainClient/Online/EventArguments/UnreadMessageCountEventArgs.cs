@@ -9,6 +9,5 @@ public class UnreadMessageCountEventArgs : EventArgs
         UnreadMessageCount = unreadMessageCount;
     }
 
-
     public int UnreadMessageCount { get; set; }
 }

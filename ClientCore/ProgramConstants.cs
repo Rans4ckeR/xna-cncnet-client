@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Windows.Forms;
 using Localization;
+
 #if !DEBUG
 using System.IO;
 #endif
@@ -28,6 +29,7 @@ public static class ProgramConstants
 #else
     public static readonly string GamePath = Directory.GetParent(Path.GetFullPath(Path.Combine(Application.StartupPath, "..\\..\\")).TrimEnd(new char[] { '\\' })).FullName.Replace('\\', '/') + "/";
 #endif
+
     public static event EventHandler PlayerNameChanged;
 
     public static string ClientUserFilesPath => GamePath + "Client/";

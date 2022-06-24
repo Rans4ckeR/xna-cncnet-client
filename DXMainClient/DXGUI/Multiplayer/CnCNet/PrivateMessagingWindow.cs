@@ -94,6 +94,7 @@ public class PrivateMessagingWindow : XNAWindow, ISwitchable
     // These are used by the "invite to game" feature in the
     // context menu and are kept up-to-date by the lobby
     private string inviteChannelName;
+
     private string inviteGameName;
     private string inviteChannelPassword;
 
@@ -448,12 +449,12 @@ public class PrivateMessagingWindow : XNAWindow, ISwitchable
 
         globalContextMenu.Show(
             new GlobalContextMenuData()
-        {
-            IrcUser = ircUser,
-            inviteChannelName = inviteChannelName,
-            inviteChannelPassword = inviteChannelPassword,
-            inviteGameName = inviteGameName
-        }, GetCursorPoint());
+            {
+                IrcUser = ircUser,
+                inviteChannelName = inviteChannelName,
+                inviteChannelPassword = inviteChannelPassword,
+                inviteGameName = inviteGameName
+            }, GetCursorPoint());
     }
 
     private void PlayerContextMenu_JoinUser(object sender, JoinUserEventArgs args)
@@ -747,12 +748,15 @@ public class PrivateMessagingWindow : XNAWindow, ISwitchable
             case MESSAGES_INDEX:
                 MessagesTabSelected();
                 break;
+
             case FRIEND_LIST_VIEW_INDEX:
                 FriendsListTabSelected();
                 break;
+
             case ALL_PLAYERS_VIEW_INDEX:
                 AllPlayersTabSelected();
                 break;
+
             case RECENT_PLAYERS_VIEW_INDEX:
                 RecentPlayersTabSelected();
                 break;

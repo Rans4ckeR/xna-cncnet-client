@@ -109,9 +109,9 @@ public class GlobalContextMenu : XNAContextMenu
     {
         Show(
             new GlobalContextMenuData
-        {
-            PlayerName = playerName
-        }, cursorPoint);
+            {
+                PlayerName = playerName
+            }, cursorPoint);
     }
 
     private void Invite()
@@ -240,27 +240,27 @@ public class GlobalContextMenu : XNAContextMenu
     {
         Show(
             new GlobalContextMenuData
-        {
-            IrcUser = ircUser
-        }, cursorPoint);
+            {
+                IrcUser = ircUser
+            }, cursorPoint);
     }
 
     public void Show(ChannelUser channelUser, Point cursorPoint)
     {
         Show(
             new GlobalContextMenuData
-        {
-            ChannelUser = channelUser
-        }, cursorPoint);
+            {
+                ChannelUser = channelUser
+            }, cursorPoint);
     }
 
     public void Show(ChatMessage chatMessage, Point cursorPoint)
     {
         Show(
             new GlobalContextMenuData()
-        {
-            ChatMessage = chatMessage
-        }, cursorPoint);
+            {
+                ChatMessage = chatMessage
+            }, cursorPoint);
     }
 
     public void Show(GlobalContextMenuData data, Point cursorPoint)

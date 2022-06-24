@@ -17,6 +17,7 @@ public enum FileOperationOptions
     DontOverwrite,
     KeepChanges
 }
+
 internal sealed class FileSourceDestinationInfo
 {
     private readonly string destinationPath;

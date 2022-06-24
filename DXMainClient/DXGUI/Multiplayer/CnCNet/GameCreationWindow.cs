@@ -31,6 +31,7 @@ internal class GameCreationWindow : XNAWindow
     public event EventHandler<GameCreationEventArgs> GameCreated;
 
     public event EventHandler<GameCreationEventArgs> LoadedGameCreated;
+
     private XNAClientDropDown ddMaxPlayers;
     private XNATextBox tbPassword;
 

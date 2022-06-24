@@ -97,25 +97,31 @@ public class StatisticsManager : GenericStatisticsManager
                     ReadDatabase(filePath, 0);
                     returnValue = true;
                     break;
+
                 case "1.02":
                     ReadDatabase(filePath, 2);
                     returnValue = true;
                     break;
+
                 case "1.03":
                     ReadDatabase(filePath, 3);
                     returnValue = true;
                     break;
+
                 case "1.04":
                     ReadDatabase(filePath, 4);
                     returnValue = true;
                     break;
+
                 case "1.05":
                     ReadDatabase(filePath, 5);
                     returnValue = true;
                     break;
+
                 case "1.06":
                     ReadDatabase(filePath, 6);
                     break;
+
                 default:
                     throw new InvalidDataException("Invalid version for " + filePath + ": " + databaseVersion);
             }

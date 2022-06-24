@@ -56,8 +56,8 @@ internal class CnCNetLobby : XNAWindow, ISwitchable
         topBar.LogoutEvent += LogoutEvent;
     }
 
-
     public event EventHandler UpdateCheck;
+
     private readonly CnCNetUserData cncnetUserData;
     private readonly OptionsWindow optionsWindow;
 

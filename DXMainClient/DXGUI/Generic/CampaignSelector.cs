@@ -36,6 +36,7 @@ public class CampaignSelector : XNAWindow
     }
 
     private readonly List<Mission> missions = new();
+
     private readonly string[] filesToCheck = new string[]
     {
         "INI/AI.ini",

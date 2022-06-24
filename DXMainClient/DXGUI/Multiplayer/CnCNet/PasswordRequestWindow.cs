@@ -26,6 +26,7 @@ public class PasswordEventArgs : EventArgs
     /// </summary>
     public HostedCnCNetGame HostedGame { get; private set; }
 }
+
 internal class PasswordRequestWindow : XNAWindow
 {
     private readonly PrivateMessagingWindow privateMessagingWindow;

@@ -15,7 +15,6 @@ public class TeamStartMappingsPanel : XNAPanel
         DrawBorders = false;
     }
 
-
     public event EventHandler MappingChanged;
 
     public List<TeamStartMappingPanel> GetTeamStartMappingPanels() =>

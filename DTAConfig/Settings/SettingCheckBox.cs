@@ -55,9 +55,11 @@ public class SettingCheckBox : SettingCheckBoxBase
             case "WriteSettingValue":
                 WriteSettingValue = Conversions.BooleanFromString(value, false);
                 return;
+
             case "EnabledSettingValue":
                 EnabledSettingValue = value;
                 return;
+
             case "DisabledSettingValue":
                 DisabledSettingValue = value;
                 return;

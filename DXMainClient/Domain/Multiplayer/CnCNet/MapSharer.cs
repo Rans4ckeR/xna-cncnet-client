@@ -33,6 +33,7 @@ public static class MapSharer
     public static event EventHandler<SHA1EventArgs> MapDownloadComplete;
 
     public static event EventHandler<SHA1EventArgs> MapDownloadStarted;
+
     private static readonly List<Map> MapUploadQueue = new();
     private static readonly List<string> UploadedMaps = new();
 

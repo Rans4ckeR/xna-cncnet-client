@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
+
 #if ARES
 using System.Collections.Generic;
 using System.Drawing.Imaging;
@@ -125,7 +126,6 @@ public class GameInProgressWindow : XNAPanel
         Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / POWER_SAVING_FPS);
         if (UserINISettings.Instance.MinimizeWindowsOnGameStart)
             WindowManager.MinimizeWindow();
-
     }
 
     private void SharedUILogic_GameProcessExited()

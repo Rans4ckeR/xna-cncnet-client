@@ -19,6 +19,7 @@ public class GameLoadEventArgs : EventArgs
 
     public int LoadedGameID { get; private set; }
 }
+
 /// <summary>
 /// A window that makes it possible for a LAN player who's hosting a game
 /// to pick between hosting a new game and hosting a loaded game.

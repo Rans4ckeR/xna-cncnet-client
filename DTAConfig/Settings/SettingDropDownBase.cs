@@ -61,15 +61,19 @@ public abstract class SettingDropDownBase : XNAClientDropDown, IUserSetting
                 }
 
                 return;
+
             case "DefaultValue":
                 DefaultValue = Conversions.IntFromString(value, 0);
                 return;
+
             case "SettingSection":
                 SettingSection = string.IsNullOrEmpty(value) ? SettingSection : value;
                 return;
+
             case "SettingKey":
                 SettingKey = string.IsNullOrEmpty(value) ? SettingKey : value;
                 return;
+
             case "RestartRequired":
                 RestartRequired = Conversions.BooleanFromString(value, false);
                 return;

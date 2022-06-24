@@ -27,6 +27,5 @@ public class ChannelUser
             return u1.IsFriend ? -1 : 1;
 
         return string.Compare(u1.IRCUser.Name, u2.IRCUser.Name, StringComparison.OrdinalIgnoreCase);
-
     }
 }

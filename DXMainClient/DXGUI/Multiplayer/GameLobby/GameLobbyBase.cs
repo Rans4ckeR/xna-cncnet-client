@@ -599,6 +599,7 @@ public abstract class GameLobbyBase : INItializableWindow
                 case SortDirection.Asc:
                     gameModeMaps = gameModeMaps.OrderBy(gmm => gmm.Map.Name).ToList();
                     break;
+
                 case SortDirection.Desc:
                     gameModeMaps = gameModeMaps.OrderByDescending(gmm => gmm.Map.Name).ToList();
                     break;
@@ -1736,12 +1737,15 @@ public abstract class GameLobbyBase : INItializableWindow
             {
                 case 0:
                     break;
+
                 case 1:
                     ddName.SelectedIndex = 0;
                     break;
+
                 case 2:
                     KickPlayer(pId);
                     break;
+
                 case 3:
                     BanPlayer(pId);
                     break;

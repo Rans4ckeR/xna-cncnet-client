@@ -269,19 +269,26 @@ internal class Parser
         {
             case "getX":
                 return GetControl(paramName).X;
+
             case "getY":
                 return GetControl(paramName).Y;
+
             case "getWidth":
                 return GetControl(paramName).Width;
+
             case "getHeight":
                 return GetControl(paramName).Height;
+
             case "getBottom":
                 return GetControl(paramName).Bottom;
+
             case "getRight":
                 return GetControl(paramName).Right;
+
             case "horizontalCenterOnParent":
                 parsingControl.CenterOnParentHorizontally();
                 return parsingControl.X;
+
             default:
                 throw new INIConfigException("Unknown function " + functionName + " in expression " + Input);
         }

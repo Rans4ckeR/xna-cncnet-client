@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+
 #if NETFRAMEWORK
+
 using System.Linq;
+
 #else
 using System.Runtime.Loader;
 #endif
@@ -89,9 +92,11 @@ internal static class Program
                 case "-NOAUDIO":
                     noAudio = true;
                     break;
+
                 case "-MULTIPLEINSTANCE":
                     multipleInstanceMode = true;
                     break;
+
                 default:
                     unknownStartupParams.Add(argument);
                     break;
@@ -154,6 +159,7 @@ internal static class Program
     }
 
 #if NETFRAMEWORK
+
     private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
     {
         string unresolvedAssemblyName = args.Name.Split(',').First();
@@ -173,6 +179,7 @@ internal static class Program
 
         return null;
     }
+
 #else
     private static Assembly DefaultAssemblyLoadContextOnResolving(AssemblyLoadContext assemblyLoadContext, AssemblyName assemblyName)
     {

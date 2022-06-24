@@ -11,7 +11,6 @@ public class MissingTranslationEventArgs : EventArgs
         DefaultValue = defaultValue;
     }
 
-
     public string LanguageTag { get; set; }
 
     public string Label { get; set; }

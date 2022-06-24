@@ -32,6 +32,7 @@ public class UpdateWindow : XNAWindow
     public event UpdateFailureEventHandler UpdateFailed;
 
     private delegate void FileDownloadCompletedDelegate(string archiveName);
+
     private const int MAX_DOTS = 5;
 
     private static readonly object Locker = new();

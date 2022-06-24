@@ -10,6 +10,5 @@ public class RecentPlayerTableRightClickEventArgs : EventArgs
         IrcUser = ircUser;
     }
 
-
     public IRCUser IrcUser { get; set; }
 }

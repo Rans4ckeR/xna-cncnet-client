@@ -85,7 +85,7 @@ public class Channel : IMessageView
     public string Password { get; private set; }
     private string _topic;
 
-    #endregion
+    #endregion Public members
 
     private bool notifyOnUserListChange = true;
 

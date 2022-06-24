@@ -54,7 +54,6 @@ public class CnCNetManager : IConnectionManager
         };
     }
 
-
     // When implementing IConnectionManager functions, pay special attention
     // to thread-safety.
     // The functions in IConnectionManager are usually called from the networking

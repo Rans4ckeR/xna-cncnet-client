@@ -22,6 +22,7 @@ internal class CnCNetOptionsPanel : XNAOptionsPanel
     {
         this.gameCollection = gameCollection;
     }
+
     private XNAClientCheckBox chkWriteInstallPathToRegistry;
     private XNAClientCheckBox chkPlaySoundOnGameHosted;
     private XNAClientCheckBox chkNotifyOnUserListChange;

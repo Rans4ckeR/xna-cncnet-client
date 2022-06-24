@@ -7,7 +7,6 @@ public abstract class GenericMatchParser
         Statistics = ms;
     }
 
-
     public MatchStatistics Statistics { get; set; }
 
     protected abstract void ParseStatistics(string gamepath);

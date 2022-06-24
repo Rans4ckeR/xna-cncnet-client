@@ -101,6 +101,7 @@ public class CnCNetGameLobby : MultiplayerGameLobby
     }
 
     public event EventHandler GameLeft;
+
     private TunnelSelectionWindow tunnelSelectionWindow;
     private XNAClientButton btnChangeTunnel;
 
@@ -274,10 +275,10 @@ public class CnCNetGameLobby : MultiplayerGameLobby
     {
         globalContextMenu.Show(
             new GlobalContextMenuData()
-        {
-            PlayerName = args.PlayerName,
-            PreventJoinGame = true
-        }, GetCursorPoint());
+            {
+                PlayerName = args.PlayerName,
+                PreventJoinGame = true
+            }, GetCursorPoint());
     }
 
     private void BtnChangeTunnel_LeftClick(object sender, EventArgs e) => ShowTunnelSelectionWindow("Select tunnel server:".L10N("UI:Main:SelectTunnelServer"));
@@ -1806,5 +1807,4 @@ public class CnCNetGameLobby : MultiplayerGameLobby
 
         broadcastChannel.SendCTCPMessage(sb.ToString(), QueuedMessageType.SYSTEMMESSAGE, 20);
     }
-
 }

@@ -21,7 +21,6 @@ public class UpdateQueryWindow : XNAWindow
     {
     }
 
-
     public delegate void UpdateAcceptedEventHandler(object sender, EventArgs e);
 
     public delegate void UpdateDeclinedEventHandler(object sender, EventArgs e);
@@ -29,6 +28,7 @@ public class UpdateQueryWindow : XNAWindow
     public event UpdateAcceptedEventHandler UpdateAccepted;
 
     public event UpdateDeclinedEventHandler UpdateDeclined;
+
     private XNALabel lblUpdateSize;
 
     private string changelogUrl;

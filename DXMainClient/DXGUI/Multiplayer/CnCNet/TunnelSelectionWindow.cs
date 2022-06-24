@@ -21,6 +21,7 @@ internal class TunnelSelectionWindow : XNAWindow
     }
 
     public event EventHandler<TunnelEventArgs> TunnelSelected;
+
     private TunnelListBox lbTunnelList;
     private XNALabel lblDescription;
     private XNAClientButton btnApply;

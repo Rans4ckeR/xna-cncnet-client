@@ -9,10 +9,13 @@ public class CoopMapInfo
 {
     [JsonProperty]
     public List<CoopHouseInfo> EnemyHouses = new();
+
     [JsonProperty]
     public List<CoopHouseInfo> AllyHouses = new();
+
     [JsonProperty]
     public List<int> DisallowedPlayerSides = new();
+
     [JsonProperty]
     public List<int> DisallowedPlayerColors = new();
 

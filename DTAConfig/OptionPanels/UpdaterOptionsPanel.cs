@@ -19,6 +19,7 @@ internal class UpdaterOptionsPanel : XNAOptionsPanel
     }
 
     public event EventHandler OnForceUpdate;
+
     private XNAClientCheckBox chkAutoCheck;
     private XNAClientButton btnForceUpdate;
 

@@ -13,6 +13,7 @@ public enum XNAMessageBoxButtons
     YesNo,
     OKCancel
 }
+
 /// <summary>
 /// A generic message box with OK or Yes/No or OK/Cancel buttons.
 /// </summary>
@@ -57,6 +58,7 @@ public class XNAMessageBox : XNAWindow
     /// Gets or sets the method that is called when the user clicks Cancel on the message box.
     /// </summary>
     public Action<XNAMessageBox> CancelClickedAction { get; set; }
+
     private readonly string description;
     private readonly XNAMessageBoxButtons messageBoxButtons;
 
@@ -333,5 +335,5 @@ public class XNAMessageBox : XNAWindow
         darkeningPanel.Hidden -= Parent_Hidden;
     }
 
-    #endregion
+    #endregion Static Show methods
 }

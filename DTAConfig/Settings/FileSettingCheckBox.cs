@@ -70,9 +70,11 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
             case "CheckAvailability":
                 CheckAvailability = Conversions.BooleanFromString(value, false);
                 return;
+
             case "ResetUnavailableValue":
                 ResetUnavailableValue = Conversions.BooleanFromString(value, false);
                 return;
+
             case "Reversed":
                 reversed = Conversions.BooleanFromString(value, false);
                 return;
