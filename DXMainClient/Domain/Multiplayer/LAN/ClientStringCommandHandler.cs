@@ -1,23 +1,23 @@
 ﻿using System;
 
-namespace DTAClient.Domain.Multiplayer.LAN
+namespace DTAClient.Domain.Multiplayer.LAN;
+
+public class ClientStringCommandHandler : LANClientCommandHandler
 {
-    public class ClientStringCommandHandler : LANClientCommandHandler
+    private readonly Action<string> action;
+
+    public ClientStringCommandHandler(string commandName, Action<string> action)
+        : base(commandName)
     {
-        public ClientStringCommandHandler(string commandName, Action<string> action) : base(commandName)
-        {
-            this.action = action;
-        }
+        this.action = action;
+    }
 
-        Action<string> action;
+    public override bool Handle(string message)
+    {
+        if (!message.StartsWith(CommandName))
+            return false;
 
-        public override bool Handle(string message)
-        {
-            if (!message.StartsWith(CommandName))
-                return false;
-
-            action(message.Substring(CommandName.Length + 1));
-            return true;
-        }
+        action(message.Substring(CommandName.Length + 1));
+        return true;
     }
 }

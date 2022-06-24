@@ -1,20 +1,19 @@
 ﻿using ClientGUI;
 using DTAConfig.Settings;
 
-namespace DTAConfig
+namespace DTAConfig;
+
+/// <summary>
+/// A GUI creator that also includes DTAConfig's custom controls in addition
+/// to the controls of ClientGUI and Rampastring.XNAUI.
+/// </summary>
+internal class OptionsGUICreator : ClientGUICreator
 {
-    /// <summary>
-    /// A GUI creator that also includes DTAConfig's custom controls in addition
-    /// to the controls of ClientGUI and Rampastring.XNAUI.
-    /// </summary>
-    internal class OptionsGUICreator : ClientGUICreator
+    public OptionsGUICreator()
     {
-        public OptionsGUICreator()
-        {
-            AddControl(typeof(SettingCheckBox));
-            AddControl(typeof(SettingDropDown));
-            AddControl(typeof(FileSettingCheckBox));
-            AddControl(typeof(FileSettingDropDown));
-        }
+        AddControl(typeof(SettingCheckBox));
+        AddControl(typeof(SettingDropDown));
+        AddControl(typeof(FileSettingCheckBox));
+        AddControl(typeof(FileSettingDropDown));
     }
 }

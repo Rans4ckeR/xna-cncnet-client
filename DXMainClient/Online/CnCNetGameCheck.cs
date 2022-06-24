@@ -1,83 +1,87 @@
-﻿using ClientCore;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading;
+using ClientCore;
 
-namespace DTAClient.Online
+namespace DTAClient.Online;
+
+public class CnCNetGameCheck
 {
-    public class CnCNetGameCheck
+    private static readonly int REFRESH_INTERVAL = 15000; // 15 seconds
+
+    public void InitializeService(CancellationTokenSource cts)
     {
-        private static int REFRESH_INTERVAL = 15000; // 15 seconds
+        _ = ThreadPool.QueueUserWorkItem(new WaitCallback(RunService), cts);
+    }
 
-        public void InitializeService(CancellationTokenSource cts)
+    private void RunService(object tokenObj)
+    {
+        WaitHandle waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
+
+        while (true)
         {
-            ThreadPool.QueueUserWorkItem(new WaitCallback(RunService), cts);
-        }
-
-        private void RunService(object tokenObj)
-        {
-            var waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
-
-            while (true)
+            if (waitHandle.WaitOne(REFRESH_INTERVAL))
             {
-                if (waitHandle.WaitOne(REFRESH_INTERVAL))
-                {
-                    // Cancellation signaled
-                    return;
-                }
-                else
-                {
-                    CheatEngineWatchEvent();
-                }
+                // Cancellation signaled
+                return;
+            }
+            else
+            {
+                CheatEngineWatchEvent();
             }
         }
+    }
 
-        private void CheatEngineWatchEvent()
-        {
-            Process[] processlist = Process.GetProcesses();
-            foreach (Process process in processlist)
-            {
-                try {
-                    if (process.ProcessName.Contains("cheatengine") ||
-                        process.MainWindowTitle.ToLower().Contains("cheat engine") ||
-                        process.MainWindowHandle.ToString().ToLower().Contains("cheat engine")
-                        )
-                    {
-                        KillGameInstance();
-                    }
-                }
-                catch { }
-
-                process.Dispose();
-            }
-        }
-
-        private void KillGameInstance()
+    private void CheatEngineWatchEvent()
+    {
+        Process[] processlist = Process.GetProcesses();
+        foreach (Process process in processlist)
         {
             try
             {
-                string gameExecutableName = ClientConfiguration.Instance.GetOperatingSystemVersion() == OSVersion.UNIX ?
-                    ClientConfiguration.Instance.UnixGameExecutableName :
-                    ClientConfiguration.Instance.GetGameExecutableName();
-
-                gameExecutableName = gameExecutableName.Replace(".exe", "");
-
-                Process[] processlist = Process.GetProcesses();
-                foreach (Process process in processlist)
+                if (process.ProcessName.Contains("cheatengine") ||
+                    process.MainWindowTitle.ToLower().Contains("cheat engine") ||
+                    process.MainWindowHandle.ToString().ToLower().Contains("cheat engine"))
                 {
-                    try {
-                        if (process.ProcessName.Contains(gameExecutableName))
-                        {
-                            process.Kill();
-                        }
-                    }
-                    catch { }
-
-                    process.Dispose();
+                    CnCNetGameCheck.KillGameInstance();
                 }
             }
             catch
             {
             }
+
+            process.Dispose();
+        }
+    }
+
+    private static void KillGameInstance()
+    {
+        try
+        {
+            string gameExecutableName = ClientConfiguration.GetOperatingSystemVersion() == OSVersion.UNIX ?
+                ClientConfiguration.Instance.UnixGameExecutableName :
+                ClientConfiguration.Instance.GetGameExecutableName();
+
+            gameExecutableName = gameExecutableName.Replace(".exe", string.Empty);
+
+            Process[] processlist = Process.GetProcesses();
+            foreach (Process process in processlist)
+            {
+                try
+                {
+                    if (process.ProcessName.Contains(gameExecutableName))
+                    {
+                        process.Kill();
+                    }
+                }
+                catch
+                {
+                }
+
+                process.Dispose();
+            }
+        }
+        catch
+        {
         }
     }
 }

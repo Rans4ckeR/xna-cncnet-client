@@ -1,68 +1,66 @@
-﻿using Rampastring.Tools;
-using System.IO;
+﻿using System.IO;
+using Rampastring.Tools;
 
-namespace ClientCore
+namespace ClientCore;
+
+public class CCIniFile : IniFile
 {
-    public class CCIniFile : IniFile
+    public CCIniFile(string path)
+        : base(path)
     {
-        public CCIniFile(string path) : base(path)
+        foreach (IniSection section in Sections)
         {
-            foreach (IniSection section in Sections)
+            string baseSectionName = section.GetStringValue("$BaseSection", null);
+
+            if (string.IsNullOrWhiteSpace(baseSectionName))
+                continue;
+
+            IniSection baseSection = Sections.Find(s => s.SectionName == baseSectionName);
+            if (baseSection == null)
             {
-                string baseSectionName = section.GetStringValue("$BaseSection", null);
+                Logger.Log($"Base section not found in INI file {path}, section {section.SectionName}, base section name: {baseSectionName}");
+                continue;
+            }
 
-                if (string.IsNullOrWhiteSpace(baseSectionName))
-                    continue;
+            int addedKeyCount = 0;
 
-                var baseSection = Sections.Find(s => s.SectionName == baseSectionName);
-                if (baseSection == null)
+            foreach (System.Collections.Generic.KeyValuePair<string, string> kvp in baseSection.Keys)
+            {
+                if (!section.KeyExists(kvp.Key))
                 {
-                    Logger.Log($"Base section not found in INI file {path}, section {section.SectionName}, base section name: {baseSectionName}");
-                    continue;
-                }
-
-                int addedKeyCount = 0;
-
-                foreach (var kvp in baseSection.Keys)
-                {
-                    if (!section.KeyExists(kvp.Key))
-                    {
-                        section.Keys.Insert(addedKeyCount, kvp);
-                        addedKeyCount++;
-                    }
+                    section.Keys.Insert(addedKeyCount, kvp);
+                    addedKeyCount++;
                 }
             }
         }
+    }
 
-        protected override void ApplyBaseIni()
-        {
-            string basedOnSetting = GetStringValue("INISystem", "BasedOn", string.Empty);
-            if (string.IsNullOrEmpty(basedOnSetting))
-                return;
+    protected override void ApplyBaseIni()
+    {
+        string basedOnSetting = GetStringValue("INISystem", "BasedOn", string.Empty);
+        if (string.IsNullOrEmpty(basedOnSetting))
+            return;
 
-            string[] basedOns = basedOnSetting.Split(',');
-            foreach (string basedOn in basedOns)
-                ApplyBasedOnIni(basedOn);
-        }
+        string[] basedOns = basedOnSetting.Split(',');
+        foreach (string basedOn in basedOns)
+            ApplyBasedOnIni(basedOn);
+    }
 
-        private void ApplyBasedOnIni(string basedOn)
-        {
-            if (string.IsNullOrEmpty(basedOn))
-                return;
-            
-            string path;
-            if (basedOn.Contains("$THEME_DIR$"))
-                path = basedOn.Replace("$THEME_DIR$", ProgramConstants.GetResourcePath().TrimEnd(new char[] { '/', '\\' }));
-            else
-                path = Path.GetDirectoryName(FileName) + "/" + basedOn;
+    private void ApplyBasedOnIni(string basedOn)
+    {
+        if (string.IsNullOrEmpty(basedOn))
+            return;
 
-            // Consolidate with the INI file that this INI file is based on
-            if (!File.Exists(path))
-                Logger.Log(FileName + ": Base INI file not found! " + path);
+        string path = basedOn.Contains("$THEME_DIR$")
+            ? basedOn.Replace("$THEME_DIR$", ProgramConstants.GetResourcePath().TrimEnd(new char[] { '/', '\\' }))
+            : Path.GetDirectoryName(FileName) + "/" + basedOn;
 
-            CCIniFile baseIni = new CCIniFile(path);
-            ConsolidateIniFiles(baseIni, this);
-            Sections = baseIni.Sections;
-        }
+        // Consolidate with the INI file that this INI file is based on
+        if (!File.Exists(path))
+            Logger.Log(FileName + ": Base INI file not found! " + path);
+
+        CCIniFile baseIni = new(path);
+        ConsolidateIniFiles(baseIni, this);
+        Sections = baseIni.Sections;
     }
 }

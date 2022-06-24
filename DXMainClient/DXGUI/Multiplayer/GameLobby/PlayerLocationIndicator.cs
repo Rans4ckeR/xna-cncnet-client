@@ -1,283 +1,284 @@
-﻿using Rampastring.XNAUI.XNAControls;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ClientCore;
-using Rampastring.XNAUI;
-using Microsoft.Xna.Framework.Graphics;
-using PlayerInfo = DTAClient.Domain.Multiplayer.PlayerInfo;
-using Microsoft.Xna.Framework;
 using DTAClient.Domain.Multiplayer;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
+using PlayerInfo = DTAClient.Domain.Multiplayer.PlayerInfo;
 
-namespace DTAClient.DXGUI.Multiplayer.GameLobby
+namespace DTAClient.DXGUI.Multiplayer.GameLobby;
+
+/// <summary>
+/// A player location indicator for the map preview.
+/// </summary>
+public class PlayerLocationIndicator : XNAControl
 {
-    /// <summary>
-    /// A player location indicator for the map preview.
-    /// </summary>
-    public class PlayerLocationIndicator : XNAControl
+    public List<PlayerInfo> Players = new();
+
+    public double AngularVelocity = 0.015;
+
+    private const float TEXTURE_SCALE = 0.25f;
+
+    private Texture2D baseTexture;
+
+    public PlayerLocationIndicator(WindowManager windowManager, List<MultiplayerColor> mpColors,
+        Color nameBackgroundColor, Color nameBorderColor, XNAContextMenu contextMenu)
+        : base(windowManager)
     {
-        const float TEXTURE_SCALE = 0.25f;
+        this.mpColors = mpColors;
+        this.nameBackgroundColor = nameBackgroundColor;
+        this.nameBorderColor = nameBorderColor;
+        this.contextMenu = contextMenu;
+        HoverRemapColor = Color.White;
+        usePlayerRemapColor = ClientConfiguration.Instance.MapPreviewStartingLocationUsePlayerRemapColor;
+    }
 
-        public PlayerLocationIndicator(WindowManager windowManager, List<MultiplayerColor> mpColors,
-            Color nameBackgroundColor, Color nameBorderColor, XNAContextMenu contextMenu) : base(windowManager)
+    private Texture2D hoverTexture;
+    private Texture2D usedTexture;
+
+    public Texture2D WaypointTexture { get; set; }
+    private readonly List<MultiplayerColor> mpColors;
+
+    public bool BackgroundShown { get; set; }
+
+    public int FontIndex { get; set; }
+    public double ReversedAngularVelocity = -0.0075;
+
+    private readonly string[] teamIds = new[] { string.Empty }
+        .Concat(ProgramConstants.TEAMS.Select(team => $"[{team}]")).ToArray();
+
+    private Color nameBackgroundColor;
+
+    public Color HoverRemapColor { get; set; }
+
+    private XNAContextMenu contextMenu { get; set; }
+    private Color nameBorderColor;
+
+    private readonly bool usePlayerRemapColor = false;
+    private readonly double backgroundAlphaRate = 0.1;
+
+    private readonly List<PlayerText> pText = new();
+
+    private bool isHoveredOn = false;
+
+    private double backgroundAlpha = 0.0;
+
+    private double angle;
+
+    private int lineHeight;
+
+    private Vector2 textSize;
+    private int textXPosition;
+
+    public override void Initialize()
+    {
+        base.Initialize();
+
+        baseTexture = AssetLoader.LoadTexture("slocindicator.png");
+        hoverTexture = AssetLoader.LoadTexture("slocindicatorh.png");
+        ClientRectangle = baseTexture.Bounds;
+        lineHeight = (int)Renderer.GetTextDimensions("@", FontIndex).Y + 1;
+
+        usedTexture = baseTexture;
+    }
+
+    public void SetPosition(Point p)
+    {
+        int width = (int)(baseTexture.Width * TEXTURE_SCALE);
+        int height = (int)(baseTexture.Height * TEXTURE_SCALE);
+
+        ClientRectangle = new Rectangle(
+            p.X - (width / 2),
+            p.Y - (height / 2),
+            width, height);
+    }
+
+    public void Refresh()
+    {
+        textSize = Vector2.Zero;
+        pText.Clear();
+
+        foreach (PlayerInfo pInfo in Players)
         {
-            this.mpColors = mpColors;
-            this.nameBackgroundColor = nameBackgroundColor;
-            this.nameBorderColor = nameBorderColor;
-            this.contextMenu = contextMenu;
-            HoverRemapColor = Color.White;
-            usePlayerRemapColor = ClientConfiguration.Instance.MapPreviewStartingLocationUsePlayerRemapColor;
-        }
+            string text = pInfo.Name;
+            if (pInfo.TeamId > 0)
+                text = teamIds[pInfo.TeamId] + " " + pInfo.Name;
 
-        private Texture2D baseTexture;
-        private Texture2D hoverTexture;
-        private Texture2D usedTexture;
-        public Texture2D WaypointTexture { get; set; }
-        public List<PlayerInfo> Players = new List<PlayerInfo>();
+            if (text == null)
+                return;
 
-        List<MultiplayerColor> mpColors;
+            Vector2 pInfoSize = Renderer.GetTextDimensions(text, FontIndex);
 
-        public bool BackgroundShown { get; set; }
+            if (pInfoSize.X > textSize.X)
+                textSize = new Vector2(pInfoSize.X, Players.Count * (pInfoSize.Y + 1));
 
-        public int FontIndex { get; set; }
+            textXPosition = 3;
 
-        public double AngularVelocity = 0.015;
-        public double ReversedAngularVelocity = -0.0075;
+            bool textOnRight = true;
 
-        public Color HoverRemapColor { get; set; }
-
-        private XNAContextMenu contextMenu { get; set; }
-
-        private Color nameBackgroundColor;
-        private Color nameBorderColor;
-
-        private readonly string[] teamIds = new[] { string.Empty }
-            .Concat(ProgramConstants.TEAMS.Select(team => $"[{team}]")).ToArray();
-
-        private bool usePlayerRemapColor = false;
-
-        private bool isHoveredOn = false;
-
-        private double backgroundAlpha = 0.0;
-        private double backgroundAlphaRate = 0.1;
-
-        private double angle;
-
-        private int lineHeight;
-
-        private Vector2 textSize;
-        private int textXPosition;
-
-        private List<PlayerText> pText = new List<PlayerText>();
-
-        public override void Initialize()
-        {
-            base.Initialize();
-
-            baseTexture = AssetLoader.LoadTexture("slocindicator.png");
-            hoverTexture = AssetLoader.LoadTexture("slocindicatorh.png");
-            ClientRectangle = baseTexture.Bounds;
-            lineHeight = (int)Renderer.GetTextDimensions("@", FontIndex).Y + 1;
-
-            usedTexture = baseTexture;
-        }
-
-        public void SetPosition(Point p)
-        {
-            int width = (int)(baseTexture.Width * TEXTURE_SCALE);
-            int height = (int)(baseTexture.Height * TEXTURE_SCALE);
-
-            ClientRectangle = new Rectangle(p.X - width / 2,
-                p.Y - height / 2,
-                width, height);
-        }
-
-        public void Refresh()
-        {
-            textSize = Vector2.Zero;
-            pText.Clear();
-
-            foreach (PlayerInfo pInfo in Players)
+            if (Right + textXPosition + (int)textSize.X > Parent.Width)
             {
-                string text = pInfo.Name;
-                if (pInfo.TeamId > 0)
-                    text = teamIds[pInfo.TeamId] + " " + pInfo.Name;
+                textXPosition = -(int)textSize.X - 3 - (int)(baseTexture.Width * TEXTURE_SCALE);
+                text = pInfo.TeamId > 0 ? pInfo.Name + " " + teamIds[pInfo.TeamId] : pInfo.Name;
+                textOnRight = false;
+            }
 
-                if (text == null)
-                    return;
+            pText.Add(new PlayerText(text, textOnRight));
+        }
+    }
 
-                Vector2 pInfoSize = Renderer.GetTextDimensions(text, FontIndex);
+    public override void OnMouseEnter()
+    {
+        //usedTexture = hoverTexture;
+        isHoveredOn = true;
 
-                if (pInfoSize.X > textSize.X)
-                    textSize = new Vector2(pInfoSize.X, Players.Count * (pInfoSize.Y + 1));
+        base.OnMouseEnter();
+    }
 
-                textXPosition = 3;
+    protected override void OnVisibleChanged(object sender, EventArgs args)
+    {
+        base.OnVisibleChanged(sender, args);
 
-                bool textOnRight = true;
+        backgroundAlpha = 0.0;
+    }
 
-                if (Right + textXPosition + (int)textSize.X > Parent.Width)
+    public override void OnMouseLeave()
+    {
+        //usedTexture = baseTexture;
+        isHoveredOn = false;
+
+        base.OnMouseLeave();
+    }
+
+    public override void Update(GameTime gameTime)
+    {
+        base.Update(gameTime);
+
+        double frameTimeCoefficient = gameTime.ElapsedGameTime.TotalMilliseconds / 10.0;
+
+        angle += Players.Count > 0 ? ReversedAngularVelocity * frameTimeCoefficient : AngularVelocity * frameTimeCoefficient;
+
+        usedTexture = Players.Count > 0 ? hoverTexture : baseTexture;
+
+        backgroundAlpha = BackgroundShown ? Math.Min(backgroundAlpha + backgroundAlphaRate, 1.0) : Math.Max(backgroundAlpha - backgroundAlphaRate, 0.0);
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        Point p = GetWindowPoint();
+        Rectangle displayRectangle = new(p.X, p.Y, Width, Height);
+
+        int y = displayRectangle.Y + (((int)(baseTexture.Height * TEXTURE_SCALE) - lineHeight) / 2);
+
+        int i = 0;
+        foreach (PlayerInfo pInfo in Players)
+        {
+            Color textColor = Color.White;
+            if (pInfo.ColorId > 0)
+                textColor = mpColors[pInfo.ColorId - 1].XnaColor;
+
+            if (backgroundAlpha > 0.0)
+            {
+                int rectangleWidth = 0;
+                int rectangleCoordX = 0;
+                if (pText[i].TextOnRight)
                 {
-                    textXPosition = -(int)textSize.X - 3 - (int)(baseTexture.Width * TEXTURE_SCALE);
-                    text = pInfo.TeamId > 0 ? pInfo.Name + " " + teamIds[pInfo.TeamId] : pInfo.Name;
-                    textOnRight = false;
+                    rectangleCoordX = displayRectangle.Center.X;
+                    rectangleWidth = (int)textSize.X + textXPosition + (displayRectangle.Width / 2) + 5;
+                }
+                else
+                {
+                    rectangleWidth = (int)textSize.X + (displayRectangle.Width / 2) + 5;
+                    rectangleCoordX = displayRectangle.Center.X - rectangleWidth;
                 }
 
-                pText.Add(new PlayerText(text, textOnRight));
-            }
-        }
+                Renderer.FillRectangle(
+                    new Rectangle(rectangleCoordX, y, rectangleWidth, lineHeight),
+                    new Color(nameBackgroundColor.R, nameBackgroundColor.G, nameBackgroundColor.B,
+                    (int)(nameBackgroundColor.A * backgroundAlpha)));
 
-        protected override void OnVisibleChanged(object sender, EventArgs args)
-        {
-            base.OnVisibleChanged(sender, args);
-
-            backgroundAlpha = 0.0;
-        }
-
-        public override void OnMouseEnter()
-        {
-            //usedTexture = hoverTexture;
-
-            isHoveredOn = true;
-
-            base.OnMouseEnter();
-        }
-
-        public override void OnMouseLeave()
-        {
-            //usedTexture = baseTexture;
-
-            isHoveredOn = false;
-
-            base.OnMouseLeave();
-        }
-
-        public override void Update(GameTime gameTime)
-        {
-            base.Update(gameTime);
-
-            double frameTimeCoefficient = gameTime.ElapsedGameTime.TotalMilliseconds / 10.0;
-
-            angle += Players.Count > 0 ? ReversedAngularVelocity * frameTimeCoefficient : AngularVelocity * frameTimeCoefficient;
-
-            if (Players.Count > 0)
-            {
-                usedTexture = hoverTexture;
-            }
-            else
-                usedTexture = baseTexture;
-
-            if (BackgroundShown)
-                backgroundAlpha = Math.Min(backgroundAlpha + backgroundAlphaRate, 1.0);
-            else
-                backgroundAlpha = Math.Max(backgroundAlpha - backgroundAlphaRate, 0.0);
-        }
-
-        public override void Draw(GameTime gameTime)
-        {
-            Point p = GetWindowPoint();
-            Rectangle displayRectangle = new Rectangle(p.X, p.Y, Width, Height);
-
-            int y = displayRectangle.Y + ((int)(baseTexture.Height * TEXTURE_SCALE) - lineHeight) / 2;
-
-            int i = 0;
-            foreach (PlayerInfo pInfo in Players)
-            {
-                Color textColor = Color.White;
-                if (pInfo.ColorId > 0)
-                    textColor = mpColors[pInfo.ColorId - 1].XnaColor;
-
-                if (backgroundAlpha > 0.0)
-                {
-                    int rectangleWidth = 0;
-                    int rectangleCoordX = 0;
-                    if (pText[i].TextOnRight)
-                    {
-                        rectangleCoordX = displayRectangle.Center.X;
-                        rectangleWidth = (int)textSize.X + textXPosition + displayRectangle.Width / 2 + 5;
-                    }
-                    else
-                    {
-                        rectangleWidth = (int)textSize.X + displayRectangle.Width / 2 + 5;
-                        rectangleCoordX = displayRectangle.Center.X - rectangleWidth;
-                    }
-
-                    Renderer.FillRectangle(new Rectangle(rectangleCoordX, y, rectangleWidth, lineHeight),
-                        new Color(nameBackgroundColor.R, nameBackgroundColor.G, nameBackgroundColor.B,
-                        (int)(nameBackgroundColor.A * backgroundAlpha)));
-
-                    Renderer.DrawRectangle(new Rectangle(rectangleCoordX, y, rectangleWidth, lineHeight),
-                        new Color(nameBorderColor.R, nameBorderColor.G, nameBorderColor.B, (int)(nameBorderColor.A * backgroundAlpha)));
-                }
-
-                Renderer.DrawStringWithShadow(pText[i].Text, FontIndex,
-                    new Vector2(displayRectangle.Right + textXPosition,
-                    y), textColor);
-
-                y += lineHeight;
-                i++;
+                Renderer.DrawRectangle(
+                    new Rectangle(rectangleCoordX, y, rectangleWidth, lineHeight),
+                    new Color(nameBorderColor.R, nameBorderColor.G, nameBorderColor.B, (int)(nameBorderColor.A * backgroundAlpha)));
             }
 
-            Vector2 origin = new Vector2(usedTexture.Width / 2, usedTexture.Height / 2);
+            Renderer.DrawStringWithShadow(pText[i].Text, FontIndex,
+                new Vector2(
+                    displayRectangle.Right + textXPosition,
+                y), textColor);
 
-            Renderer.DrawTexture(usedTexture,
-                new Vector2(displayRectangle.Center.X + 1.5f, displayRectangle.Center.Y + 1f),
-                (float)angle,
-                origin,
-                new Vector2(TEXTURE_SCALE), Color.Black);
+            y += lineHeight;
+            i++;
+        }
 
-            Color remapColor = Color.White;
-            Color hoverRemapColor = HoverRemapColor;
-            if (Players.Count == 1 && Players[0].ColorId > 0)
-            {
-                remapColor = mpColors[Players[0].ColorId - 1].XnaColor;
-                hoverRemapColor = remapColor;
-            }
+        Vector2 origin = new(usedTexture.Width / 2, usedTexture.Height / 2);
 
-            if (isHoveredOn ||
-                (contextMenu.Tag == this.Tag && contextMenu.Visible))
-            {
-                Renderer.DrawTexture(usedTexture,
+        Renderer.DrawTexture(
+            usedTexture,
+            new Vector2(displayRectangle.Center.X + 1.5f, displayRectangle.Center.Y + 1f),
+            (float)angle,
+            origin,
+            new Vector2(TEXTURE_SCALE), Color.Black);
+
+        Color remapColor = Color.White;
+        Color hoverRemapColor = HoverRemapColor;
+        if (Players.Count == 1 && Players[0].ColorId > 0)
+        {
+            remapColor = mpColors[Players[0].ColorId - 1].XnaColor;
+            hoverRemapColor = remapColor;
+        }
+
+        if (isHoveredOn ||
+            (contextMenu.Tag == Tag && contextMenu.Visible))
+        {
+            Renderer.DrawTexture(
+                usedTexture,
+            new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
+            (float)angle,
+            origin,
+            new Vector2(TEXTURE_SCALE + 0.1f), hoverRemapColor);
+        }
+
+        Renderer.DrawTexture(
+            usedTexture,
+            new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
+            (float)angle,
+            origin,
+            new Vector2(TEXTURE_SCALE), remapColor);
+
+        if (WaypointTexture != null)
+        {
+            // Non-premultiplied blending makes the indicators look sharper for some reason
+            // TODO figure out why
+            Renderer.PushSettings(new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null));
+
+            Renderer.DrawTexture(
+                WaypointTexture,
                 new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
-                (float)angle,
-                origin,
-                new Vector2(TEXTURE_SCALE + 0.1f), hoverRemapColor);
-            }
+                0f,
+                new Vector2(WaypointTexture.Width / 2, WaypointTexture.Height / 2),
+                new Vector2(1f, 1f),
+                Color.White);
 
-            Renderer.DrawTexture(usedTexture,
-                new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
-                (float)angle,
-                origin,
-                new Vector2(TEXTURE_SCALE), remapColor);
-
-            if (WaypointTexture != null)
-            {
-                // Non-premultiplied blending makes the indicators look sharper for some reason
-                // TODO figure out why
-                Renderer.PushSettings(new SpriteBatchSettings(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null));
-
-                Renderer.DrawTexture(WaypointTexture,
-                    new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
-                    0f, 
-                    new Vector2(WaypointTexture.Width / 2, WaypointTexture.Height / 2),
-                    new Vector2(1f, 1f),
-                    Color.White);
-
-                Renderer.PopSettings();
-            }
-
-            base.Draw(gameTime);
+            Renderer.PopSettings();
         }
 
-        sealed class PlayerText
+        base.Draw(gameTime);
+    }
+
+    private sealed class PlayerText
+    {
+        public PlayerText(string text, bool textOnRight)
         {
-            public PlayerText(string text, bool textOnRight)
-            {
-                Text = text;
-                TextOnRight = textOnRight;
-            }
-
-            public string Text { get; set; }
-            public bool TextOnRight { get; set; }
+            Text = text;
+            TextOnRight = textOnRight;
         }
+
+        public string Text { get; set; }
+
+        public bool TextOnRight { get; set; }
     }
 }

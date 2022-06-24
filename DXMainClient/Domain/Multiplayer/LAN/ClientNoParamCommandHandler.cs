@@ -1,26 +1,26 @@
 ﻿using System;
 
-namespace DTAClient.Domain.Multiplayer.LAN
+namespace DTAClient.Domain.Multiplayer.LAN;
+
+/// <summary>
+/// A command handler that has no parameters.
+/// </summary>
+internal class ClientNoParamCommandHandler : LANClientCommandHandler
 {
-    /// <summary>
-    /// A command handler that has no parameters.
-    /// </summary>
-    class ClientNoParamCommandHandler : LANClientCommandHandler
+    private readonly Action commandHandler;
+
+    public ClientNoParamCommandHandler(string commandName, Action commandHandler)
+        : base(commandName)
     {
-        public ClientNoParamCommandHandler(string commandName, Action commandHandler) : base(commandName)
-        {
-            this.commandHandler = commandHandler;
-        }
+        this.commandHandler = commandHandler;
+    }
 
-        Action commandHandler;
+    public override bool Handle(string message)
+    {
+        if (message != CommandName)
+            return false;
 
-        public override bool Handle(string message)
-        {
-            if (message != CommandName)
-                return false;
-
-            commandHandler();
-            return true;
-        }
+        commandHandler();
+        return true;
     }
 }

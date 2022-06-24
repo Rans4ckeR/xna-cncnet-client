@@ -1,214 +1,210 @@
-﻿using ClientCore;
-using Microsoft.Xna.Framework;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using ClientCore;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
-namespace DTAClient.Domain.Multiplayer.LAN
+namespace DTAClient.Domain.Multiplayer.LAN;
+
+public class LANPlayerInfo : PlayerInfo
 {
-    public class LANPlayerInfo : PlayerInfo
+    private const int PORT = 1234;
+
+    public LANPlayerInfo(Encoding encoding)
     {
-        public LANPlayerInfo(Encoding encoding)
-        {
-            this.encoding = encoding;
-            Port = PORT;
-        }
+        this.encoding = encoding;
+        Port = PORT;
+    }
 
-        public event EventHandler<NetworkMessageEventArgs> MessageReceived;
-        public event EventHandler ConnectionLost;
-        public event EventHandler PlayerPinged;
+    public event EventHandler<NetworkMessageEventArgs> MessageReceived;
 
-        private const int PORT = 1234;
-        private const int LOBBY_PORT = 1233;
-        private const double SEND_PING_TIMEOUT = 10.0;
-        private const double DROP_TIMEOUT = 20.0;
-        private const int LAN_PING_TIMEOUT = 1000;
+    public event EventHandler ConnectionLost;
 
-        public TimeSpan TimeSinceLastReceivedMessage { get; set; }
-        public TimeSpan TimeSinceLastSentMessage { get; set; }
+    public event EventHandler PlayerPinged;
+    private const double SEND_PING_TIMEOUT = 10.0;
+    private const double DROP_TIMEOUT = 20.0;
+    private const int LAN_PING_TIMEOUT = 1000;
 
-        public TcpClient TcpClient { get; private set; }
+    private NetworkStream networkStream;
 
-        NetworkStream networkStream;
+    public TimeSpan TimeSinceLastReceivedMessage { get; set; }
 
-        Encoding encoding;
+    public TimeSpan TimeSinceLastSentMessage { get; set; }
 
-        string overMessage = string.Empty;
+    public TcpClient TcpClient { get; private set; }
+    private readonly Encoding encoding;
+    private string overMessage = string.Empty;
 
-        public void SetClient(TcpClient client)
+    public override string IPAddress
+    {
+        get
         {
             if (TcpClient != null)
-                throw new InvalidOperationException("TcpClient has already been set for this LANPlayerInfo!");
+                return ((IPEndPoint)TcpClient.Client.RemoteEndPoint).Address.ToString();
 
-            TcpClient = client;
-            TcpClient.SendTimeout = 1000;
-            networkStream = client.GetStream();
+            return base.IPAddress;
         }
 
-        /// <summary>
-        /// Updates logic timers for the player.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        /// <returns>True if the player is still considered connected, otherwise false.</returns>
-        public bool Update(GameTime gameTime)
+        set
         {
-            TimeSinceLastReceivedMessage += gameTime.ElapsedGameTime;
-            TimeSinceLastSentMessage += gameTime.ElapsedGameTime;
+            base.IPAddress = value;
 
-            if (TimeSinceLastSentMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT)
-                || TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT))
-                SendMessage("PING");
+            //throw new InvalidOperationException("Cannot set LANPlayerInfo's IPAddress!");
+        }
+    }
 
-            if (TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(DROP_TIMEOUT))
-                return false;
+    public void SetClient(TcpClient client)
+    {
+        if (TcpClient != null)
+            throw new InvalidOperationException("TcpClient has already been set for this LANPlayerInfo!");
 
-            return true;
+        TcpClient = client;
+        TcpClient.SendTimeout = 1000;
+        networkStream = client.GetStream();
+    }
+
+    /// <summary>
+    /// Updates logic timers for the player.
+    /// </summary>
+    /// <param name="gameTime">Provides a snapshot of timing values.</param>
+    /// <returns>True if the player is still considered connected, otherwise false.</returns>
+    public bool Update(GameTime gameTime)
+    {
+        TimeSinceLastReceivedMessage += gameTime.ElapsedGameTime;
+        TimeSinceLastSentMessage += gameTime.ElapsedGameTime;
+
+        if (TimeSinceLastSentMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT)
+            || TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT))
+        {
+            SendMessage("PING");
         }
 
-        public override string IPAddress
+        if (TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(DROP_TIMEOUT))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Sends a message to the player over the network.
+    /// </summary>
+    /// <param name="message">The message to send.</param>
+    public void SendMessage(string message)
+    {
+        byte[] buffer;
+
+        buffer = encoding.GetBytes(message + ProgramConstants.LANMESSAGESEPARATOR);
+
+        try
         {
-            get
-            {
-                if (TcpClient != null)
-                    return ((IPEndPoint)TcpClient.Client.RemoteEndPoint).Address.ToString();
-
-                return base.IPAddress;
-            }
-
-            set
-            {
-                base.IPAddress = value;
-                //throw new InvalidOperationException("Cannot set LANPlayerInfo's IPAddress!");
-            }
+            networkStream.Write(buffer, 0, buffer.Length);
+            networkStream.Flush();
+        }
+        catch
+        {
+            Logger.Log("Sending message to " + ToString() + " failed!");
         }
 
-        /// <summary>
-        /// Sends a message to the player over the network.
-        /// </summary>
-        /// <param name="message">The message to send.</param>
-        public void SendMessage(string message)
+        TimeSinceLastSentMessage = TimeSpan.Zero;
+    }
+
+    public override string ToString()
+    {
+        return Name + " (" + IPAddress + ")";
+    }
+
+    /// <summary>
+    /// Starts receiving messages from the player asynchronously.
+    /// </summary>
+    public void StartReceiveLoop()
+    {
+        Thread thread = new(ReceiveMessages);
+        thread.Start();
+    }
+
+    public void UpdatePing(WindowManager wm)
+    {
+        using Ping p = new();
+        try
         {
-            byte[] buffer;
+            PingReply reply = p.Send(System.Net.IPAddress.Parse(IPAddress), LAN_PING_TIMEOUT);
+            if (reply.Status == IPStatus.Success)
+                Ping = Convert.ToInt32(reply.RoundtripTime);
 
-            buffer = encoding.GetBytes(message + ProgramConstants.LAN_MESSAGE_SEPARATOR);
+            wm.AddCallback(PlayerPinged, this, EventArgs.Empty);
+        }
+        catch (PingException ex)
+        {
+            Logger.Log($"Caught an exception when pinging {Name} LAN player: {ex.Message}");
+        }
+    }
 
+    /// <summary>
+    /// Receives messages sent by the client,
+    /// and hands them over to another class via an event.
+    /// </summary>
+    private void ReceiveMessages()
+    {
+        byte[] message = new byte[1024];
+
+        string msg = string.Empty;
+        NetworkStream ns = TcpClient.GetStream();
+
+        while (true)
+        {
+            int bytesRead = 0;
             try
             {
-                networkStream.Write(buffer, 0, buffer.Length);
-                networkStream.Flush();
+                //blocks until a client sends a message
+                bytesRead = ns.Read(message, 0, message.Length);
             }
-            catch
+            catch (Exception ex)
             {
-                Logger.Log("Sending message to " + ToString() + " failed!");
-            }
-
-            TimeSinceLastSentMessage = TimeSpan.Zero;
-        }
-
-        public override string ToString()
-        {
-            return Name + " (" + IPAddress + ")";
-        }
-
-        /// <summary>
-        /// Starts receiving messages from the player asynchronously.
-        /// </summary>
-        public void StartReceiveLoop()
-        {
-            Thread thread = new Thread(ReceiveMessages);
-            thread.Start();
-        }
-
-        /// <summary>
-        /// Receives messages sent by the client,
-        /// and hands them over to another class via an event.
-        /// </summary>
-        private void ReceiveMessages()
-        {
-            byte[] message = new byte[1024];
-
-            string msg = String.Empty;
-
-            int bytesRead = 0;
-
-            NetworkStream ns = TcpClient.GetStream();
-
-            while (true)
-            {
-                bytesRead = 0;
-
-                try
-                {
-                    //blocks until a client sends a message
-                    bytesRead = ns.Read(message, 0, message.Length);
-                }
-                catch (Exception ex)
-                {
-                    //a socket error has occured
-                    Logger.Log("Socket error with client " + Name + "; removing. Message: " + ex.Message);
-                    ConnectionLost?.Invoke(this, EventArgs.Empty);
-                    break;
-                }
-
-                if (bytesRead > 0)
-                {
-                    msg = encoding.GetString(message, 0, bytesRead);
-
-                    msg = overMessage + msg;
-                    List<string> commands = new List<string>();
-
-                    while (true)
-                    {
-                        int index = msg.IndexOf(ProgramConstants.LAN_MESSAGE_SEPARATOR);
-
-                        if (index == -1)
-                        {
-                            overMessage = msg;
-                            break;
-                        }
-                        else
-                        {
-                            commands.Add(msg.Substring(0, index));
-                            msg = msg.Substring(index + 1);
-                        }
-                    }
-
-                    foreach (string cmd in commands)
-                    {
-                        MessageReceived?.Invoke(this, new NetworkMessageEventArgs(cmd));
-                    }
-
-                    continue;
-                }
-
+                //a socket error has occured
+                Logger.Log("Socket error with client " + Name + "; removing. Message: " + ex.Message);
                 ConnectionLost?.Invoke(this, EventArgs.Empty);
                 break;
             }
-        }
 
-        public void UpdatePing(WindowManager wm)
-        {
-            using (Ping p = new Ping())
+            if (bytesRead > 0)
             {
-                try
-                {
-                    PingReply reply = p.Send(System.Net.IPAddress.Parse(IPAddress), LAN_PING_TIMEOUT);
-                    if (reply.Status == IPStatus.Success)
-                        Ping = Convert.ToInt32(reply.RoundtripTime);
+                msg = encoding.GetString(message, 0, bytesRead);
 
-                    wm.AddCallback(PlayerPinged, this, EventArgs.Empty);
-                }
-                catch (PingException ex)
+                msg = overMessage + msg;
+                List<string> commands = new();
+
+                while (true)
                 {
-                    Logger.Log($"Caught an exception when pinging {Name} LAN player: {ex.Message}");
+                    int index = msg.IndexOf(ProgramConstants.LANMESSAGESEPARATOR);
+
+                    if (index == -1)
+                    {
+                        overMessage = msg;
+                        break;
+                    }
+                    else
+                    {
+                        commands.Add(msg.Substring(0, index));
+                        msg = msg.Substring(index + 1);
+                    }
                 }
+
+                foreach (string cmd in commands)
+                {
+                    MessageReceived?.Invoke(this, new NetworkMessageEventArgs(cmd));
+                }
+
+                continue;
             }
+
+            ConnectionLost?.Invoke(this, EventArgs.Empty);
+            break;
         }
     }
 }

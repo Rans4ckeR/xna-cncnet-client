@@ -1,90 +1,90 @@
-﻿using Rampastring.Tools;
-using System;
+﻿using System;
 using System.IO;
 using System.Threading.Tasks;
+using Rampastring.Tools;
 
-namespace ClientCore.INIProcessing
+namespace ClientCore.INIProcessing;
+
+/// <summary>
+/// Background task for pre-processing INI files.
+/// Singleton.
+/// </summary>
+public class PreprocessorBackgroundTask
 {
-    /// <summary>
-    /// Background task for pre-processing INI files.
-    /// Singleton.
-    /// </summary>
-    public class PreprocessorBackgroundTask
+    private static PreprocessorBackgroundTask _instance;
+
+    private Task task;
+
+    private PreprocessorBackgroundTask()
     {
-        private PreprocessorBackgroundTask()
+    }
+
+    public static PreprocessorBackgroundTask Instance
+    {
+        get
         {
+            if (_instance == null)
+                _instance = new PreprocessorBackgroundTask();
+
+            return _instance;
+        }
+    }
+
+    public bool IsRunning => !task.IsCompleted;
+
+    public void Run()
+    {
+        task = Task.Factory.StartNew(CheckFiles);
+    }
+
+    private void CheckFiles()
+    {
+        Logger.Log("Starting background processing of INI files.");
+
+        if (!Directory.Exists(ProgramConstants.GamePath + "INI/Base"))
+        {
+            Logger.Log("/INI/Base does not exist, skipping background processing of INI files.");
+            return;
         }
 
-        private static PreprocessorBackgroundTask _instance;
-        public static PreprocessorBackgroundTask Instance
-        {
-            get
-            {
-                if (_instance == null)
-                    _instance = new PreprocessorBackgroundTask();
+        IniPreprocessInfoStore infoStore = new();
+        infoStore.Load();
 
-                return _instance;
+        IniPreprocessor processor = new();
+
+        string[] iniFiles = Directory.GetFiles(ProgramConstants.GamePath + "INI/Base", "*.ini", SearchOption.TopDirectoryOnly);
+        iniFiles = Array.ConvertAll(iniFiles, Path.GetFileName);
+
+        int processedCount = 0;
+
+        foreach (string fileName in iniFiles)
+        {
+            if (!infoStore.IsIniUpToDate(fileName))
+            {
+                Logger.Log("INI file " + fileName + " is not processed or outdated, re-processing it.");
+
+                string sourcePath = $"{ProgramConstants.GamePath}INI/Base/{fileName}";
+                string destinationPath = $"{ProgramConstants.GamePath}INI/{fileName}";
+
+                processor.ProcessIni(sourcePath, destinationPath);
+
+                string sourceHash = Utilities.CalculateSHA1ForFile(sourcePath);
+                string destinationHash = Utilities.CalculateSHA1ForFile(destinationPath);
+                infoStore.UpsertRecord(fileName, sourceHash, destinationHash);
+                processedCount++;
+            }
+            else
+            {
+                Logger.Log("INI file " + fileName + " is up to date.");
             }
         }
 
-        private Task task;
-
-        public bool IsRunning => !task.IsCompleted;
-
-        public void Run()
+        if (processedCount > 0)
         {
-            task = Task.Factory.StartNew(() => CheckFiles());
+            Logger.Log("Writing preprocessed INI info store.");
+            infoStore.Write();
         }
 
-        private void CheckFiles()
-        {
-            Logger.Log("Starting background processing of INI files.");
-
-            if (!Directory.Exists(ProgramConstants.GamePath + "INI/Base"))
-            {
-                Logger.Log("/INI/Base does not exist, skipping background processing of INI files.");
-                return;
-            }
-
-            IniPreprocessInfoStore infoStore = new IniPreprocessInfoStore();
-            infoStore.Load();
-
-            IniPreprocessor processor = new IniPreprocessor();
-
-            string[] iniFiles = Directory.GetFiles(ProgramConstants.GamePath + "INI/Base", "*.ini", SearchOption.TopDirectoryOnly);
-            iniFiles = Array.ConvertAll(iniFiles, s => Path.GetFileName(s));
-
-            int processedCount = 0;
-
-            foreach (string fileName in iniFiles)
-            {
-                if (!infoStore.IsIniUpToDate(fileName))
-                {
-                    Logger.Log("INI file " + fileName + " is not processed or outdated, re-processing it.");
-
-                    string sourcePath = $"{ProgramConstants.GamePath}INI/Base/{fileName}";
-                    string destinationPath = $"{ProgramConstants.GamePath}INI/{fileName}";
-
-                    processor.ProcessIni(sourcePath, destinationPath);
-
-                    string sourceHash = Utilities.CalculateSHA1ForFile(sourcePath);
-                    string destinationHash = Utilities.CalculateSHA1ForFile(destinationPath);
-                    infoStore.UpsertRecord(fileName, sourceHash, destinationHash);
-                    processedCount++;
-                }
-                else
-                {
-                    Logger.Log("INI file " + fileName + " is up to date.");
-                }
-            }
-
-            if (processedCount > 0)
-            {
-                Logger.Log("Writing preprocessed INI info store.");
-                infoStore.Write();
-            }
-
-            Logger.Log("Ended background processing of INI files.");
-        }
+        Logger.Log("Ended background processing of INI files.");
     }
 }

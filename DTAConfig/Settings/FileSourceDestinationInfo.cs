@@ -1,168 +1,168 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using ClientCore;
+using Rampastring.Tools;
 
-namespace DTAConfig.Settings
+namespace DTAConfig.Settings;
+
+/// <summary>
+/// Defines the expected behavior of file operations performed with
+/// <see cref="FileSourceDestinationInfo"/>.
+/// </summary>
+public enum FileOperationOptions
 {
-    sealed class FileSourceDestinationInfo
+    AlwaysOverwrite,
+    OverwriteOnMismatch,
+    DontOverwrite,
+    KeepChanges
+}
+internal sealed class FileSourceDestinationInfo
+{
+    private readonly string destinationPath;
+    private readonly string sourcePath;
+
+    public FileSourceDestinationInfo(string source, string destination, FileOperationOptions options)
     {
-        private readonly string destinationPath;
-        private readonly string sourcePath;
+        sourcePath = source;
+        destinationPath = destination;
+        FileOperationOptions = options;
+    }
 
-        public string SourcePath => ProgramConstants.GamePath + sourcePath;
+    public string SourcePath => ProgramConstants.GamePath + sourcePath;
 
-        public string DestinationPath => ProgramConstants.GamePath + destinationPath;
+    public string DestinationPath => ProgramConstants.GamePath + destinationPath;
 
-        /// <summary>
-        /// A path where the files edited by user are saved if
-        /// <see cref="FileOperationOptions"/> is set to <see cref="FileOperationOptions.KeepChanges"/>.
-        /// </summary>
-        public string CachedPath => ProgramConstants.ClientUserFilesPath + "SettingsCache/" + sourcePath;
+    /// <summary>
+    /// Gets a path where the files edited by user are saved if
+    /// <see cref="FileOperationOptions"/> is set to <see cref="FileOperationOptions.KeepChanges"/>.
+    /// </summary>
+    public string CachedPath => ProgramConstants.ClientUserFilesPath + "SettingsCache/" + sourcePath;
 
-        public FileOperationOptions FileOperationOptions { get; }
+    public FileOperationOptions FileOperationOptions { get; }
 
-        public FileSourceDestinationInfo(string source, string destination, FileOperationOptions options)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FileSourceDestinationInfo"/> class.
+    /// Constructs a new instance of <see cref="FileSourceDestinationInfo"/> from a given string.
+    /// </summary>
+    /// <param name="value">A string to be parsed.</param>
+    public FileSourceDestinationInfo(string value)
+    {
+        string[] parts = value.Split(',');
+        if (parts.Length < 2)
         {
-            sourcePath = source;
-            destinationPath = destination;
-            FileOperationOptions = options;
+            throw new ArgumentException(
+                $"{nameof(FileSourceDestinationInfo)}: " +
+                $"Too few parameters specified in parsed value", nameof(value));
         }
 
-        /// <summary>
-        /// Constructs a new instance of <see cref="FileSourceDestinationInfo"/> from a given string.
-        /// </summary>
-        /// <param name="value">A string to be parsed.</param>
-        public FileSourceDestinationInfo(string value)
+        FileOperationOptions options = default;
+        if (parts.Length >= 3)
+            _ = Enum.TryParse(parts[2], out options);
+
+        sourcePath = parts[0];
+        destinationPath = parts[1];
+        FileOperationOptions = options;
+    }
+
+    /// <summary>
+    /// A method which parses certain key list values from an INI section
+    /// into a list of <see cref="FileSourceDestinationInfo"/> objects.
+    /// </summary>
+    /// <param name="section">An INI section to parse key values from.</param>
+    /// <param name="iniKeyPrefix">A string to append index to when
+    /// parsing the values from key list.</param>
+    /// <returns>A <see cref="List{FileSourceDestinationInfo}"/> of all correctly defined <see cref="FileSourceDestinationInfo"/>s.</returns>
+    public static List<FileSourceDestinationInfo> ParseFSDInfoList(IniSection section!!, string iniKeyPrefix)
+    {
+        List<FileSourceDestinationInfo> result = new();
+        string fileInfo;
+
+        for (int i = 0;
+            !string.IsNullOrWhiteSpace(
+                fileInfo = section.GetStringValue($"{iniKeyPrefix}{i}", string.Empty));
+            i++)
         {
-            string[] parts = value.Split(',');
-            if (parts.Length < 2)
-                throw new ArgumentException($"{nameof(FileSourceDestinationInfo)}: " +
-                    $"Too few parameters specified in parsed value", nameof(value));
-
-            FileOperationOptions options = default(FileOperationOptions);
-            if (parts.Length >= 3)
-                Enum.TryParse(parts[2], out options);
-
-            sourcePath = parts[0];
-            destinationPath = parts[1];
-            FileOperationOptions = options;
+            result.Add(new FileSourceDestinationInfo(fileInfo));
         }
 
-        /// <summary>
-        /// A method which parses certain key list values from an INI section
-        /// into a list of <see cref="FileSourceDestinationInfo"/> objects.
-        /// </summary>
-        /// <param name="section">An INI section to parse key values from.</param>
-        /// <param name="iniKeyPrefix">A string to append index to when
-        /// parsing the values from key list.</param>
-        /// <returns>A <see cref="List{FileSourceDestinationInfo}"/> of all correctly defined <see cref="FileSourceDestinationInfo"/>s.</returns>
-        public static List<FileSourceDestinationInfo> ParseFSDInfoList(IniSection section, string iniKeyPrefix)
+        return result;
+    }
+
+    /// <summary>
+    /// Performs file operations from <see cref="SourcePath"/> to
+    /// <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
+    /// </summary>
+    public void Apply()
+    {
+        switch (FileOperationOptions)
         {
-            if (section == null)
-                throw new ArgumentNullException(nameof(section));
+            case FileOperationOptions.OverwriteOnMismatch:
+                string sourceHash = Utilities.CalculateSHA1ForFile(SourcePath);
+                string destinationHash = Utilities.CalculateSHA1ForFile(DestinationPath);
 
-            List<FileSourceDestinationInfo> result = new List<FileSourceDestinationInfo>();
-            string fileInfo;
-
-            for (int i = 0;
-                !string.IsNullOrWhiteSpace(
-                    fileInfo = section.GetStringValue($"{iniKeyPrefix}{i}", string.Empty));
-                i++)
-            {
-                result.Add(new FileSourceDestinationInfo(fileInfo));
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Performs file operations from <see cref="SourcePath"/> to
-        /// <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
-        /// </summary>
-        public void Apply()
-        {
-            switch (FileOperationOptions)
-            {
-                case FileOperationOptions.OverwriteOnMismatch:
-                    string sourceHash = Utilities.CalculateSHA1ForFile(SourcePath);
-                    string destinationHash = Utilities.CalculateSHA1ForFile(DestinationPath);
-
-                    if (sourceHash != destinationHash)
-                        File.Copy(SourcePath, DestinationPath, true);
-
-                    break;
-
-                case FileOperationOptions.DontOverwrite:
-                    if (!File.Exists(DestinationPath))
-                        File.Copy(SourcePath, DestinationPath, false);
-
-                    break;
-
-                case FileOperationOptions.KeepChanges:
-                    if (!File.Exists(DestinationPath))
-                    {
-                        if (File.Exists(CachedPath))
-                            File.Copy(CachedPath, DestinationPath, false);
-                        else
-                            File.Copy(SourcePath, DestinationPath, false);
-                    }
-
-                    Directory.CreateDirectory(Path.GetDirectoryName(CachedPath));
-                    File.Copy(DestinationPath, CachedPath, true);
-
-                    break;
-
-                case FileOperationOptions.AlwaysOverwrite:
+                if (sourceHash != destinationHash)
                     File.Copy(SourcePath, DestinationPath, true);
-                    break;
 
-                default:
-                    throw new InvalidOperationException($"{nameof(FileSourceDestinationInfo)}: " +
-                        $"Invalid {nameof(FileOperationOptions)} value of {FileOperationOptions}");
-            }
-        }
+                break;
 
-        /// <summary>
-        /// Performs file operations to undo changes made by <see cref="Apply"/>
-        /// to <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
-        /// </summary>
-        public void Revert()
-        {
-            switch (FileOperationOptions)
-            {
-                case FileOperationOptions.KeepChanges:
-                    if (File.Exists(DestinationPath))
-                    {
-                        Directory.CreateDirectory(Path.GetDirectoryName(CachedPath));
-                        File.Copy(DestinationPath, CachedPath, true);
-                        File.Delete(DestinationPath);
-                    }
-                    break;
+            case FileOperationOptions.DontOverwrite:
+                if (!File.Exists(DestinationPath))
+                    File.Copy(SourcePath, DestinationPath, false);
 
-                case FileOperationOptions.OverwriteOnMismatch:
-                case FileOperationOptions.DontOverwrite:
-                case FileOperationOptions.AlwaysOverwrite:
-                    File.Delete(DestinationPath);
-                    break;
+                break;
 
-                default:
-                    throw new InvalidOperationException($"{nameof(FileSourceDestinationInfo)}: " +
-                        $"Invalid {nameof(FileOperationOptions)} value of {FileOperationOptions}");
-            }
+            case FileOperationOptions.KeepChanges:
+                if (!File.Exists(DestinationPath))
+                {
+                    if (File.Exists(CachedPath))
+                        File.Copy(CachedPath, DestinationPath, false);
+                    else
+                        File.Copy(SourcePath, DestinationPath, false);
+                }
+
+                _ = Directory.CreateDirectory(Path.GetDirectoryName(CachedPath));
+                File.Copy(DestinationPath, CachedPath, true);
+
+                break;
+
+            case FileOperationOptions.AlwaysOverwrite:
+                File.Copy(SourcePath, DestinationPath, true);
+                break;
+
+            default:
+                throw new InvalidOperationException($"{nameof(FileSourceDestinationInfo)}: " +
+                    $"Invalid {nameof(FileOperationOptions)} value of {FileOperationOptions}");
         }
     }
 
     /// <summary>
-    /// Defines the expected behavior of file operations performed with
-    /// <see cref="FileSourceDestinationInfo"/>.
+    /// Performs file operations to undo changes made by <see cref="Apply"/>
+    /// to <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
     /// </summary>
-    public enum FileOperationOptions
+    public void Revert()
     {
-        AlwaysOverwrite,
-        OverwriteOnMismatch,
-        DontOverwrite,
-        KeepChanges
+        switch (FileOperationOptions)
+        {
+            case FileOperationOptions.KeepChanges:
+                if (File.Exists(DestinationPath))
+                {
+                    _ = Directory.CreateDirectory(Path.GetDirectoryName(CachedPath));
+                    File.Copy(DestinationPath, CachedPath, true);
+                    File.Delete(DestinationPath);
+                }
+
+                break;
+
+            case FileOperationOptions.OverwriteOnMismatch:
+            case FileOperationOptions.DontOverwrite:
+            case FileOperationOptions.AlwaysOverwrite:
+                File.Delete(DestinationPath);
+                break;
+
+            default:
+                throw new InvalidOperationException($"{nameof(FileSourceDestinationInfo)}: " +
+                    $"Invalid {nameof(FileOperationOptions)} value of {FileOperationOptions}");
+        }
     }
 }
