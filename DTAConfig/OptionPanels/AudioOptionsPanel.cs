@@ -10,27 +10,24 @@ namespace DTAConfig.OptionPanels;
 
 internal class AudioOptionsPanel : XNAOptionsPanel
 {
-    private XNATrackbar trbScoreVolume;
-
-    public AudioOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
-        : base(windowManager, iniSettings)
-    {
-    }
-
-    private XNATrackbar trbSoundVolume;
-    private XNATrackbar trbVoiceVolume;
-
+    private XNAClientCheckBox chkMainMenuMusic;
+    private XNAClientCheckBox chkScoreShuffle;
+    private XNAClientCheckBox chkStopMusicOnMenu;
+    private XNALabel lblClientVolumeValue;
     private XNALabel lblScoreVolumeValue;
     private XNALabel lblSoundVolumeValue;
     private XNALabel lblVoiceVolumeValue;
-
-    private XNAClientCheckBox chkScoreShuffle;
-
-    private XNALabel lblClientVolumeValue;
     private XNATrackbar trbClientVolume;
+    private XNATrackbar trbScoreVolume;
 
-    private XNAClientCheckBox chkMainMenuMusic;
-    private XNAClientCheckBox chkStopMusicOnMenu;
+    private XNATrackbar trbSoundVolume;
+
+    private XNATrackbar trbVoiceVolume;
+
+    public AudioOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
+                : base(windowManager, iniSettings)
+    {
+    }
 
     public override void Initialize()
     {
@@ -53,7 +50,9 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         };
         lblScoreVolumeValue.ClientRectangle = new Rectangle(
             Width - lblScoreVolumeValue.Width - 12,
-            lblScoreVolume.Y, 0, 0);
+            lblScoreVolume.Y,
+            0,
+            0);
 
         trbScoreVolume = new XNATrackbar(WindowManager)
         {
@@ -74,7 +73,9 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             Name = "lblSoundVolume",
             ClientRectangle = new Rectangle(
                 lblScoreVolume.X,
-            lblScoreVolume.Bottom + 20, 0, 0),
+                lblScoreVolume.Bottom + 20,
+                0,
+                0),
             Text = "Sound Volume:".L10N("UI:DTAConfig:SoundVolume")
         };
 
@@ -84,18 +85,20 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             FontIndex = 1,
             Text = "10",
             ClientRectangle = new Rectangle(
-            lblScoreVolumeValue.X,
-            lblSoundVolume.Y, 0, 0)
+                lblScoreVolumeValue.X,
+                lblSoundVolume.Y,
+                0,
+                0)
         };
 
         trbSoundVolume = new XNATrackbar(WindowManager)
         {
             Name = "trbSoundVolume",
             ClientRectangle = new Rectangle(
-            trbScoreVolume.X,
-            lblSoundVolume.Y - 2,
-            trbScoreVolume.Width,
-            trbScoreVolume.Height),
+                trbScoreVolume.X,
+                lblSoundVolume.Y - 2,
+                trbScoreVolume.Width,
+                trbScoreVolume.Height),
             BackgroundTexture = trbScoreVolume.BackgroundTexture,
             MinValue = 0,
             MaxValue = 10
@@ -107,7 +110,9 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             Name = "lblVoiceVolume",
             ClientRectangle = new Rectangle(
                 lblScoreVolume.X,
-            lblSoundVolume.Bottom + 20, 0, 0),
+                lblSoundVolume.Bottom + 20,
+                0,
+                0),
             Text = "Voice Volume:".L10N("UI:DTAConfig:VoiceVolume")
         };
 
@@ -117,18 +122,20 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             FontIndex = 1,
             Text = "10",
             ClientRectangle = new Rectangle(
-            lblScoreVolumeValue.X,
-            lblVoiceVolume.Y, 0, 0)
+                lblScoreVolumeValue.X,
+                lblVoiceVolume.Y,
+                0,
+                0)
         };
 
         trbVoiceVolume = new XNATrackbar(WindowManager)
         {
             Name = "trbVoiceVolume",
             ClientRectangle = new Rectangle(
-            trbScoreVolume.X,
-            lblVoiceVolume.Y - 2,
-            trbScoreVolume.Width,
-            trbScoreVolume.Height),
+                trbScoreVolume.X,
+                lblVoiceVolume.Y - 2,
+                trbScoreVolume.Width,
+                trbScoreVolume.Height),
             BackgroundTexture = trbScoreVolume.BackgroundTexture,
             MinValue = 0,
             MaxValue = 10
@@ -139,8 +146,10 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         {
             Name = "chkScoreShuffle",
             ClientRectangle = new Rectangle(
-            lblScoreVolume.X,
-            trbVoiceVolume.Bottom + 12, 0, 0),
+                lblScoreVolume.X,
+                trbVoiceVolume.Bottom + 12,
+                0,
+                0),
             Text = "Shuffle Music".L10N("UI:DTAConfig:ShuffleMusic")
         };
 
@@ -149,7 +158,9 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             Name = "lblClientVolume",
             ClientRectangle = new Rectangle(
                 lblScoreVolume.X,
-            chkScoreShuffle.Bottom + 40, 0, 0),
+                chkScoreShuffle.Bottom + 40,
+                0,
+                0),
             Text = "Client Volume:".L10N("UI:DTAConfig:ClientVolume")
         };
 
@@ -159,8 +170,10 @@ internal class AudioOptionsPanel : XNAOptionsPanel
             FontIndex = 1,
             Text = "10",
             ClientRectangle = new Rectangle(
-            lblScoreVolumeValue.X,
-            lblClientVolume.Y, 0, 0)
+                lblScoreVolumeValue.X,
+                lblClientVolume.Y,
+                0,
+                0)
         };
 
         trbClientVolume = new XNATrackbar(WindowManager)
@@ -181,8 +194,10 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         {
             Name = "chkMainMenuMusic",
             ClientRectangle = new Rectangle(
-            lblScoreVolume.X,
-            trbClientVolume.Bottom + 12, 0, 0),
+                lblScoreVolume.X,
+                trbClientVolume.Bottom + 12,
+                0,
+                0),
             Text = "Main menu music".L10N("UI:DTAConfig:MainMenuMusic")
         };
         chkMainMenuMusic.CheckedChanged += ChkMainMenuMusic_CheckedChanged;
@@ -233,33 +248,6 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         chkStopMusicOnMenu.Checked = IniSettings.StopMusicOnMenu;
     }
 
-    private void ChkMainMenuMusic_CheckedChanged(object sender, EventArgs e)
-    {
-        chkStopMusicOnMenu.AllowChecking = chkMainMenuMusic.Checked;
-        chkStopMusicOnMenu.Checked = chkMainMenuMusic.Checked;
-    }
-
-    private void TrbScoreVolume_ValueChanged(object sender, EventArgs e)
-    {
-        lblScoreVolumeValue.Text = trbScoreVolume.Value.ToString();
-    }
-
-    private void TrbSoundVolume_ValueChanged(object sender, EventArgs e)
-    {
-        lblSoundVolumeValue.Text = trbSoundVolume.Value.ToString();
-    }
-
-    private void TrbVoiceVolume_ValueChanged(object sender, EventArgs e)
-    {
-        lblVoiceVolumeValue.Text = trbVoiceVolume.Value.ToString();
-    }
-
-    private void TrbClientVolume_ValueChanged(object sender, EventArgs e)
-    {
-        lblClientVolumeValue.Text = trbClientVolume.Value.ToString();
-        WindowManager.SoundPlayer.SetVolume(trbClientVolume.Value / 10.0f);
-    }
-
     public override bool Save()
     {
         bool restartRequired = base.Save();
@@ -276,5 +264,32 @@ internal class AudioOptionsPanel : XNAOptionsPanel
         IniSettings.StopMusicOnMenu.Value = chkStopMusicOnMenu.Checked;
 
         return restartRequired;
+    }
+
+    private void ChkMainMenuMusic_CheckedChanged(object sender, EventArgs e)
+    {
+        chkStopMusicOnMenu.AllowChecking = chkMainMenuMusic.Checked;
+        chkStopMusicOnMenu.Checked = chkMainMenuMusic.Checked;
+    }
+
+    private void TrbClientVolume_ValueChanged(object sender, EventArgs e)
+    {
+        lblClientVolumeValue.Text = trbClientVolume.Value.ToString();
+        WindowManager.SoundPlayer.SetVolume(trbClientVolume.Value / 10.0f);
+    }
+
+    private void TrbScoreVolume_ValueChanged(object sender, EventArgs e)
+    {
+        lblScoreVolumeValue.Text = trbScoreVolume.Value.ToString();
+    }
+
+    private void TrbSoundVolume_ValueChanged(object sender, EventArgs e)
+    {
+        lblSoundVolumeValue.Text = trbSoundVolume.Value.ToString();
+    }
+
+    private void TrbVoiceVolume_ValueChanged(object sender, EventArgs e)
+    {
+        lblVoiceVolumeValue.Text = trbVoiceVolume.Value.ToString();
     }
 }

@@ -8,8 +8,6 @@ namespace DTAClient.Online;
 /// </summary>
 public class IRCUser : ICloneable
 {
-    public List<string> Channels = new();
-
     public IRCUser()
     {
     }
@@ -26,20 +24,22 @@ public class IRCUser : ICloneable
         Hostname = host;
     }
 
-    public string Name { get; set; }
-
-    public string Ident { get; set; }
-
-    public string Hostname { get; set; }
+    public List<string> Channels { get; set; } = new();
 
     public int GameID { get; set; } = -1;
 
+    public string Hostname { get; set; }
+
+    public string Ident { get; set; }
+
     public bool IsFriend { get; set; }
+
+    public bool IsIgnored { get; set; }
+
+    public string Name { get; set; }
 
     public object Clone()
     {
         return MemberwiseClone();
     }
-
-    public bool IsIgnored { get; set; }
 }

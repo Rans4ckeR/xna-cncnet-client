@@ -23,12 +23,6 @@ public class XNAClientCheckBox : XNACheckBox
         CreateToolTip();
     }
 
-    private void CreateToolTip()
-    {
-        if (ToolTip == null)
-            ToolTip = new ToolTip(WindowManager, this);
-    }
-
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
     {
         if (key == "ToolTip")
@@ -39,5 +33,11 @@ public class XNAClientCheckBox : XNACheckBox
         }
 
         base.ParseAttributeFromINI(iniFile, key, value);
+    }
+
+    private void CreateToolTip()
+    {
+        if (ToolTip == null)
+            ToolTip = new ToolTip(WindowManager, this);
     }
 }

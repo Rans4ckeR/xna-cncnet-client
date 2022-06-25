@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Security.AccessControl;
@@ -11,26 +10,6 @@ using Localization;
 using Rampastring.Tools;
 
 namespace DTAClient;
-
-/// <summary>
-/// Contains client startup parameters.
-/// </summary>
-internal struct StartupParams
-{
-    public StartupParams(bool noAudio, bool multipleInstanceMode,
-        List<string> unknownParams)
-    {
-        NoAudio = noAudio;
-        MultipleInstanceMode = multipleInstanceMode;
-        UnknownStartupParams = unknownParams;
-    }
-
-    public bool NoAudio { get; }
-
-    public bool MultipleInstanceMode { get; }
-
-    public List<string> UnknownStartupParams { get; }
-}
 
 internal static class PreStartup
 {
@@ -60,7 +39,7 @@ internal static class PreStartup
 
         MainClientConstants.Initialize();
 
-        Logger.Log("***Logfile for " + MainClientConstants.GAME_NAME_LONG + " client***");
+        Logger.Log("***Logfile for " + MainClientConstants.GameNameLong + " client***");
         Logger.Log("Client version: " + Application.ProductVersion);
 
         // Log information about given startup params
@@ -195,16 +174,17 @@ internal static class PreStartup
 
         _ = MessageBox.Show(
             string.Format(
-            "{0} has crashed. Error message:".L10N("UI:Main:FatalErrorText1") + Environment.NewLine + Environment.NewLine +
-            ex.Message + Environment.NewLine + Environment.NewLine + (crashLogCopied ?
-            "A crash log has been saved to the following file:".L10N("UI:Main:FatalErrorText2") + " " + Environment.NewLine + Environment.NewLine +
-            errorLogPath + Environment.NewLine + Environment.NewLine : string.Empty) +
-            (crashLogCopied ? "If the issue is repeatable, contact the {1} staff at {2} and provide the crash log file.".L10N("UI:Main:FatalErrorText3") :
-            "If the issue is repeatable, contact the {1} staff at {2}.".L10N("UI:Main:FatalErrorText4")),
-            MainClientConstants.GAME_NAME_LONG,
-            MainClientConstants.GAME_NAME_SHORT,
-            MainClientConstants.SUPPORT_URL_SHORT),
-            "KABOOOOOOOM".L10N("UI:Main:FatalErrorTitle"), MessageBoxButtons.OK);
+                "{0} has crashed. Error message:".L10N("UI:Main:FatalErrorText1") + Environment.NewLine + Environment.NewLine +
+                ex.Message + Environment.NewLine + Environment.NewLine + (crashLogCopied ?
+                "A crash log has been saved to the following file:".L10N("UI:Main:FatalErrorText2") + " " + Environment.NewLine + Environment.NewLine +
+                errorLogPath + Environment.NewLine + Environment.NewLine : string.Empty) +
+                (crashLogCopied ? "If the issue is repeatable, contact the {1} staff at {2} and provide the crash log file.".L10N("UI:Main:FatalErrorText3") :
+                "If the issue is repeatable, contact the {1} staff at {2}.".L10N("UI:Main:FatalErrorText4")),
+                MainClientConstants.GameNameLong,
+                MainClientConstants.GameNameShort,
+                MainClientConstants.SupportUrlShort),
+            "KABOOOOOOOM".L10N("UI:Main:FatalErrorTitle"),
+            MessageBoxButtons.OK);
     }
 
     private static void CheckPermissions()
@@ -214,11 +194,14 @@ internal static class PreStartup
 
         DialogResult dr = MessageBox.Show(
             string.Format(
-            ("You seem to be running {0} from a write-protected directory." + Environment.NewLine + Environment.NewLine +
-            "For {1} to function properly when run from a write-protected directory, it needs administrative priveleges." + Environment.NewLine + Environment.NewLine +
-            "Would you like to restart the client with administrative rights?" + Environment.NewLine + Environment.NewLine +
-            "Please also make sure that your security software isn't blocking {1}.").L10N("UI:Main:AdminRequiredText"), MainClientConstants.GAME_NAME_LONG, MainClientConstants.GAME_NAME_SHORT),
-            "Administrative priveleges required".L10N("UI:Main:AdminRequiredTitle"), MessageBoxButtons.YesNo);
+                ("You seem to be running {0} from a write-protected directory." + Environment.NewLine + Environment.NewLine +
+                "For {1} to function properly when run from a write-protected directory, it needs administrative priveleges." + Environment.NewLine + Environment.NewLine +
+                "Would you like to restart the client with administrative rights?" + Environment.NewLine + Environment.NewLine +
+                "Please also make sure that your security software isn't blocking {1}.").L10N("UI:Main:AdminRequiredText"),
+                MainClientConstants.GameNameLong,
+                MainClientConstants.GameNameShort),
+            "Administrative priveleges required".L10N("UI:Main:AdminRequiredTitle"),
+            MessageBoxButtons.YesNo);
 
         if (dr == DialogResult.No)
             Environment.Exit(0);

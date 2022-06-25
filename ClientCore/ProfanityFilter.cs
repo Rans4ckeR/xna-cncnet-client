@@ -6,8 +6,8 @@ namespace ClientCore;
 public class ProfanityFilter
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="ProfanityFilter"/> class.
-    /// Creates a new profanity filter with a default set of censored words.
+    /// Initializes a new instance of the <see cref="ProfanityFilter" /> class. Creates a new
+    /// profanity filter with a default set of censored words.
     /// </summary>
     public ProfanityFilter()
     {
@@ -29,11 +29,27 @@ public class ProfanityFilter
         };
     }
 
-    public IList<string> CensoredWords { get; private set; }
-
     public ProfanityFilter(IEnumerable<string> censoredWords!!)
     {
         CensoredWords = new List<string>(censoredWords);
+    }
+
+    public IList<string> CensoredWords { get; private set; }
+
+    public string CensorText(string text!!)
+    {
+        string censoredText = text;
+        foreach (string censoredWord in CensoredWords)
+        {
+            string regularExpression = ProfanityFilter.ToRegexPattern(censoredWord);
+            censoredText = Regex.Replace(
+                censoredText,
+                regularExpression,
+                StarCensoredMatch,
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
+
+        return censoredText;
     }
 
     public bool IsOffensive(string text)
@@ -42,7 +58,10 @@ public class ProfanityFilter
         foreach (string censoredWord in CensoredWords)
         {
             string regularExpression = ProfanityFilter.ToRegexPattern(censoredWord);
-            censoredText = Regex.Replace(censoredText, regularExpression, string.Empty,
+            censoredText = Regex.Replace(
+                censoredText,
+                regularExpression,
+                string.Empty,
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
             if (string.IsNullOrEmpty(censoredText))
@@ -50,19 +69,6 @@ public class ProfanityFilter
         }
 
         return false;
-    }
-
-    public string CensorText(string text!!)
-    {
-        string censoredText = text;
-        foreach (string censoredWord in CensoredWords)
-        {
-            string regularExpression = ProfanityFilter.ToRegexPattern(censoredWord);
-            censoredText = Regex.Replace(censoredText, regularExpression, StarCensoredMatch,
-              RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        }
-
-        return censoredText;
     }
 
     private static string StarCensoredMatch(Match m)

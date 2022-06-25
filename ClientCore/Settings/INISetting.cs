@@ -5,9 +5,13 @@ namespace ClientCore.Settings;
 /// <summary>
 /// A base class for an INI setting.
 /// </summary>
+/// <typeparam name="T">T.</typeparam>
 public abstract class INISetting<T> : IIniSetting
 {
-    public INISetting(IniFile iniFile, string iniSection, string iniKey,
+    public INISetting(
+        IniFile iniFile,
+        string iniSection,
+        string iniKey,
         T defaultValue)
     {
         IniFile = iniFile;
@@ -18,15 +22,31 @@ public abstract class INISetting<T> : IIniSetting
 
     public T Value
     {
-        get { return Get(); }
-        set { Set(value); }
+        get => GetValue();
+        set => SetValue(value);
     }
+
+    protected T DefaultValue { get; private set; }
 
     protected IniFile IniFile { get; private set; }
 
+    protected string IniKey { get; private set; }
+
+    protected string IniSection { get; private set; }
+
     public static implicit operator T(INISetting<T> iniSetting)
     {
-        return iniSetting.Get();
+        return iniSetting.GetValue();
+    }
+
+    /// <summary>
+    /// Writes the default value of this setting to the INI file if no value for the setting is
+    /// currently specified in the INI file.
+    /// </summary>
+    public void SetDefaultIfNonexistent()
+    {
+        if (!IniFile.KeyExists(IniSection, IniKey))
+            SetValue(DefaultValue);
     }
 
     public void SetIniFile(IniFile iniFile)
@@ -34,25 +54,9 @@ public abstract class INISetting<T> : IIniSetting
         IniFile = iniFile;
     }
 
-    protected string IniSection { get; private set; }
-
-    protected string IniKey { get; private set; }
-
-    protected T DefaultValue { get; private set; }
-
-    /// <summary>
-    /// Writes the default value of this setting to the INI file if no value
-    /// for the setting is currently specified in the INI file.
-    /// </summary>
-    public void SetDefaultIfNonexistent()
-    {
-        if (!IniFile.KeyExists(IniSection, IniKey))
-            Set(DefaultValue);
-    }
-
     public abstract void Write();
 
-    protected abstract T Get();
+    protected abstract T GetValue();
 
-    protected abstract void Set(T value);
+    protected abstract void SetValue(T value);
 }

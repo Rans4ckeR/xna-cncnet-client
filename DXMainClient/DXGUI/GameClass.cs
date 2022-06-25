@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Security.Principal;
 using System.Windows.Forms;
@@ -14,6 +13,10 @@ using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 
+#if WINDOWSDX
+using System.Diagnostics;
+#endif
+
 namespace DTAClient.DXGUI;
 
 /// <summary>
@@ -24,17 +27,19 @@ public class GameClass : Game
 {
     private static GraphicsDeviceManager graphics;
 
+    private readonly ContentManager content;
+
     public GameClass()
     {
-        graphics = new GraphicsDeviceManager(this);
-        graphics.SynchronizeWithVerticalRetrace = false;
+        graphics = new(this)
+        {
+            SynchronizeWithVerticalRetrace = false,
 #if !XNA
-        graphics.HardwareModeSwitch = false;
+            HardwareModeSwitch = false
 #endif
+        };
         content = new ContentManager(Services);
     }
-
-    private readonly ContentManager content;
 
     /// <summary>
     /// Sets the client's graphics mode.
@@ -130,7 +135,7 @@ public class GameClass : Game
 
         string windowTitle = ClientConfiguration.Instance.WindowTitle;
         Window.Title = string.IsNullOrEmpty(windowTitle) ?
-            string.Format("{0} Client", MainClientConstants.GAME_NAME_SHORT) : windowTitle;
+            string.Format("{0} Client", MainClientConstants.GameNameShort) : windowTitle;
 
         base.Initialize();
 
@@ -188,7 +193,7 @@ public class GameClass : Game
         }
 
 #endif
-        GameClass.InitializeUISettings();
+        InitializeUISettings();
 
         WindowManager wm = new(this, graphics);
         wm.Initialize(content, ProgramConstants.GetBaseResourcePath());
@@ -236,7 +241,9 @@ public class GameClass : Game
         wm.AddAndInitializeControl(ls);
         ls.ClientRectangle = new Rectangle(
             (wm.RenderResolutionX - ls.Width) / 2,
-            (wm.RenderResolutionY - ls.Height) / 2, ls.Width, ls.Height);
+            (wm.RenderResolutionY - ls.Height) / 2,
+            ls.Width,
+            ls.Height);
     }
 
     private static void InitializeUISettings()
@@ -265,16 +272,5 @@ public class GameClass : Game
         settings.CheckBoxDisabledCheckedTexture = AssetLoader.LoadTexture("checkBoxCheckedD.png");
 
         UISettings.ActiveSettings = settings;
-    }
-}
-
-/// <summary>
-/// An exception that is thrown when initializing display / graphics mode fails.
-/// </summary>
-internal class GraphicsModeInitializationException : Exception
-{
-    public GraphicsModeInitializationException(string message)
-        : base(message)
-    {
     }
 }

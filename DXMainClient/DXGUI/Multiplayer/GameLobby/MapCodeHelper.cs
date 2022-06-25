@@ -87,7 +87,7 @@ public static class MapCodeHelper
     /// </summary>
     /// <param name="value">Object section value.</param>
     /// <param name="sectionName">Section ID.</param>
-    /// <returns></returns>
+    /// <returns>result.</returns>
     private static string GetObjectID(string value, string sectionName)
     {
         if (sectionName != "Terrain")

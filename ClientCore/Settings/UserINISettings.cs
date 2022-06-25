@@ -10,8 +10,6 @@ namespace ClientCore;
 public class UserINISettings
 {
     public const string VIDEO = "Video";
-
-    private static UserINISettings _instance;
     public const string MULTIPLAYER = "MultiPlayer";
     public const string OPTIONS = "Options";
     public const string AUDIO = "Audio";
@@ -23,6 +21,8 @@ public class UserINISettings
     private const bool DEFAULT_HIDE_PASSWORDED_GAMES = false;
     private const bool DEFAULT_HIDE_INCOMPATIBLE_GAMES = false;
     private const int DEFAULT_MAX_PLAYER_COUNT = 8;
+
+    private static UserINISettings _instance;
 
     protected UserINISettings(IniFile iniFile)
     {
@@ -78,7 +78,7 @@ public class UserINISettings
         AllowGameInvitesFromFriendsOnly = new BoolSetting(iniFile, MULTIPLAYER, "AllowGameInvitesFromFriendsOnly", false);
         NotifyOnUserListChange = new BoolSetting(iniFile, MULTIPLAYER, "NotifyOnUserListChange", true);
         DisablePrivateMessagePopups = new BoolSetting(iniFile, MULTIPLAYER, "DisablePrivateMessagePopups", false);
-        AllowPrivateMessagesFromState = new IntSetting(iniFile, MULTIPLAYER, "AllowPrivateMessagesFromState", (int)AllowPrivateMessagesFromEnum.All);
+        AllowPrivateMessagesFromState = new IntSetting(iniFile, MULTIPLAYER, "AllowPrivateMessagesFromState", (int)AllowPrivateMessagesFrom.All);
         EnableMapSharing = new BoolSetting(iniFile, MULTIPLAYER, "EnableMapSharing", true);
         AlwaysDisplayTunnelList = new BoolSetting(iniFile, MULTIPLAYER, "AlwaysDisplayTunnelList", false);
         MapSortState = new IntSetting(iniFile, MULTIPLAYER, "MapSortState", (int)SortDirection.None);
@@ -117,16 +117,6 @@ public class UserINISettings
 
             return _instance;
         }
-    }
-
-    public static void Initialize(string iniFileName)
-    {
-        if (_instance != null)
-            throw new InvalidOperationException("UserINISettings has already been initialized!");
-
-        IniFile iniFile = new(ProgramConstants.GamePath + iniFileName);
-
-        _instance = new UserINISettings(iniFile);
     }
 
     public IniFile SettingsIni { get; private set; }
@@ -275,6 +265,16 @@ public class UserINISettings
 
     public StringListSetting FavoriteMaps { get; private set; }
 
+    public static void Initialize(string iniFileName)
+    {
+        if (_instance != null)
+            throw new InvalidOperationException("UserINISettings has already been initialized!");
+
+        IniFile iniFile = new(ProgramConstants.GamePath + iniFileName);
+
+        _instance = new UserINISettings(iniFile);
+    }
+
     public void SetValue(string section, string key, string value)
            => SettingsIni.SetStringValue(section, key, value);
 
@@ -320,15 +320,13 @@ public class UserINISettings
     /// </summary>
     /// <param name="nameName">The name of the map.</param>
     /// <param name="gameModeName">The name of the game mode.</param>
-    /// <returns></returns>
-    public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Value.Contains(UserINISettings.FavoriteMapKey(nameName, gameModeName));
+    /// <returns>bool.</returns>
+    public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Value.Contains(FavoriteMapKey(nameName, gameModeName));
 
     public void ReloadSettings()
     {
         SettingsIni.Reload();
     }
-
-    private static string FavoriteMapKey(string nameName, string gameModeName) => $"{nameName}:{gameModeName}";
 
     public void ApplyDefaults()
     {
@@ -366,4 +364,6 @@ public class UserINISettings
         HidePasswordedGames.Value = DEFAULT_HIDE_PASSWORDED_GAMES;
         MaxPlayerCount.Value = DEFAULT_MAX_PLAYER_COUNT;
     }
+
+    private static string FavoriteMapKey(string nameName, string gameModeName) => $"{nameName}:{gameModeName}";
 }

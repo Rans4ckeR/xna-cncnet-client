@@ -61,12 +61,12 @@ public static class GameProcessLogic
             string launcherExecutableName = ClientConfiguration.Instance.GameLauncherExecutableName;
             if (string.IsNullOrEmpty(launcherExecutableName))
             {
-                gameExecutableName = ClientConfiguration.Instance.GetGameExecutableName();
+                gameExecutableName = ClientConfiguration.Instance.GameExecutableName;
             }
             else
             {
                 gameExecutableName = launcherExecutableName;
-                additionalExecutableName = "\"" + ClientConfiguration.Instance.GetGameExecutableName() + "\" ";
+                additionalExecutableName = "\"" + ClientConfiguration.Instance.GameExecutableName + "\" ";
             }
         }
 
@@ -102,7 +102,8 @@ public static class GameProcessLogic
                     "Error launching " + ProgramConstants.QRESEXECUTABLE + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                     "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
                     Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message,
-                    "Error launching game", MessageBoxButtons.OK);
+                    "Error launching game",
+                    MessageBoxButtons.OK);
                 Process_Exited(qResProcess, EventArgs.Empty);
                 return;
             }
@@ -134,7 +135,8 @@ public static class GameProcessLogic
                     "Error launching " + gameExecutableName + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                     "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
                     Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message,
-                    "Error launching game", MessageBoxButtons.OK);
+                    "Error launching game",
+                    MessageBoxButtons.OK);
                 Process_Exited(dtaProcess, EventArgs.Empty);
                 return;
             }

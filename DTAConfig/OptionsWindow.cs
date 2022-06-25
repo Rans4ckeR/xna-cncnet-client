@@ -14,8 +14,15 @@ namespace DTAConfig;
 
 public class OptionsWindow : XNAWindow
 {
+    private readonly GameCollection gameCollection;
+
     private readonly XNAControl topBar;
     private XNAClientTabControl tabControl;
+
+    private XNAOptionsPanel[] optionsPanels;
+    private ComponentsPanel componentsPanel;
+
+    private DisplayOptionsPanel displayOptionsPanel;
 
     public OptionsWindow(WindowManager windowManager, GameCollection gameCollection, XNAControl topBar)
         : base(windowManager)
@@ -25,13 +32,6 @@ public class OptionsWindow : XNAWindow
     }
 
     public event EventHandler OnForceUpdate;
-
-    private XNAOptionsPanel[] optionsPanels;
-    private ComponentsPanel componentsPanel;
-
-    private DisplayOptionsPanel displayOptionsPanel;
-
-    private readonly GameCollection gameCollection;
 
     public override void Initialize()
     {
@@ -46,12 +46,12 @@ public class OptionsWindow : XNAWindow
             FontIndex = 1,
             ClickSound = new EnhancedSoundEffect("button.wav")
         };
-        tabControl.AddTab("Display".L10N("UI:DTAConfig:TabDisplay"), UIDesignConstants.BUTTONWIDTH92);
-        tabControl.AddTab("Audio".L10N("UI:DTAConfig:TabAudio"), UIDesignConstants.BUTTONWIDTH92);
-        tabControl.AddTab("Game".L10N("UI:DTAConfig:TabGame"), UIDesignConstants.BUTTONWIDTH92);
-        tabControl.AddTab("CnCNet".L10N("UI:DTAConfig:TabCnCNet"), UIDesignConstants.BUTTONWIDTH92);
-        tabControl.AddTab("Updater".L10N("UI:DTAConfig:TabUpdater"), UIDesignConstants.BUTTONWIDTH92);
-        tabControl.AddTab("Components".L10N("UI:DTAConfig:TabComponents"), UIDesignConstants.BUTTONWIDTH92);
+        tabControl.AddTab("Display".L10N("UI:DTAConfig:TabDisplay"), UIDesignConstants.ButtonWidth92);
+        tabControl.AddTab("Audio".L10N("UI:DTAConfig:TabAudio"), UIDesignConstants.ButtonWidth92);
+        tabControl.AddTab("Game".L10N("UI:DTAConfig:TabGame"), UIDesignConstants.ButtonWidth92);
+        tabControl.AddTab("CnCNet".L10N("UI:DTAConfig:TabCnCNet"), UIDesignConstants.ButtonWidth92);
+        tabControl.AddTab("Updater".L10N("UI:DTAConfig:TabUpdater"), UIDesignConstants.ButtonWidth92);
+        tabControl.AddTab("Components".L10N("UI:DTAConfig:TabComponents"), UIDesignConstants.ButtonWidth92);
         tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
         XNAClientButton btnCancel = new(WindowManager)
@@ -59,7 +59,9 @@ public class OptionsWindow : XNAWindow
             Name = "btnCancel",
             ClientRectangle = new Rectangle(
                 Width - 104,
-            Height - 35, UIDesignConstants.BUTTONWIDTH92, UIDesignConstants.BUTTONHEIGHT),
+                Height - 35,
+                UIDesignConstants.ButtonWidth92,
+                UIDesignConstants.ButtonHeight),
             Text = "Cancel".L10N("UI:DTAConfig:ButtonCancel")
         };
         btnCancel.LeftClick += BtnBack_LeftClick;
@@ -67,7 +69,7 @@ public class OptionsWindow : XNAWindow
         XNAClientButton btnSave = new(WindowManager)
         {
             Name = "btnSave",
-            ClientRectangle = new Rectangle(12, btnCancel.Y, UIDesignConstants.BUTTONWIDTH92, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(12, btnCancel.Y, UIDesignConstants.ButtonWidth92, UIDesignConstants.ButtonHeight),
             Text = "Save".L10N("UI:DTAConfig:ButtonSave")
         };
         btnSave.LeftClick += BtnSave_LeftClick;
@@ -132,142 +134,6 @@ public class OptionsWindow : XNAWindow
         UserINISettings.Instance.SaveSettings();
     }
 
-    /// <summary>
-    /// Parses extra options defined by the modder
-    /// from an INI file. Called from XNAWindow.SetAttributesFromINI.
-    /// </summary>
-    /// <param name="iniFile">The INI file.</param>
-    protected override void GetINIAttributes(IniFile iniFile)
-    {
-        base.GetINIAttributes(iniFile);
-
-        foreach (XNAOptionsPanel panel in optionsPanels)
-            panel.ParseUserOptions(iniFile);
-    }
-
-    private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        foreach (XNAOptionsPanel panel in optionsPanels)
-            panel.Disable();
-
-        optionsPanels[tabControl.SelectedTab].Enable();
-        _ = optionsPanels[tabControl.SelectedTab].RefreshPanel();
-    }
-
-    private void BtnBack_LeftClick(object sender, EventArgs e)
-    {
-        if (Updater.IsComponentDownloadInProgress())
-        {
-            XNAMessageBox msgBox = new(WindowManager, "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
-                ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
-                Environment.NewLine + Environment.NewLine +
-                "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"), XNAMessageBoxButtons.YesNo);
-            msgBox.Show();
-            msgBox.YesClickedAction = ExitDownloadCancelConfirmation_YesClicked;
-
-            return;
-        }
-
-        WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
-        Disable();
-    }
-
-    private void ExitDownloadCancelConfirmation_YesClicked(XNAMessageBox messageBox)
-    {
-        componentsPanel.CancelAllDownloads();
-        WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
-        Disable();
-    }
-
-    private void BtnSave_LeftClick(object sender, EventArgs e)
-    {
-        if (Updater.IsComponentDownloadInProgress())
-        {
-            XNAMessageBox msgBox = new(WindowManager, "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
-                  ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
-                  Environment.NewLine + Environment.NewLine +
-                  "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"), XNAMessageBoxButtons.YesNo);
-            msgBox.Show();
-            msgBox.YesClickedAction = SaveDownloadCancelConfirmation_YesClicked;
-
-            return;
-        }
-
-        SaveSettings();
-    }
-
-    private void SaveDownloadCancelConfirmation_YesClicked(XNAMessageBox messageBox)
-    {
-        componentsPanel.CancelAllDownloads();
-
-        SaveSettings();
-    }
-
-    private void SaveSettings()
-    {
-        if (RefreshOptionPanels())
-            return;
-
-        bool restartRequired = false;
-
-        try
-        {
-            foreach (XNAOptionsPanel panel in optionsPanels)
-                restartRequired = panel.Save() || restartRequired;
-
-            UserINISettings.Instance.SaveSettings();
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("Saving settings failed! Error message: " + ex.Message);
-            XNAMessageBox.Show(WindowManager, "Saving Settings Failed".L10N("UI:DTAConfig:SaveSettingFailTitle"),
-                "Saving settings failed! Error message:".L10N("UI:DTAConfig:SaveSettingFailText") + " " + ex.Message);
-        }
-
-        Disable();
-
-        if (restartRequired)
-        {
-            XNAMessageBox msgBox = new(WindowManager, "Restart Required".L10N("UI:DTAConfig:RestartClientTitle"),
-                ("The client needs to be restarted for some of the changes to take effect." +
-                Environment.NewLine + Environment.NewLine +
-                "Do you want to restart now?").L10N("UI:DTAConfig:RestartClientText"), XNAMessageBoxButtons.YesNo);
-            msgBox.Show();
-            msgBox.YesClickedAction = RestartMsgBox_YesClicked;
-        }
-    }
-
-    private void RestartMsgBox_YesClicked(XNAMessageBox messageBox) => WindowManager.RestartGame();
-
-    /// <summary>
-    /// Refreshes the option panels to account for possible
-    /// changes that could affect theirs functionality.
-    /// Shows the popup to inform the user if needed.
-    /// </summary>
-    /// <returns>A bool that determines whether the
-    /// settings values were changed.</returns>
-    private bool RefreshOptionPanels()
-    {
-        bool optionValuesChanged = false;
-
-        foreach (XNAOptionsPanel panel in optionsPanels)
-            optionValuesChanged = panel.RefreshPanel() || optionValuesChanged;
-
-        if (optionValuesChanged)
-        {
-            XNAMessageBox.Show(WindowManager, "Setting Value(s) Changed".L10N("UI:DTAConfig:SettingChangedTitle"),
-                ("One or more setting values are" + Environment.NewLine +
-                "no longer available and were changed." +
-                Environment.NewLine + Environment.NewLine +
-                "You may want to verify the new setting" + Environment.NewLine +
-                "values in client's options window.").L10N("UI:DTAConfig:SettingChangedText"));
-
-            return true;
-        }
-
-        return false;
-    }
-
     public void Open()
     {
         foreach (XNAOptionsPanel panel in optionsPanels)
@@ -303,5 +169,150 @@ public class OptionsWindow : XNAWindow
 #if TS
         displayOptionsPanel.PostInit();
 #endif
+    }
+
+    /// <summary>
+    /// Parses extra options defined by the modder from an INI file. Called from XNAWindow.SetAttributesFromINI.
+    /// </summary>
+    /// <param name="iniFile">The INI file.</param>
+    protected override void GetINIAttributes(IniFile iniFile)
+    {
+        base.GetINIAttributes(iniFile);
+
+        foreach (XNAOptionsPanel panel in optionsPanels)
+            panel.ParseUserOptions(iniFile);
+    }
+
+    private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        foreach (XNAOptionsPanel panel in optionsPanels)
+            panel.Disable();
+
+        optionsPanels[tabControl.SelectedTab].Enable();
+        _ = optionsPanels[tabControl.SelectedTab].RefreshPanel();
+    }
+
+    private void BtnBack_LeftClick(object sender, EventArgs e)
+    {
+        if (Updater.IsComponentDownloadInProgress())
+        {
+            XNAMessageBox msgBox = new(
+                WindowManager,
+                "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
+                ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
+                    Environment.NewLine + Environment.NewLine + "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"),
+                XNAMessageBoxButtons.YesNo);
+            msgBox.Show();
+            msgBox.YesClickedAction = ExitDownloadCancelConfirmation_YesClicked;
+
+            return;
+        }
+
+        WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
+        Disable();
+    }
+
+    private void ExitDownloadCancelConfirmation_YesClicked(XNAMessageBox messageBox)
+    {
+        componentsPanel.CancelAllDownloads();
+        WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
+        Disable();
+    }
+
+    private void BtnSave_LeftClick(object sender, EventArgs e)
+    {
+        if (Updater.IsComponentDownloadInProgress())
+        {
+            XNAMessageBox msgBox = new(
+                WindowManager,
+                "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
+                ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
+                    Environment.NewLine + Environment.NewLine +
+                    "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"),
+                XNAMessageBoxButtons.YesNo);
+            msgBox.Show();
+            msgBox.YesClickedAction = SaveDownloadCancelConfirmation_YesClicked;
+
+            return;
+        }
+
+        SaveSettings();
+    }
+
+    private void SaveDownloadCancelConfirmation_YesClicked(XNAMessageBox messageBox)
+    {
+        componentsPanel.CancelAllDownloads();
+
+        SaveSettings();
+    }
+
+    private void SaveSettings()
+    {
+        if (RefreshOptionPanels())
+            return;
+
+        bool restartRequired = false;
+
+        try
+        {
+            foreach (XNAOptionsPanel panel in optionsPanels)
+                restartRequired = panel.Save() || restartRequired;
+
+            UserINISettings.Instance.SaveSettings();
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Saving settings failed! Error message: " + ex.Message);
+            XNAMessageBox.Show(
+                WindowManager,
+                "Saving Settings Failed".L10N("UI:DTAConfig:SaveSettingFailTitle"),
+                "Saving settings failed! Error message:".L10N("UI:DTAConfig:SaveSettingFailText") + " " + ex.Message);
+        }
+
+        Disable();
+
+        if (restartRequired)
+        {
+            XNAMessageBox msgBox = new(
+                WindowManager,
+                "Restart Required".L10N("UI:DTAConfig:RestartClientTitle"),
+                ("The client needs to be restarted for some of the changes to take effect." +
+                    Environment.NewLine + Environment.NewLine +
+                    "Do you want to restart now?").L10N("UI:DTAConfig:RestartClientText"),
+                XNAMessageBoxButtons.YesNo);
+            msgBox.Show();
+            msgBox.YesClickedAction = RestartMsgBox_YesClicked;
+        }
+    }
+
+    private void RestartMsgBox_YesClicked(XNAMessageBox messageBox) => WindowManager.RestartGame();
+
+    /// <summary>
+    /// Refreshes the option panels to account for possible changes that could affect theirs
+    /// functionality. Shows the popup to inform the user if needed.
+    /// </summary>
+    /// <returns>A bool that determines whether the settings values were changed.</returns>
+    private bool RefreshOptionPanels()
+    {
+        bool optionValuesChanged = false;
+
+        foreach (XNAOptionsPanel panel in optionsPanels)
+            optionValuesChanged = panel.RefreshPanel() || optionValuesChanged;
+
+        if (optionValuesChanged)
+        {
+            XNAMessageBox.Show(
+                WindowManager,
+                "Setting Value(s) Changed".L10N("UI:DTAConfig:SettingChangedTitle"),
+                ("One or more setting values are" + Environment.NewLine +
+                    "no longer available and were changed." +
+                    Environment.NewLine + Environment.NewLine +
+                    "You may want to verify the new setting" + Environment.NewLine +
+                    "values in client's options window.").L10N("UI:DTAConfig:SettingChangedText"));
+
+            return true;
+        }
+
+        return false;
     }
 }

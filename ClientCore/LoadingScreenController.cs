@@ -8,7 +8,7 @@ public static class LoadingScreenController
     {
         int resHeight = UserINISettings.Instance.IngameScreenHeight;
 
-        string loadingScreenName = ProgramConstants.BASE_RESOURCE_PATH + "l";
+        string loadingScreenName = ProgramConstants.BaseResourcePath + "l";
 
         if (resHeight < 480)
             loadingScreenName += "400";

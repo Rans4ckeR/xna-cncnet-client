@@ -15,19 +15,44 @@ public class GameInformationPanel : XNAPanel
 
     private XNALabel lblGameInformation;
 
+    private XNALabel lblGameMode;
+
+    private XNALabel lblGameVersion;
+
+    private XNALabel lblHost;
+
+    private XNALabel lblMap;
+
+    private XNALabel lblPing;
+
+    private XNALabel[] lblPlayerNames;
+
+    private XNALabel lblPlayers;
+
     public GameInformationPanel(WindowManager windowManager)
         : base(windowManager)
     {
         DrawMode = ControlDrawMode.UNIQUE_RENDER_TARGET;
     }
 
-    private XNALabel lblGameMode;
-    private XNALabel lblMap;
-    private XNALabel lblGameVersion;
-    private XNALabel lblHost;
-    private XNALabel lblPing;
-    private XNALabel lblPlayers;
-    private XNALabel[] lblPlayerNames;
+    public void ClearInfo()
+    {
+        lblGameMode.Visible = false;
+        lblMap.Visible = false;
+        lblGameVersion.Visible = false;
+        lblHost.Visible = false;
+        lblPing.Visible = false;
+        lblPlayers.Visible = false;
+
+        foreach (XNALabel label in lblPlayerNames)
+            label.Visible = false;
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        if (Alpha > 0.0f)
+            base.Draw(gameTime);
+    }
 
     public override void Initialize()
     {
@@ -102,8 +127,11 @@ public class GameInformationPanel : XNAPanel
         AddChild(lblGameInformation);
 
         lblGameInformation.CenterOnParent();
-        lblGameInformation.ClientRectangle = new Rectangle(lblGameInformation.X, 6,
-            lblGameInformation.Width, lblGameInformation.Height);
+        lblGameInformation.ClientRectangle = new Rectangle(
+            lblGameInformation.X,
+            6,
+            lblGameInformation.Width,
+            lblGameInformation.Height);
 
         base.Initialize();
     }
@@ -112,11 +140,13 @@ public class GameInformationPanel : XNAPanel
     {
         lblGameMode.Text = Renderer.GetStringWithLimitedWidth(
             "Game mode:".L10N("UI:Main:GameInfoGameMode") + " " + Renderer.GetSafeString(game.GameMode, lblGameMode.FontIndex),
-            lblGameMode.FontIndex, Width - (lblGameMode.X * 2));
+            lblGameMode.FontIndex,
+            Width - (lblGameMode.X * 2));
         lblGameMode.Visible = true;
         lblMap.Text = Renderer.GetStringWithLimitedWidth(
             "Map:".L10N("UI:Main:GameInfoMap") + " " + Renderer.GetSafeString(game.Map, lblMap.FontIndex),
-            lblMap.FontIndex, Width - (lblMap.X * 2));
+            lblMap.FontIndex,
+            Width - (lblMap.X * 2));
         lblMap.Visible = true;
         lblGameVersion.Text = "Game version:".L10N("UI:Main:GameInfoGameVersion") + " " + Renderer.GetSafeString(game.GameVersion, lblGameVersion.FontIndex);
         lblGameVersion.Visible = true;
@@ -137,24 +167,5 @@ public class GameInformationPanel : XNAPanel
         {
             lblPlayerNames[i].Visible = false;
         }
-    }
-
-    public void ClearInfo()
-    {
-        lblGameMode.Visible = false;
-        lblMap.Visible = false;
-        lblGameVersion.Visible = false;
-        lblHost.Visible = false;
-        lblPing.Visible = false;
-        lblPlayers.Visible = false;
-
-        foreach (XNALabel label in lblPlayerNames)
-            label.Visible = false;
-    }
-
-    public override void Draw(GameTime gameTime)
-    {
-        if (Alpha > 0.0f)
-            base.Draw(gameTime);
     }
 }

@@ -22,18 +22,21 @@ public class GameLoadingWindow : XNAWindow
 
     private readonly DiscordHandler discordHandler;
 
+    private XNAClientButton btnCancel;
+
+    private XNAClientButton btnDelete;
+
+    private XNAClientButton btnLaunch;
+
+    private XNAMultiColumnListBox lbSaveGameList;
+
+    private List<SavedGame> savedGames = new();
+
     public GameLoadingWindow(WindowManager windowManager, DiscordHandler discordHandler)
-        : base(windowManager)
+                            : base(windowManager)
     {
         this.discordHandler = discordHandler;
     }
-
-    private XNAMultiColumnListBox lbSaveGameList;
-    private XNAClientButton btnLaunch;
-    private XNAClientButton btnDelete;
-    private XNAClientButton btnCancel;
-
-    private List<SavedGame> savedGames = new();
 
     public override void Initialize()
     {
@@ -96,9 +99,9 @@ public class GameLoadingWindow : XNAWindow
         }
 
         string[] files = Directory.GetFiles(
-            ProgramConstants.GamePath +
-            SAVED_GAMES_DIRECTORY + Path.DirectorySeparatorChar,
-            "*.SAV", SearchOption.TopDirectoryOnly);
+            ProgramConstants.GamePath + SAVED_GAMES_DIRECTORY + Path.DirectorySeparatorChar,
+            "*.SAV",
+            SearchOption.TopDirectoryOnly);
 
         foreach (string file in files)
         {
@@ -125,23 +128,31 @@ public class GameLoadingWindow : XNAWindow
         discordHandler?.UpdatePresence();
     }
 
-    private void ListBox_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (lbSaveGameList.SelectedIndex == -1)
-        {
-            btnLaunch.AllowClick = false;
-            btnDelete.AllowClick = false;
-        }
-        else
-        {
-            btnLaunch.AllowClick = true;
-            btnDelete.AllowClick = true;
-        }
-    }
-
     private void BtnCancel_LeftClick(object sender, EventArgs e)
     {
         Enabled = false;
+    }
+
+    private void BtnDelete_LeftClick(object sender, EventArgs e)
+    {
+        SavedGame sg = savedGames[lbSaveGameList.SelectedIndex];
+        XNAMessageBox msgBox = new(
+            WindowManager,
+            "Delete Confirmation".L10N("UI:Main:DeleteConfirmationTitle"),
+            string.Format(
+                "The following saved game will be deleted permanently:" + Environment.NewLine +
+                    Environment.NewLine +
+                    "Filename: {0}" + Environment.NewLine +
+                    "Saved game name: {1}" + Environment.NewLine +
+                    "Date and time: {2}" + Environment.NewLine +
+                    Environment.NewLine +
+                    "Are you sure you want to proceed?".L10N("UI:Main:DeleteConfirmationText"),
+                sg.FileName,
+                Renderer.GetSafeString(sg.GUIName, lbSaveGameList.FontIndex),
+                sg.LastModified.ToString()),
+            XNAMessageBoxButtons.YesNo);
+        msgBox.Show();
+        msgBox.YesClickedAction = DeleteMsgBox_YesClicked;
     }
 
     private void BtnLaunch_LeftClick(object sender, EventArgs e)
@@ -179,24 +190,6 @@ public class GameLoadingWindow : XNAWindow
         GameProcessLogic.StartGameProcess();
     }
 
-    private void BtnDelete_LeftClick(object sender, EventArgs e)
-    {
-        SavedGame sg = savedGames[lbSaveGameList.SelectedIndex];
-        XNAMessageBox msgBox = new(WindowManager, "Delete Confirmation".L10N("UI:Main:DeleteConfirmationTitle"),
-            string.Format(
-                "The following saved game will be deleted permanently:" + Environment.NewLine +
-                Environment.NewLine +
-                "Filename: {0}" + Environment.NewLine +
-                "Saved game name: {1}" + Environment.NewLine +
-                "Date and time: {2}" + Environment.NewLine +
-                Environment.NewLine +
-                "Are you sure you want to proceed?".L10N("UI:Main:DeleteConfirmationText"),
-                sg.FileName, Renderer.GetSafeString(sg.GUIName, lbSaveGameList.FontIndex), sg.LastModified.ToString()),
-            XNAMessageBoxButtons.YesNo);
-        msgBox.Show();
-        msgBox.YesClickedAction = DeleteMsgBox_YesClicked;
-    }
-
     private void DeleteMsgBox_YesClicked(XNAMessageBox obj)
     {
         SavedGame sg = savedGames[lbSaveGameList.SelectedIndex];
@@ -209,6 +202,20 @@ public class GameLoadingWindow : XNAWindow
     private void GameProcessExited_Callback()
     {
         WindowManager.AddCallback(new Action(GameProcessExited), null);
+    }
+
+    private void ListBox_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (lbSaveGameList.SelectedIndex == -1)
+        {
+            btnLaunch.AllowClick = false;
+            btnDelete.AllowClick = false;
+        }
+        else
+        {
+            btnLaunch.AllowClick = true;
+            btnDelete.AllowClick = true;
+        }
     }
 
     private void ParseSaveGame(string fileName)

@@ -6,19 +6,21 @@ using Rampastring.XNAUI.XNAControls;
 namespace ClientGUI;
 
 /// <summary>
-/// This is a combination of a checkbox and a standard button. You must specify
-/// the Checked and Unchecked Textures to render for each button state.
+/// This is a combination of a checkbox and a standard button. You must specify the Checked and
+/// Unchecked Textures to render for each button state.
 /// </summary>
 public class XNAClientToggleButton : XNAButton
 {
+    private bool _checked;
+
+    private ToolTip _toolTip;
+
+    private string _toolTipText;
+
     public XNAClientToggleButton(WindowManager windowManager)
-        : base(windowManager)
+                    : base(windowManager)
     {
     }
-
-    public Texture2D CheckedTexture { get; set; }
-
-    public Texture2D UncheckedTexture { get; set; }
 
     public bool Checked
     {
@@ -30,11 +32,9 @@ public class XNAClientToggleButton : XNAButton
         }
     }
 
-    private string _toolTipText { get; set; }
+    public Texture2D CheckedTexture { get; set; }
 
-    private ToolTip _toolTip { get; set; }
-
-    private bool _checked { get; set; }
+    public Texture2D UncheckedTexture { get; set; }
 
     public override void Initialize()
     {

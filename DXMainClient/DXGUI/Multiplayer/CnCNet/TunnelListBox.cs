@@ -16,8 +16,16 @@ internal class TunnelListBox : XNAMultiColumnListBox
 {
     private readonly TunnelHandler tunnelHandler;
 
+    private int bestTunnelIndex = 0;
+
+    private bool isManuallySelectedTunnel;
+
+    private int lowestTunnelRating = int.MaxValue;
+
+    private string manuallySelectedTunnelAddress;
+
     public TunnelListBox(WindowManager windowManager, TunnelHandler tunnelHandler)
-        : base(windowManager)
+                        : base(windowManager)
     {
         this.tunnelHandler = tunnelHandler;
 
@@ -42,11 +50,13 @@ internal class TunnelListBox : XNAMultiColumnListBox
 
     public event EventHandler ListRefreshed;
 
-    private int bestTunnelIndex = 0;
-    private int lowestTunnelRating = int.MaxValue;
-
-    private bool isManuallySelectedTunnel;
-    private string manuallySelectedTunnelAddress;
+    /// <summary>
+    /// Gets whether or not a tunnel from the list with the given address is selected.
+    /// </summary>
+    /// <param name="address">The address of the tunnel server.</param>
+    /// <returns>True if tunnel with given address is selected, otherwise false.</returns>
+    public bool IsTunnelSelected(string address) =>
+        tunnelHandler.Tunnels.FindIndex(t => t.Address == address) == SelectedIndex;
 
     /// <summary>
     /// Selects a tunnel from the list with the given address.
@@ -63,13 +73,43 @@ internal class TunnelListBox : XNAMultiColumnListBox
         }
     }
 
-    /// <summary>
-    /// Gets whether or not a tunnel from the list with the given address is selected.
-    /// </summary>
-    /// <param name="address">The address of the tunnel server.</param>
-    /// <returns>True if tunnel with given address is selected, otherwise false.</returns>
-    public bool IsTunnelSelected(string address) =>
-        tunnelHandler.Tunnels.FindIndex(t => t.Address == address) == SelectedIndex;
+    private static int GetTunnelRating(CnCNetTunnel tunnel)
+    {
+        double usageRatio = (double)tunnel.Clients / tunnel.MaxClients;
+
+        if (usageRatio == 0)
+            usageRatio = 0.1;
+
+        usageRatio *= 100.0;
+
+        return Convert.ToInt32(Math.Pow(tunnel.PingInMs, 2.0) * usageRatio);
+    }
+
+    private void TunnelHandler_TunnelPinged(int tunnelIndex)
+    {
+        XNAListBoxItem lbItem = GetItem(2, tunnelIndex);
+        CnCNetTunnel tunnel = tunnelHandler.Tunnels[tunnelIndex];
+
+        if (tunnel.PingInMs == -1)
+        {
+            lbItem.Text = "Unknown".L10N("UI:Main:UnknownPing");
+        }
+        else
+        {
+            lbItem.Text = tunnel.PingInMs + " ms";
+            int rating = TunnelListBox.GetTunnelRating(tunnel);
+
+            if (isManuallySelectedTunnel)
+                return;
+
+            if ((tunnel.Recommended || tunnel.Official) && rating < lowestTunnelRating)
+            {
+                bestTunnelIndex = tunnelIndex;
+                lowestTunnelRating = rating;
+                SelectedIndex = tunnelIndex;
+            }
+        }
+    }
 
     private void TunnelHandler_TunnelsRefreshed(object sender, EventArgs e)
     {
@@ -129,44 +169,6 @@ internal class TunnelListBox : XNAMultiColumnListBox
         }
 
         ListRefreshed?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void TunnelHandler_TunnelPinged(int tunnelIndex)
-    {
-        XNAListBoxItem lbItem = GetItem(2, tunnelIndex);
-        CnCNetTunnel tunnel = tunnelHandler.Tunnels[tunnelIndex];
-
-        if (tunnel.PingInMs == -1)
-        {
-            lbItem.Text = "Unknown".L10N("UI:Main:UnknownPing");
-        }
-        else
-        {
-            lbItem.Text = tunnel.PingInMs + " ms";
-            int rating = TunnelListBox.GetTunnelRating(tunnel);
-
-            if (isManuallySelectedTunnel)
-                return;
-
-            if ((tunnel.Recommended || tunnel.Official) && rating < lowestTunnelRating)
-            {
-                bestTunnelIndex = tunnelIndex;
-                lowestTunnelRating = rating;
-                SelectedIndex = tunnelIndex;
-            }
-        }
-    }
-
-    private static int GetTunnelRating(CnCNetTunnel tunnel)
-    {
-        double usageRatio = (double)tunnel.Clients / tunnel.MaxClients;
-
-        if (usageRatio == 0)
-            usageRatio = 0.1;
-
-        usageRatio *= 100.0;
-
-        return Convert.ToInt32(Math.Pow(tunnel.PingInMs, 2.0) * usageRatio);
     }
 
     private void TunnelListBox_SelectedIndexChanged(object sender, EventArgs e)

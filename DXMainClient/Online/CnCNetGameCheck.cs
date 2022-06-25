@@ -13,53 +13,13 @@ public class CnCNetGameCheck
         _ = ThreadPool.QueueUserWorkItem(new WaitCallback(RunService), cts);
     }
 
-    private void RunService(object tokenObj)
-    {
-        WaitHandle waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
-
-        while (true)
-        {
-            if (waitHandle.WaitOne(REFRESH_INTERVAL))
-            {
-                // Cancellation signaled
-                return;
-            }
-            else
-            {
-                CheatEngineWatchEvent();
-            }
-        }
-    }
-
-    private void CheatEngineWatchEvent()
-    {
-        Process[] processlist = Process.GetProcesses();
-        foreach (Process process in processlist)
-        {
-            try
-            {
-                if (process.ProcessName.Contains("cheatengine") ||
-                    process.MainWindowTitle.ToLower().Contains("cheat engine") ||
-                    process.MainWindowHandle.ToString().ToLower().Contains("cheat engine"))
-                {
-                    CnCNetGameCheck.KillGameInstance();
-                }
-            }
-            catch
-            {
-            }
-
-            process.Dispose();
-        }
-    }
-
     private static void KillGameInstance()
     {
         try
         {
             string gameExecutableName = ClientConfiguration.GetOperatingSystemVersion() == OSVersion.UNIX ?
                 ClientConfiguration.Instance.UnixGameExecutableName :
-                ClientConfiguration.Instance.GetGameExecutableName();
+                ClientConfiguration.Instance.GameExecutableName;
 
             gameExecutableName = gameExecutableName.Replace(".exe", string.Empty);
 
@@ -82,6 +42,46 @@ public class CnCNetGameCheck
         }
         catch
         {
+        }
+    }
+
+    private static void CheatEngineWatchEvent()
+    {
+        Process[] processlist = Process.GetProcesses();
+        foreach (Process process in processlist)
+        {
+            try
+            {
+                if (process.ProcessName.Contains("cheatengine") ||
+                    process.MainWindowTitle.ToLower().Contains("cheat engine") ||
+                    process.MainWindowHandle.ToString().ToLower().Contains("cheat engine"))
+                {
+                    CnCNetGameCheck.KillGameInstance();
+                }
+            }
+            catch
+            {
+            }
+
+            process.Dispose();
+        }
+    }
+
+    private void RunService(object tokenObj)
+    {
+        WaitHandle waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
+
+        while (true)
+        {
+            if (waitHandle.WaitOne(REFRESH_INTERVAL))
+            {
+                // Cancellation signaled
+                return;
+            }
+            else
+            {
+                CnCNetGameCheck.CheatEngineWatchEvent();
+            }
         }
     }
 }

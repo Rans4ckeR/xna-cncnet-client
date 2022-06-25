@@ -35,35 +35,6 @@ internal class MainMenu : XNAWindow, ISwitchable
 
     private static readonly object Locker = new();
 
-    private readonly CnCNetLobby cncnetLobby;
-
-    private MainMenuDarkeningPanel innerPanel;
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MainMenu"/> class.
-    /// Creates a new instance of the main menu.
-    /// </summary>
-    public MainMenu(WindowManager windowManager, SkirmishLobby skirmishLobby,
-        LANLobby lanLobby, TopBar topBar, OptionsWindow optionsWindow,
-        CnCNetLobby cncnetLobby,
-        CnCNetManager connectionManager, DiscordHandler discordHandler)
-        : base(windowManager)
-    {
-        this.skirmishLobby = skirmishLobby;
-        this.lanLobby = lanLobby;
-        this.topBar = topBar;
-        this.connectionManager = connectionManager;
-        this.optionsWindow = optionsWindow;
-        this.cncnetLobby = cncnetLobby;
-        this.discordHandler = discordHandler;
-        cncnetLobby.UpdateCheck += CncnetLobby_UpdateCheck;
-        isMediaPlayerAvailable = MainMenu.IsMediaPlayerAvailable();
-    }
-
-    private XNALabel lblCnCNetPlayerCount;
-    private XNALinkLabel lblUpdateStatus;
-    private XNALinkLabel lblVersion;
-
     private readonly SkirmishLobby skirmishLobby;
 
     private readonly LANLobby lanLobby;
@@ -78,29 +49,20 @@ internal class MainMenu : XNAWindow, ISwitchable
 
     private readonly bool isMediaPlayerAvailable;
 
+    private readonly CnCNetLobby cncnetLobby;
+
+    private MainMenuDarkeningPanel innerPanel;
+
+    private XNALabel lblCnCNetPlayerCount;
+    private XNALinkLabel lblUpdateStatus;
+    private XNALinkLabel lblVersion;
+    private DateTime lastUpdateCheckTime;
+
     private XNAMessageBox firstRunMessageBox;
 
     private bool _updateInProgress;
 
     private bool customComponentDialogQueued = false;
-
-    private bool UpdateInProgress
-    {
-        get
-        {
-            return _updateInProgress;
-        }
-
-        set
-        {
-            _updateInProgress = value;
-            topBar.SetSwitchButtonsClickable(!_updateInProgress);
-            topBar.SetOptionsButtonClickable(!_updateInProgress);
-            SetButtonHotkeys(!_updateInProgress);
-        }
-    }
-
-    private DateTime lastUpdateCheckTime;
 
     private Song themeSong;
 
@@ -120,6 +82,56 @@ internal class MainMenu : XNAWindow, ISwitchable
     private XNAClientButton btnStatistics;
     private XNAClientButton btnCredits;
     private XNAClientButton btnExtras;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MainMenu"/> class.
+    /// Creates a new instance of the main menu.
+    /// </summary>
+    /// <param name="windowManager">windowManager.</param>
+    /// <param name="skirmishLobby">skirmishLobby.</param>
+    /// <param name="lanLobby">lanLobby.</param>
+    /// <param name="topBar">topBar.</param>
+    /// <param name="optionsWindow">optionsWindow.</param>
+    /// <param name="cncnetLobby">cncnetLobby.</param>
+    /// <param name="connectionManager">connectionManager.</param>
+    /// <param name="discordHandler">discordHandler.</param>
+    public MainMenu(
+        WindowManager windowManager,
+        SkirmishLobby skirmishLobby,
+        LANLobby lanLobby,
+        TopBar topBar,
+        OptionsWindow optionsWindow,
+        CnCNetLobby cncnetLobby,
+        CnCNetManager connectionManager,
+        DiscordHandler discordHandler)
+        : base(windowManager)
+    {
+        this.skirmishLobby = skirmishLobby;
+        this.lanLobby = lanLobby;
+        this.topBar = topBar;
+        this.connectionManager = connectionManager;
+        this.optionsWindow = optionsWindow;
+        this.cncnetLobby = cncnetLobby;
+        this.discordHandler = discordHandler;
+        cncnetLobby.UpdateCheck += CncnetLobby_UpdateCheck;
+        isMediaPlayerAvailable = MainMenu.IsMediaPlayerAvailable();
+    }
+
+    private bool UpdateInProgress
+    {
+        get
+        {
+            return _updateInProgress;
+        }
+
+        set
+        {
+            _updateInProgress = value;
+            topBar.SetSwitchButtonsClickable(!_updateInProgress);
+            topBar.SetOptionsButtonClickable(!_updateInProgress);
+            SetButtonHotkeys(!_updateInProgress);
+        }
+    }
 
     /// <summary>
     /// Initializes the main menu's controls.
@@ -227,7 +239,7 @@ internal class MainMenu : XNAWindow, ISwitchable
         lblUpdateStatus = new XNALinkLabel(WindowManager);
         lblUpdateStatus.Name = nameof(lblUpdateStatus);
         lblUpdateStatus.LeftClick += LblUpdateStatus_LeftClick;
-        lblUpdateStatus.ClientRectangle = new Rectangle(0, 0, UIDesignConstants.BUTTONWIDTH160, 20);
+        lblUpdateStatus.ClientRectangle = new Rectangle(0, 0, UIDesignConstants.ButtonWidth160, 20);
 
         AddChild(btnNewCampaign);
         AddChild(btnLoadGame);
@@ -257,9 +269,11 @@ internal class MainMenu : XNAWindow, ISwitchable
 
         innerPanel = new MainMenuDarkeningPanel(WindowManager, discordHandler)
         {
-            ClientRectangle = new Rectangle(0, 0,
-            Width,
-            Height),
+            ClientRectangle = new Rectangle(
+                0,
+                0,
+                Width,
+                Height),
             DrawOrder = int.MaxValue,
             UpdateOrder = int.MaxValue
         };
@@ -279,8 +293,11 @@ internal class MainMenu : XNAWindow, ISwitchable
         ClientRectangle = new Rectangle(
             (WindowManager.RenderResolutionX - Width) / 2,
             (WindowManager.RenderResolutionY - Height) / 2,
-            Width, Height);
-        innerPanel.ClientRectangle = new Rectangle(0, 0,
+            Width,
+            Height);
+        innerPanel.ClientRectangle = new Rectangle(
+            0,
+            0,
             Math.Max(WindowManager.RenderResolutionX, Width),
             Math.Max(WindowManager.RenderResolutionY, Height));
 
@@ -345,6 +362,75 @@ internal class MainMenu : XNAWindow, ISwitchable
             FadeMusic(gameTime);
 
         base.Update(gameTime);
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        lock (Locker)
+        {
+            base.Draw(gameTime);
+        }
+    }
+
+    public void SwitchOn()
+    {
+        if (UserINISettings.Instance.StopMusicOnMenu)
+            PlayMusic();
+
+        if (!ClientConfiguration.Instance.ModMode && UserINISettings.Instance.CheckForUpdates)
+        {
+            // Re-check for updates
+            if ((DateTime.Now - lastUpdateCheckTime) > TimeSpan.FromSeconds(UPDATE_RE_CHECK_THRESHOLD))
+                CheckForUpdates();
+        }
+    }
+
+    public void SwitchOff()
+    {
+        if (UserINISettings.Instance.StopMusicOnMenu)
+            MusicOff();
+    }
+
+    public string GetSwitchName() => "Main Menu".L10N("UI:Main:MainMenu");
+
+    /// <summary>
+    /// Checks if media player is available currently.
+    /// It is not available on Windows Vista or other systems without the appropriate media player components.
+    /// </summary>
+    /// <returns>True if media player is available, false otherwise.</returns>
+    private static bool IsMediaPlayerAvailable()
+    {
+        if (MainClientConstants.OSId == OSVersion.WINVISTA)
+            return false;
+
+        try
+        {
+            MediaState state = MediaPlayer.State;
+            return true;
+        }
+        catch (Exception e)
+        {
+            Logger.Log("Error encountered when checking media player availability. Error message: " + e.Message);
+            return false;
+        }
+    }
+
+    private static void LaunchMapEditor()
+    {
+        OSVersion osVersion = ClientConfiguration.GetOperatingSystemVersion();
+        Process mapEditorProcess = new();
+
+        if (osVersion != OSVersion.UNIX)
+        {
+            mapEditorProcess.StartInfo.FileName = ProgramConstants.GamePath + ClientConfiguration.Instance.MapEditorExePath;
+        }
+        else
+        {
+            mapEditorProcess.StartInfo.FileName = ProgramConstants.GamePath + ClientConfiguration.Instance.UnixMapEditorExePath;
+            mapEditorProcess.StartInfo.UseShellExecute = false;
+        }
+
+        _ = mapEditorProcess.Start();
     }
 
     private void SetButtonHotkeys(bool enableHotkeys)
@@ -454,7 +540,7 @@ internal class MainMenu : XNAWindow, ISwitchable
 
         if (absentFiles.Count > 0)
         {
-            XNAMessageBox.Show(WindowManager, "Missing Files".L10N("UI:Main:MissingFilesTitle"),
+            string description =
 #if ARES
                 ("You are missing Yuri's Revenge files that are required" + Environment.NewLine +
                 "to play this mod! Yuri's Revenge mods are not standalone," + Environment.NewLine +
@@ -466,7 +552,12 @@ internal class MainMenu : XNAWindow, ISwitchable
                 Environment.NewLine + Environment.NewLine +
                 string.Join(Environment.NewLine, absentFiles) +
                 Environment.NewLine + Environment.NewLine +
-                "You won't be able to play without those files.".L10N("UI:Main:MissingFilesText2"));
+                "You won't be able to play without those files.".L10N("UI:Main:MissingFilesText2");
+
+            XNAMessageBox.Show(
+                WindowManager,
+                "Missing Files".L10N("UI:Main:MissingFilesTitle"),
+                description);
         }
     }
 
@@ -477,22 +568,25 @@ internal class MainMenu : XNAWindow, ISwitchable
 
         if (presentFiles.Count > 0)
         {
-            XNAMessageBox.Show(WindowManager, "Interfering Files Detected".L10N("UI:Main:InterferingFilesDetectedTitle"),
+            string description =
 #if TS
                 ("You have installed the mod on top of a Tiberian Sun" + Environment.NewLine +
                 "copy! This mod is standalone, therefore you have to" + Environment.NewLine +
                 "install it in an empty folder. Otherwise the mod won't" + Environment.NewLine +
                 "function correctly." +
                 Environment.NewLine + Environment.NewLine +
-                "Please reinstall the mod into an empty folder to play.").L10N("UI:Main:InterferingFilesDetectedTextTS")
+                "Please reinstall the mod into an empty folder to play.").L10N("UI:Main:InterferingFilesDetectedTextTS");
 #else
                 "The following interfering files are present:".L10N("UI:Main:InterferingFilesDetectedTextNonTS1") +
                 Environment.NewLine + Environment.NewLine +
                 string.Join(Environment.NewLine, presentFiles) +
                 Environment.NewLine + Environment.NewLine +
-                "The mod won't work correctly without those files removed.".L10N("UI:Main:InterferingFilesDetectedTextNonTS2")
+                "The mod won't work correctly without those files removed.".L10N("UI:Main:InterferingFilesDetectedTextNonTS2");
 #endif
-                );
+            XNAMessageBox.Show(
+                WindowManager,
+                "Interfering Files Detected".L10N("UI:Main:InterferingFilesDetectedTitle"),
+                description);
         }
     }
 
@@ -508,11 +602,14 @@ internal class MainMenu : XNAWindow, ISwitchable
             UserINISettings.Instance.IsFirstRun.Value = false;
             UserINISettings.Instance.SaveSettings();
 
-            firstRunMessageBox = XNAMessageBox.ShowYesNoDialog(WindowManager, "Initial Installation".L10N("UI:Main:InitialInstallationTitle"),
+            firstRunMessageBox = XNAMessageBox.ShowYesNoDialog(
+                WindowManager,
+                "Initial Installation".L10N("UI:Main:InitialInstallationTitle"),
                 string.Format(
                     ("You have just installed {0}." + Environment.NewLine +
-                "It's highly recommended that you configure your settings before playing." +
-                Environment.NewLine + "Do you want to configure them now?").L10N("UI:Main:InitialInstallationText"), ClientConfiguration.Instance.LocalGame));
+                        "It's highly recommended that you configure your settings before playing." +
+                        Environment.NewLine + "Do you want to configure them now?").L10N("UI:Main:InitialInstallationText"),
+                    ClientConfiguration.Instance.LocalGame));
             firstRunMessageBox.YesClickedAction = FirstRunMessageBox_YesClicked;
             firstRunMessageBox.NoClickedAction = FirstRunMessageBox_NoClicked;
         }
@@ -585,14 +682,19 @@ internal class MainMenu : XNAWindow, ISwitchable
         UpdateInProgress = false;
 
         innerPanel.Show(null); // Darkening
-        XNAMessageBox msgBox = new(WindowManager, "Update failed".L10N("UI:Main:UpdateFailedTitle"),
+        XNAMessageBox msgBox = new(
+            WindowManager,
+            "Update failed".L10N("UI:Main:UpdateFailedTitle"),
             string.Format(
                 ("An error occured while updating. Returned error was: {0}" +
-            Environment.NewLine + Environment.NewLine +
-            "If you are connected to the Internet and your firewall isn't blocking" + Environment.NewLine +
-            "{1}, and the issue is reproducible, contact us at " + Environment.NewLine +
-            "{2} for support.").L10N("UI:Main:UpdateFailedText"),
-            e.Reason, Path.GetFileName(System.Windows.Forms.Application.ExecutablePath), MainClientConstants.SUPPORT_URL_SHORT), XNAMessageBoxButtons.OK)
+                    Environment.NewLine + Environment.NewLine +
+                    "If you are connected to the Internet and your firewall isn't blocking" + Environment.NewLine +
+                    "{1}, and the issue is reproducible, contact us at " + Environment.NewLine +
+                    "{2} for support.").L10N("UI:Main:UpdateFailedText"),
+                e.Reason,
+                Path.GetFileName(System.Windows.Forms.Application.ExecutablePath),
+                MainClientConstants.SupportUrlShort),
+            XNAMessageBoxButtons.OK)
         {
             OKClickedAction = MsgBox_OKClicked
         };
@@ -618,7 +720,8 @@ internal class MainMenu : XNAWindow, ISwitchable
         innerPanel.Hide();
         lblUpdateStatus.Text = string.Format(
             "{0} was succesfully updated to v.{1}".L10N("UI:Main:UpdateSuccess"),
-            MainClientConstants.GAME_NAME_SHORT, Updater.GameVersion);
+            MainClientConstants.GameNameShort,
+            Updater.GameVersion);
         lblVersion.Text = Updater.GameVersion;
         UpdateInProgress = false;
         lblUpdateStatus.Enabled = true;
@@ -640,7 +743,7 @@ internal class MainMenu : XNAWindow, ISwitchable
 
     private void LblVersion_LeftClick(object sender, EventArgs e)
     {
-        using Process _ = Process.Start(new ProcessStartInfo
+        using Process proc = Process.Start(new ProcessStartInfo
         {
             FileName = ClientConfiguration.Instance.ChangelogURL,
             UseShellExecute = true
@@ -695,7 +798,7 @@ internal class MainMenu : XNAWindow, ISwitchable
 
         if (Updater.VersionState == VersionState.UPTODATE)
         {
-            lblUpdateStatus.Text = string.Format("{0} is up to date.".L10N("UI:Main:GameUpToDate"), MainClientConstants.GAME_NAME_SHORT);
+            lblUpdateStatus.Text = string.Format("{0} is up to date.".L10N("UI:Main:GameUpToDate"), MainClientConstants.GameNameShort);
             lblUpdateStatus.Enabled = true;
             lblUpdateStatus.DrawUnderline = false;
         }
@@ -828,9 +931,9 @@ internal class MainMenu : XNAWindow, ISwitchable
 
     private void BtnCredits_LeftClick(object sender, EventArgs e)
     {
-        using Process _ = Process.Start(new ProcessStartInfo
+        using Process proc = Process.Start(new ProcessStartInfo
         {
-            FileName = MainClientConstants.CREDITS_URL,
+            FileName = MainClientConstants.CreditsUrl,
             UseShellExecute = true
         });
     }
@@ -871,27 +974,6 @@ internal class MainMenu : XNAWindow, ISwitchable
     {
         CheckForUpdates();
         topBar.SwitchToPrimary();
-    }
-
-    public override void Draw(GameTime gameTime)
-    {
-        lock (Locker)
-        {
-            base.Draw(gameTime);
-        }
-    }
-
-    public void SwitchOn()
-    {
-        if (UserINISettings.Instance.StopMusicOnMenu)
-            PlayMusic();
-
-        if (!ClientConfiguration.Instance.ModMode && UserINISettings.Instance.CheckForUpdates)
-        {
-            // Re-check for updates
-            if ((DateTime.Now - lastUpdateCheckTime) > TimeSpan.FromSeconds(UPDATE_RE_CHECK_THRESHOLD))
-                CheckForUpdates();
-        }
     }
 
     /// <summary>
@@ -978,14 +1060,6 @@ internal class MainMenu : XNAWindow, ISwitchable
 #endif
     }
 
-    public void SwitchOff()
-    {
-        if (UserINISettings.Instance.StopMusicOnMenu)
-            MusicOff();
-    }
-
-    public string GetSwitchName() => "Main Menu".L10N("UI:Main:MainMenu");
-
     private void MusicOff()
     {
         try
@@ -1000,45 +1074,5 @@ internal class MainMenu : XNAWindow, ISwitchable
         {
             Logger.Log("Turning music off failed! Message: " + ex.Message);
         }
-    }
-
-    /// <summary>
-    /// Checks if media player is available currently.
-    /// It is not available on Windows Vista or other systems without the appropriate media player components.
-    /// </summary>
-    /// <returns>True if media player is available, false otherwise.</returns>
-    private static bool IsMediaPlayerAvailable()
-    {
-        if (MainClientConstants.OSId == OSVersion.WINVISTA)
-            return false;
-
-        try
-        {
-            MediaState state = MediaPlayer.State;
-            return true;
-        }
-        catch (Exception e)
-        {
-            Logger.Log("Error encountered when checking media player availability. Error message: " + e.Message);
-            return false;
-        }
-    }
-
-    private static void LaunchMapEditor()
-    {
-        OSVersion osVersion = ClientConfiguration.GetOperatingSystemVersion();
-        Process mapEditorProcess = new();
-
-        if (osVersion != OSVersion.UNIX)
-        {
-            mapEditorProcess.StartInfo.FileName = ProgramConstants.GamePath + ClientConfiguration.Instance.MapEditorExePath;
-        }
-        else
-        {
-            mapEditorProcess.StartInfo.FileName = ProgramConstants.GamePath + ClientConfiguration.Instance.UnixMapEditorExePath;
-            mapEditorProcess.StartInfo.UseShellExecute = false;
-        }
-
-        _ = mapEditorProcess.Start();
     }
 }

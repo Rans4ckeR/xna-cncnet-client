@@ -13,9 +13,8 @@ public class CnCNetUserData
 {
     private const string FRIEND_LIST_PATH = "Client/friend_list";
     private const string IGNORE_LIST_PATH = "Client/ignore_list";
-    private const string RECENT_LIST_PATH = "Client/recent_list";
-
     private const int RECENT_LIMIT = 50;
+    private const string RECENT_LIST_PATH = "Client/recent_list";
 
     public CnCNetUserData(WindowManager windowManager)
     {
@@ -28,17 +27,17 @@ public class CnCNetUserData
 
     public event EventHandler<UserNameEventArgs> UserFriendToggled;
 
+    public event EventHandler<IdentEventArgs> UserIgnoreToggled;
+
     /// <summary>
-    /// Gets a list which contains names of friended users. If you manipulate this list
-    /// directly you have to also invoke UserFriendToggled event handler for every
-    /// user name added or removed.
+    /// Gets a list which contains names of friended users. If you manipulate this list directly you
+    /// have to also invoke UserFriendToggled event handler for every user name added or removed.
     /// </summary>
     public List<string> FriendList { get; private set; } = new List<string>();
 
     /// <summary>
-    /// Gets a list which contains idents of ignored users. If you manipulate this list
-    /// directly you have to also invoke UserIgnoreToggled event handler for every
-    /// user ident added or removed.
+    /// Gets a list which contains idents of ignored users. If you manipulate this list directly you
+    /// have to also invoke UserIgnoreToggled event handler for every user ident added or removed.
     /// </summary>
     public List<string> IgnoreList { get; private set; } = new List<string>();
 
@@ -47,13 +46,75 @@ public class CnCNetUserData
     /// </summary>
     public List<RecentPlayer> RecentList { get; private set; } = new List<RecentPlayer>();
 
-    public event EventHandler<IdentEventArgs> UserIgnoreToggled;
+    public void AddRecentPlayers(IEnumerable<string> recentPlayerNames, string gameName)
+    {
+        recentPlayerNames = recentPlayerNames.Where(name => name != ProgramConstants.PLAYERNAME);
+        DateTime now = DateTime.UtcNow;
+        RecentList.AddRange(recentPlayerNames.Select(rp => new RecentPlayer()
+        {
+            PlayerName = rp,
+            GameName = gameName,
+            GameTime = now
+        }));
+        int skipCount = Math.Max(0, RecentList.Count - RECENT_LIMIT);
+        RecentList = RecentList.Skip(skipCount).ToList();
+    }
+
+    /// <summary>
+    /// Checks if a specified user belongs to the friend list.
+    /// </summary>
+    /// <param name="name">The name of the user.</param>
+    /// <returns>result.</returns>
+    public bool IsFriend(string name) => FriendList.Contains(name);
+
+    /// <summary>
+    /// Checks to see if a user is in the ignore list.
+    /// </summary>
+    /// <param name="ident">The IRC identifier of the user.</param>
+    /// <returns>result.</returns>
+    public bool IsIgnored(string ident) => IgnoreList.Contains(ident);
 
     public void Save()
     {
         SaveFriends();
         SaveIgnoreList();
         SaveRecentList();
+    }
+
+    /// <summary>
+    /// Adds or removes a specified user to or from the friend list depending on whether they
+    /// already are on the friend list.
+    /// </summary>
+    /// <param name="name">The name of the user.</param>
+    public void ToggleFriend(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return;
+
+        if (IsFriend(name))
+            _ = FriendList.Remove(name);
+        else
+            FriendList.Add(name);
+
+        UserFriendToggled?.Invoke(this, new UserNameEventArgs(name));
+    }
+
+    /// <summary>
+    /// Adds or removes a specified user to or from the chat ignore list depending on whether they
+    /// already are on the ignore list.
+    /// </summary>
+    /// <param name="ident">The ident of the IRCUser.</param>
+    public void ToggleIgnoreUser(string ident)
+    {
+        if (string.IsNullOrEmpty(ident))
+            return;
+
+        if (IsIgnored(ident))
+            _ = IgnoreList.Remove(ident);
+        else
+            IgnoreList.Add(ident);
+
+        UserIgnoreToggled?.Invoke(this, new IdentEventArgs(ident));
     }
 
     private void LoadFriendList()
@@ -125,8 +186,6 @@ public class CnCNetUserData
         }
     }
 
-    private void WindowManager_GameClosing(object sender, EventArgs e) => Save();
-
     private void SaveFriends()
     {
         Logger.Log("Saving friend list.");
@@ -176,77 +235,5 @@ public class CnCNetUserData
         }
     }
 
-    /// <summary>
-    /// Adds or removes a specified user to or from the friend list
-    /// depending on whether they already are on the friend list.
-    /// </summary>
-    /// <param name="name">The name of the user.</param>
-    public void ToggleFriend(string name)
-    {
-        if (string.IsNullOrEmpty(name))
-            return;
-
-        if (IsFriend(name))
-            _ = FriendList.Remove(name);
-        else
-            FriendList.Add(name);
-
-        UserFriendToggled?.Invoke(this, new UserNameEventArgs(name));
-    }
-
-    /// <summary>
-    /// Adds or removes a specified user to or from the chat ignore list
-    /// depending on whether they already are on the ignore list.
-    /// </summary>
-    /// <param name="ident">The ident of the IRCUser.</param>
-    public void ToggleIgnoreUser(string ident)
-    {
-        if (string.IsNullOrEmpty(ident))
-            return;
-
-        if (IsIgnored(ident))
-            _ = IgnoreList.Remove(ident);
-        else
-            IgnoreList.Add(ident);
-
-        UserIgnoreToggled?.Invoke(this, new IdentEventArgs(ident));
-    }
-
-    public void AddRecentPlayers(IEnumerable<string> recentPlayerNames, string gameName)
-    {
-        recentPlayerNames = recentPlayerNames.Where(name => name != ProgramConstants.PLAYERNAME);
-        DateTime now = DateTime.UtcNow;
-        RecentList.AddRange(recentPlayerNames.Select(rp => new RecentPlayer()
-        {
-            PlayerName = rp,
-            GameName = gameName,
-            GameTime = now
-        }));
-        int skipCount = Math.Max(0, RecentList.Count - RECENT_LIMIT);
-        RecentList = RecentList.Skip(skipCount).ToList();
-    }
-
-    /// <summary>
-    /// Checks to see if a user is in the ignore list.
-    /// </summary>
-    /// <param name="ident">The IRC identifier of the user.</param>
-    /// <returns></returns>
-    public bool IsIgnored(string ident) => IgnoreList.Contains(ident);
-
-    /// <summary>
-    /// Checks if a specified user belongs to the friend list.
-    /// </summary>
-    /// <param name="name">The name of the user.</param>
-    /// <returns></returns>
-    public bool IsFriend(string name) => FriendList.Contains(name);
-}
-
-public class IdentEventArgs : EventArgs
-{
-    public IdentEventArgs(string ident)
-    {
-        Ident = ident;
-    }
-
-    public string Ident { get; private set; }
+    private void WindowManager_GameClosing(object sender, EventArgs e) => Save();
 }

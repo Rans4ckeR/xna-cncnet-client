@@ -9,40 +9,6 @@ using Utilities = Rampastring.Tools.Utilities;
 
 namespace DTAClient.Online;
 
-internal struct FileHashes
-{
-    public string GameOptionsHash { get; set; }
-
-    public string ClientDXHash { get; set; }
-
-    public string ClientXNAHash { get; set; }
-
-    public string ClientOGLHash { get; set; }
-
-    public string INIHashes { get; set; }
-
-    public string MPMapsHash { get; set; }
-
-    public string GameExeHash { get; set; }
-
-    public string LauncherExeHash { get; set; }
-
-    public string FHCConfigHash { get; set; }
-
-    public override string ToString()
-    {
-        return "GameOptions Hash: " + GameOptionsHash + Environment.NewLine +
-            "ClientDXHash: " + ClientDXHash + Environment.NewLine +
-            "ClientXNAHash: " + ClientXNAHash + Environment.NewLine +
-            "ClientOGLHash: " + ClientOGLHash + Environment.NewLine +
-            "INI Hashes: " + INIHashes + Environment.NewLine +
-            "MPMaps Hash: " + MPMapsHash + Environment.NewLine +
-            "MainExe Hash: " + GameExeHash + Environment.NewLine +
-            "LauncherExe Hash: " + LauncherExeHash + Environment.NewLine +
-            "FHCConfig Hash: " + FHCConfigHash;
-    }
-}
-
 public class FileHashCalculator
 {
     private const string CONFIGNAME = "FHCConfig.ini";
@@ -109,27 +75,27 @@ public class FileHashCalculator
     {
         fh = new FileHashes
         {
-            GameOptionsHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ProgramConstants.BASE_RESOURCE_PATH + "GameOptions.ini"),
+            GameOptionsHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ProgramConstants.BaseResourcePath + "GameOptions.ini"),
             ClientDXHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GetBaseResourcePath() + "clientdx.exe"),
             ClientXNAHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GetBaseResourcePath() + "clientxna.exe"),
             ClientOGLHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GetBaseResourcePath() + "clientogl.exe"),
             GameExeHash = calculateGameExeHash ?
-            Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ClientConfiguration.Instance.GetGameExecutableName()) : string.Empty,
+            Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ClientConfiguration.Instance.GameExecutableName) : string.Empty,
             LauncherExeHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ClientConfiguration.Instance.GameLauncherExecutableName),
             MPMapsHash = Utilities.CalculateSHA1ForFile(ProgramConstants.GamePath + ClientConfiguration.Instance.MPMapsIniPath),
-            FHCConfigHash = Utilities.CalculateSHA1ForFile(ProgramConstants.BASE_RESOURCE_PATH + CONFIGNAME),
+            FHCConfigHash = Utilities.CalculateSHA1ForFile(ProgramConstants.BaseResourcePath + CONFIGNAME),
             INIHashes = string.Empty
         };
 
-        Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + CONFIGNAME + ": " + fh.FHCConfigHash);
-        Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "GameOptions.ini: " + fh.GameOptionsHash);
-        Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "clientdx.exe: " + fh.ClientDXHash);
-        Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "clientxna.exe: " + fh.ClientXNAHash);
-        Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "clientogl.exe: " + fh.ClientOGLHash);
+        Logger.Log("Hash for " + ProgramConstants.BaseResourcePath + CONFIGNAME + ": " + fh.FHCConfigHash);
+        Logger.Log("Hash for " + ProgramConstants.BaseResourcePath + "GameOptions.ini: " + fh.GameOptionsHash);
+        Logger.Log("Hash for " + ProgramConstants.BaseResourcePath + "clientdx.exe: " + fh.ClientDXHash);
+        Logger.Log("Hash for " + ProgramConstants.BaseResourcePath + "clientxna.exe: " + fh.ClientXNAHash);
+        Logger.Log("Hash for " + ProgramConstants.BaseResourcePath + "clientogl.exe: " + fh.ClientOGLHash);
         Logger.Log("Hash for " + ClientConfiguration.Instance.MPMapsIniPath + ": " + fh.MPMapsHash);
 
         if (calculateGameExeHash)
-            Logger.Log("Hash for " + ClientConfiguration.Instance.GetGameExecutableName() + ": " + fh.GameExeHash);
+            Logger.Log("Hash for " + ClientConfiguration.Instance.GameExecutableName + ": " + fh.GameExeHash);
 
         if (!string.IsNullOrEmpty(ClientConfiguration.Instance.GameLauncherExecutableName))
             Logger.Log("Hash for " + ClientConfiguration.Instance.GameLauncherExecutableName + ": " + fh.LauncherExeHash);

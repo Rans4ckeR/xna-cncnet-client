@@ -8,28 +8,13 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
-public class PasswordEventArgs : EventArgs
-{
-    public PasswordEventArgs(string password, HostedCnCNetGame hostedGame)
-    {
-        Password = password;
-        HostedGame = hostedGame;
-    }
-
-    /// <summary>
-    /// Gets the password input by the user.
-    /// </summary>
-    public string Password { get; private set; }
-
-    /// <summary>
-    /// Gets the game that the user is attempting to join.
-    /// </summary>
-    public HostedCnCNetGame HostedGame { get; private set; }
-}
-
 internal class PasswordRequestWindow : XNAWindow
 {
     private readonly PrivateMessagingWindow privateMessagingWindow;
+
+    private HostedCnCNetGame hostedGame;
+
+    private bool pmWindowWasEnabled;
 
     private XNATextBox tbPassword;
 
@@ -40,10 +25,6 @@ internal class PasswordRequestWindow : XNAWindow
     }
 
     public event EventHandler<PasswordEventArgs> PasswordEntered;
-
-    private HostedCnCNetGame hostedGame;
-
-    private bool pmWindowWasEnabled { get; set; }
 
     public override void Initialize()
     {
@@ -64,7 +45,9 @@ internal class PasswordRequestWindow : XNAWindow
             Name = "tbPassword",
             ClientRectangle = new Rectangle(
                 lblDescription.X,
-            lblDescription.Bottom + 12, Width - 24, 21)
+                lblDescription.Bottom + 12,
+                Width - 24,
+                21)
         };
 
         XNAClientButton btnOK = new(WindowManager)
@@ -72,7 +55,9 @@ internal class PasswordRequestWindow : XNAWindow
             Name = "btnOK",
             ClientRectangle = new Rectangle(
                 lblDescription.X,
-            ClientRectangle.Bottom - 35, UIDesignConstants.BUTTONWIDTH92, UIDesignConstants.BUTTONHEIGHT),
+                ClientRectangle.Bottom - 35,
+                UIDesignConstants.ButtonWidth92,
+                UIDesignConstants.ButtonHeight),
             Text = "OK".L10N("UI:Main:ButtonOK")
         };
         btnOK.LeftClick += BtnOK_LeftClick;
@@ -82,7 +67,9 @@ internal class PasswordRequestWindow : XNAWindow
             Name = "btnCancel",
             ClientRectangle = new Rectangle(
                 Width - 104,
-            btnOK.Y, UIDesignConstants.BUTTONWIDTH92, UIDesignConstants.BUTTONHEIGHT),
+                btnOK.Y,
+                UIDesignConstants.ButtonWidth92,
+                UIDesignConstants.ButtonHeight),
             Text = "Cancel".L10N("UI:Main:ButtonCancel")
         };
         btnCancel.LeftClick += BtnCancel_LeftClick;
@@ -105,9 +92,21 @@ internal class PasswordRequestWindow : XNAWindow
         this.hostedGame = hostedGame;
     }
 
-    private void TextBoxPassword_EnterPressed(object sender, EventArgs eventArgs)
+    private void BtnCancel_LeftClick(object sender, EventArgs e)
     {
-        BtnOK_LeftClick(this, eventArgs);
+        Disable();
+    }
+
+    private void BtnOK_LeftClick(object sender, EventArgs e)
+    {
+        if (string.IsNullOrEmpty(tbPassword.Text))
+            return;
+
+        pmWindowWasEnabled = false;
+        Disable();
+
+        PasswordEntered?.Invoke(this, new PasswordEventArgs(tbPassword.Text, hostedGame));
+        tbPassword.Text = string.Empty;
     }
 
     private void PasswordRequestWindow_EnabledChanged(object sender, EventArgs e)
@@ -126,20 +125,8 @@ internal class PasswordRequestWindow : XNAWindow
         }
     }
 
-    private void BtnCancel_LeftClick(object sender, EventArgs e)
+    private void TextBoxPassword_EnterPressed(object sender, EventArgs eventArgs)
     {
-        Disable();
-    }
-
-    private void BtnOK_LeftClick(object sender, EventArgs e)
-    {
-        if (string.IsNullOrEmpty(tbPassword.Text))
-            return;
-
-        pmWindowWasEnabled = false;
-        Disable();
-
-        PasswordEntered?.Invoke(this, new PasswordEventArgs(tbPassword.Text, hostedGame));
-        tbPassword.Text = string.Empty;
+        BtnOK_LeftClick(this, eventArgs);
     }
 }

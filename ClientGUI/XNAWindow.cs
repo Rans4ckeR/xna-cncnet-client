@@ -56,6 +56,7 @@ public class XNAWindow : XNAWindowBase
     /// <summary>
     /// Reads this window's attributes from an INI file.
     /// </summary>
+    /// <param name="iniFile">ini file.</param>
     protected virtual void GetINIAttributes(IniFile iniFile)
     {
         ThemeIni = iniFile;

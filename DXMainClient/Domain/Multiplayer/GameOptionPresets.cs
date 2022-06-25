@@ -1,95 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using ClientCore;
 using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer;
-
-/// <summary>
-/// A single game option preset.
-/// </summary>
-public class GameOptionPreset
-{
-    private readonly Dictionary<string, bool> checkBoxValues = new();
-
-    public GameOptionPreset(string profileName)
-    {
-        ProfileName = profileName;
-
-        if (ProfileName.Contains('[') || ProfileName.Contains(']'))
-            throw new ArgumentException("Game option preset name cannot contain the [] characters.");
-    }
-
-    public string ProfileName { get; }
-
-    /// <summary>
-    /// Checks if a specific name is valid for the name of a game option preset.
-    /// Returns null if the name is valid, an error message otherwise.
-    /// </summary>
-    /// <returns></returns>
-    public static string IsNameValid(string name)
-    {
-        if (name.Contains('[') || name.Contains(']'))
-            return "Game option preset name cannot contain the [] characters.";
-
-        return null;
-    }
-
-    private readonly Dictionary<string, int> dropDownValues = new();
-
-    public void AddCheckBoxValue(string checkBoxName, bool value)
-    {
-        checkBoxValues.Add(checkBoxName, value);
-    }
-
-    private void AddValues<T>(IniSection section, string keyName, Dictionary<string, T> dictionary, Converter<string, T> converter)
-    {
-        string[] valueStrings = section.GetStringValue(
-            keyName,
-            string.Empty).Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (string value in valueStrings)
-        {
-            string[] splitValue = value.Split(':');
-            if (splitValue.Length != 2)
-            {
-                Logger.Log($"Failed to parse game option preset value ({ProfileName}, {keyName})");
-                continue;
-            }
-
-            dictionary.Add(splitValue[0], converter(splitValue[1]));
-        }
-    }
-
-    public void AddDropDownValue(string dropDownValue, int value)
-    {
-        dropDownValues.Add(dropDownValue, value);
-    }
-
-    public Dictionary<string, bool> GetCheckBoxValues() => new(checkBoxValues);
-
-    public Dictionary<string, int> GetDropDownValues() => new(dropDownValues);
-
-    public void Read(IniSection section)
-    {
-        // Syntax example:
-        // CheckBoxValues=chkCrates:1,chkShortGame:1,chkFastResourceGrowth:0,.... (0 = unchecked, 1 = checked)
-        // DropDownValues=ddTechLevel:7,ddStartingCredits:5,... (the number is the selected option index)
-        AddValues(section, "CheckBoxValues", checkBoxValues, s => s == "1");
-        AddValues(section, "DropDownValues", dropDownValues, s => Conversions.IntFromString(s, 0));
-    }
-
-    public void Write(IniSection section)
-    {
-        section.SetStringValue("CheckBoxValues", string.Join(
-            ",",
-            checkBoxValues.Select(s => $"{s.Key}:{(s.Value ? "1" : "0")}")));
-        section.SetStringValue("DropDownValues", string.Join(
-            ",",
-            dropDownValues.Select(s => $"{s.Key}:{s.Value}")));
-    }
-}
 
 /// <summary>
 /// Handles game option presets.
@@ -102,6 +16,8 @@ public class GameOptionPresets
     private static GameOptionPresets _instance;
 
     private IniFile gameOptionPresetsIni;
+
+    private Dictionary<string, GameOptionPreset> presets;
 
     private GameOptionPresets()
     {
@@ -116,29 +32,6 @@ public class GameOptionPresets
 
             return _instance;
         }
-    }
-
-    private Dictionary<string, GameOptionPreset> presets;
-
-    public GameOptionPreset GetPreset(string name)
-    {
-        LoadIniIfNotInitialized();
-
-        if (presets.TryGetValue(name, out GameOptionPreset value))
-        {
-            return value;
-        }
-
-        return null;
-    }
-
-    public List<string> GetPresetNames()
-    {
-        LoadIniIfNotInitialized();
-
-        return presets.Keys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .ToList();
     }
 
     public void AddPreset(GameOptionPreset preset)
@@ -160,10 +53,25 @@ public class GameOptionPresets
         WriteIni();
     }
 
-    private void LoadIniIfNotInitialized()
+    public GameOptionPreset GetPreset(string name)
     {
-        if (gameOptionPresetsIni == null)
-            LoadIni();
+        LoadIniIfNotInitialized();
+
+        if (presets.TryGetValue(name, out GameOptionPreset value))
+        {
+            return value;
+        }
+
+        return null;
+    }
+
+    public List<string> GetPresetNames()
+    {
+        LoadIniIfNotInitialized();
+
+        return presets.Keys
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .ToList();
     }
 
     private void LoadIni()
@@ -188,6 +96,12 @@ public class GameOptionPresets
                 presets[kvp.Value] = preset;
             }
         }
+    }
+
+    private void LoadIniIfNotInitialized()
+    {
+        if (gameOptionPresetsIni == null)
+            LoadIni();
     }
 
     private void WriteIni()

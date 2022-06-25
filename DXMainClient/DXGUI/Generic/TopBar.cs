@@ -27,26 +27,66 @@ public enum SwitchType
 /// </summary>
 public class TopBar : XNAPanel
 {
-    public EventHandler LogoutEvent;
+    private const int APPEAR_CURSOR_THRESHOLD_Y = 8;
+
+    private const double DOWN_MOVEMENT_RATE = 1.7;
 
     /// <summary>
-    /// The number of seconds that the top bar will stay down after it has
-    /// lost input focus.
+    /// The number of seconds that the top bar will stay down after it has lost input focus.
     /// </summary>
     private const double DOWN_TIME_WAIT_SECONDS = 1.0;
 
     private const double EVENT_DOWN_TIME_WAIT_SECONDS = 2.0;
+
     private const double STARTUP_DOWN_TIME_WAIT_SECONDS = 3.5;
-    private const double DOWN_MOVEMENT_RATE = 1.7;
+
     private const double UP_MOVEMENT_RATE = 1.7;
-    private const int APPEAR_CURSOR_THRESHOLD_Y = 8;
+
     private static readonly object Locker = new();
+
+    private readonly CnCNetManager connectionManager;
 
     private readonly string dEFAULT_PM_BTN_LABEL = "Private Messages (F4)".L10N("UI:Main:PMButtonF4");
 
+    private readonly TimeSpan downTimeWaitTime;
     private readonly List<ISwitchable> primarySwitches = new();
 
-    private readonly CnCNetManager connectionManager;
+    private readonly PrivateMessageHandler privateMessageHandler;
+
+    private XNAClientButton btnCnCNetLobby;
+
+    private XNAClientButton btnLogout;
+
+    private XNAClientButton btnMainButton;
+
+    private XNAClientButton btnOptions;
+
+    private XNAClientButton btnPrivateMessages;
+
+    private ISwitchable cncnetLobbySwitch;
+
+    private CancellationTokenSource cncnetPlayerCountCancellationSource;
+
+    private TimeSpan downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - STARTUP_DOWN_TIME_WAIT_SECONDS);
+    private bool isDown = true;
+
+    private bool lanMode;
+
+    private XNALabel lblCnCNetPlayerCount;
+
+    private XNALabel lblCnCNetStatus;
+
+    private XNALabel lblConnectionStatus;
+
+    private XNALabel lblDate;
+
+    private XNALabel lblTime;
+
+    private double locationY = -40.0;
+
+    private OptionsWindow optionsWindow;
+
+    private ISwitchable privateMessageSwitch;
 
     public TopBar(
         WindowManager windowManager,
@@ -60,57 +100,13 @@ public class TopBar : XNAPanel
     }
 
     public SwitchType LastSwitchType { get; private set; }
-    private ISwitchable cncnetLobbySwitch;
-    private ISwitchable privateMessageSwitch;
 
-    private OptionsWindow optionsWindow;
-
-    private XNAClientButton btnMainButton;
-    private XNAClientButton btnCnCNetLobby;
-    private XNAClientButton btnPrivateMessages;
-    private XNAClientButton btnOptions;
-    private XNAClientButton btnLogout;
-    private XNALabel lblTime;
-    private XNALabel lblDate;
-    private XNALabel lblCnCNetStatus;
-    private XNALabel lblCnCNetPlayerCount;
-    private XNALabel lblConnectionStatus;
-    private readonly PrivateMessageHandler privateMessageHandler;
-
-    private CancellationTokenSource cncnetPlayerCountCancellationSource;
-
-    private TimeSpan downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - STARTUP_DOWN_TIME_WAIT_SECONDS);
-
-    private TimeSpan downTimeWaitTime;
-
-    private bool isDown = true;
-
-    private double locationY = -40.0;
-
-    private bool lanMode;
+    public EventHandler LogoutEvent { get; set; }
 
     public void AddPrimarySwitchable(ISwitchable switchable)
     {
         primarySwitches.Add(switchable);
         btnMainButton.Text = switchable.GetSwitchName() + " (F2)";
-    }
-
-    public void RemovePrimarySwitchable(ISwitchable switchable)
-    {
-        _ = primarySwitches.Remove(switchable);
-        btnMainButton.Text = primarySwitches[primarySwitches.Count - 1].GetSwitchName() + " (F2)";
-    }
-
-    public void SetSecondarySwitch(ISwitchable switchable)
-        => cncnetLobbySwitch = switchable;
-
-    public void SetTertiarySwitch(ISwitchable switchable)
-        => privateMessageSwitch = switchable;
-
-    public void SetOptionsWindow(OptionsWindow optionsWindow)
-    {
-        this.optionsWindow = optionsWindow;
-        optionsWindow.EnabledChanged += OptionsWindow_EnabledChanged;
     }
 
     public void Clean()
@@ -119,16 +115,15 @@ public class TopBar : XNAPanel
             cncnetPlayerCountCancellationSource.Cancel();
     }
 
-    private void OptionsWindow_EnabledChanged(object sender, EventArgs e)
+    public override void Draw(GameTime gameTime)
     {
-        if (!lanMode)
-            SetSwitchButtonsClickable(!optionsWindow.Enabled);
+        base.Draw(gameTime);
 
-        SetOptionsButtonClickable(!optionsWindow.Enabled);
-
-        if (optionsWindow != null)
-            optionsWindow.ToggleMainMenuOnlyOptions(primarySwitches.Count == 1 && !lanMode);
+        Renderer.DrawRectangle(new Rectangle(X, ClientRectangle.Bottom - 2, Width, 1), UISettings.ActiveSettings.PanelBorderColor);
     }
+
+    public ISwitchable GetTopMostPrimarySwitchable()
+        => primarySwitches[primarySwitches.Count - 1];
 
     public override void Initialize()
     {
@@ -141,7 +136,7 @@ public class TopBar : XNAPanel
         btnMainButton = new XNAClientButton(WindowManager)
         {
             Name = "btnMainButton",
-            ClientRectangle = new Rectangle(12, 9, UIDesignConstants.BUTTONWIDTH160, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(12, 9, UIDesignConstants.ButtonWidth160, UIDesignConstants.ButtonHeight),
             Text = "Main Menu (F2)".L10N("UI:Main:MainMenuF2")
         };
         btnMainButton.LeftClick += BtnMainButton_LeftClick;
@@ -149,7 +144,7 @@ public class TopBar : XNAPanel
         btnCnCNetLobby = new XNAClientButton(WindowManager)
         {
             Name = "btnCnCNetLobby",
-            ClientRectangle = new Rectangle(184, 9, UIDesignConstants.BUTTONWIDTH160, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(184, 9, UIDesignConstants.ButtonWidth160, UIDesignConstants.ButtonHeight),
             Text = "CnCNet Lobby (F3)".L10N("UI:Main:LobbyF3")
         };
         btnCnCNetLobby.LeftClick += BtnCnCNetLobby_LeftClick;
@@ -157,7 +152,7 @@ public class TopBar : XNAPanel
         btnPrivateMessages = new XNAClientButton(WindowManager)
         {
             Name = "btnPrivateMessages",
-            ClientRectangle = new Rectangle(356, 9, UIDesignConstants.BUTTONWIDTH160, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(356, 9, UIDesignConstants.ButtonWidth160, UIDesignConstants.ButtonHeight),
             Text = dEFAULT_PM_BTN_LABEL
         };
         btnPrivateMessages.LeftClick += BtnPrivateMessages_LeftClick;
@@ -169,9 +164,10 @@ public class TopBar : XNAPanel
         };
         lblDate.Text = Renderer.GetSafeString(DateTime.Now.ToShortDateString(), lblDate.FontIndex);
         lblDate.ClientRectangle = new Rectangle(
-            Width -
-            (int)Renderer.GetTextDimensions(lblDate.Text, lblDate.FontIndex).X - 12, 18,
-            lblDate.Width, lblDate.Height);
+            Width - (int)Renderer.GetTextDimensions(lblDate.Text, lblDate.FontIndex).X - 12,
+            18,
+            lblDate.Width,
+            lblDate.Height);
 
         lblTime = new XNALabel(WindowManager)
         {
@@ -180,9 +176,10 @@ public class TopBar : XNAPanel
             Text = "99:99:99"
         };
         lblTime.ClientRectangle = new Rectangle(
-            Width -
-            (int)Renderer.GetTextDimensions(lblTime.Text, lblTime.FontIndex).X - 12, 4,
-            lblTime.Width, lblTime.Height);
+            Width - (int)Renderer.GetTextDimensions(lblTime.Text, lblTime.FontIndex).X - 12,
+            4,
+            lblTime.Width,
+            lblTime.Height);
 
         btnLogout = new XNAClientButton(WindowManager)
         {
@@ -256,82 +253,6 @@ public class TopBar : XNAPanel
         privateMessageHandler.UnreadMessageCountUpdated += PrivateMessageHandler_UnreadMessageCountUpdated;
     }
 
-    public void SwitchToPrimary()
-        => BtnMainButton_LeftClick(this, EventArgs.Empty);
-
-    private void PrivateMessageHandler_UnreadMessageCountUpdated(object sender, UnreadMessageCountEventArgs args)
-        => UpdatePrivateMessagesBtnLabel(args.UnreadMessageCount);
-
-    private void UpdatePrivateMessagesBtnLabel(int unreadMessageCount)
-    {
-        btnPrivateMessages.Text = dEFAULT_PM_BTN_LABEL;
-        if (unreadMessageCount > 0)
-        {
-            // TODO need to make a wider button to accommodate count
-            // btnPrivateMessages.Text += $" ({unreadMessageCount})";
-        }
-    }
-
-    private void CnCNetInfoController_CnCNetGameCountUpdated(object sender, PlayerCountEventArgs e)
-    {
-        lock (Locker)
-        {
-            lblCnCNetPlayerCount.Text = e.PlayerCount == -1 ? "N/A".L10N("UI:Main:N/A") : e.PlayerCount.ToString();
-        }
-    }
-
-    private void ConnectionManager_ConnectionLost(object sender, Online.EventArguments.ConnectionLostEventArgs e)
-    {
-        if (!lanMode)
-            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
-    }
-
-    private void ConnectionManager_ConnectAttemptFailed(object sender, EventArgs e)
-    {
-        if (!lanMode)
-            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
-    }
-
-    private void ConnectionManager_AttemptedServerChanged(object sender, Online.EventArguments.AttemptedServerEventArgs e)
-    {
-        ConnectionEvent("CONNECTING...".L10N("UI:Main:StatusConnecting"));
-        BringDown();
-    }
-
-    private void ConnectionManager_WelcomeMessageReceived(object sender, Online.EventArguments.ServerMessageEventArgs e)
-        => ConnectionEvent("CONNECTED".L10N("UI:Main:StatusConnected"));
-
-    private void ConnectionManager_Disconnected(object sender, EventArgs e)
-    {
-        btnLogout.AllowClick = false;
-        if (!lanMode)
-            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
-    }
-
-    private void ConnectionEvent(string text)
-    {
-        lblConnectionStatus.Text = text;
-        lblConnectionStatus.CenterOnParent();
-        isDown = true;
-        downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - EVENT_DOWN_TIME_WAIT_SECONDS);
-    }
-
-    private void BtnLogout_LeftClick(object sender, EventArgs e)
-    {
-        connectionManager.Disconnect();
-        LogoutEvent?.Invoke(this, null);
-        SwitchToPrimary();
-    }
-
-    private void ConnectionManager_Connected(object sender, EventArgs e)
-        => btnLogout.AllowClick = true;
-
-    public ISwitchable GetTopMostPrimarySwitchable()
-        => primarySwitches[primarySwitches.Count - 1];
-
-    public void SwitchToSecondary()
-        => BtnCnCNetLobby_LeftClick(this, EventArgs.Empty);
-
     public override void OnMouseOnControl()
     {
         if (Cursor.Location.Y > -1 && !ProgramConstants.IsInGame)
@@ -340,8 +261,112 @@ public class TopBar : XNAPanel
         base.OnMouseOnControl();
     }
 
+    public void RemovePrimarySwitchable(ISwitchable switchable)
+    {
+        _ = primarySwitches.Remove(switchable);
+        btnMainButton.Text = primarySwitches[primarySwitches.Count - 1].GetSwitchName() + " (F2)";
+    }
+
+    public void SetLanMode(bool lanMode)
+    {
+        this.lanMode = lanMode;
+        SetSwitchButtonsClickable(!lanMode);
+        if (lanMode)
+            ConnectionEvent("LAN MODE".L10N("UI:Main:StatusLanMode"));
+        else
+            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
+    }
+
     public void SetMainButtonText(string text)
         => btnMainButton.Text = text;
+
+    public void SetOptionsButtonClickable(bool allowClick)
+    {
+        if (btnOptions != null)
+            btnOptions.AllowClick = allowClick;
+    }
+
+    public void SetOptionsWindow(OptionsWindow optionsWindow)
+    {
+        this.optionsWindow = optionsWindow;
+        optionsWindow.EnabledChanged += OptionsWindow_EnabledChanged;
+    }
+
+    public void SetSecondarySwitch(ISwitchable switchable)
+                        => cncnetLobbySwitch = switchable;
+
+    public void SetSwitchButtonsClickable(bool allowClick)
+    {
+        if (btnMainButton != null)
+            btnMainButton.AllowClick = allowClick;
+        if (btnCnCNetLobby != null)
+            btnCnCNetLobby.AllowClick = allowClick;
+        if (btnPrivateMessages != null)
+            btnPrivateMessages.AllowClick = allowClick;
+    }
+
+    public void SetTertiarySwitch(ISwitchable switchable)
+            => privateMessageSwitch = switchable;
+
+    public void SwitchToPrimary()
+        => BtnMainButton_LeftClick(this, EventArgs.Empty);
+
+    public void SwitchToSecondary()
+        => BtnCnCNetLobby_LeftClick(this, EventArgs.Empty);
+
+    public override void Update(GameTime gameTime)
+    {
+        if (Cursor.Location.Y < APPEAR_CURSOR_THRESHOLD_Y && Cursor.Location.Y > -1 && !ProgramConstants.IsInGame)
+            BringDown();
+
+        if (isDown)
+        {
+            if (locationY < 0)
+            {
+                locationY += DOWN_MOVEMENT_RATE * (gameTime.ElapsedGameTime.TotalMilliseconds / 10.0);
+                ClientRectangle = new Rectangle(
+                    X,
+                    (int)locationY,
+                    Width,
+                    Height);
+            }
+
+            downTime += gameTime.ElapsedGameTime;
+
+            isDown = downTime < downTimeWaitTime;
+        }
+        else
+        {
+            if (locationY > -Height - 1)
+            {
+                locationY -= UP_MOVEMENT_RATE * (gameTime.ElapsedGameTime.TotalMilliseconds / 10.0);
+                ClientRectangle = new Rectangle(
+                    X,
+                    (int)locationY,
+                    Width,
+                    Height);
+            }
+            else
+            {
+                return; // Don't handle input when the cursor is above our game window
+            }
+        }
+
+        DateTime dtn = DateTime.Now;
+
+        lblTime.Text = Renderer.GetSafeString(dtn.ToLongTimeString(), lblTime.FontIndex);
+        string dateText = Renderer.GetSafeString(dtn.ToShortDateString(), lblDate.FontIndex);
+        if (lblDate.Text != dateText)
+            lblDate.Text = dateText;
+
+        base.Update(gameTime);
+    }
+
+    private void BringDown()
+    {
+        isDown = true;
+        downTime = TimeSpan.Zero;
+    }
 
     private void BtnCnCNetLobby_LeftClick(object sender, EventArgs e)
     {
@@ -353,6 +378,13 @@ public class TopBar : XNAPanel
         // HACK warning
         // TODO: add a way for DarkeningPanel to skip transitions
         ((DarkeningPanel)((XNAControl)cncnetLobbySwitch).Parent).Alpha = 1.0f;
+    }
+
+    private void BtnLogout_LeftClick(object sender, EventArgs e)
+    {
+        connectionManager.Disconnect();
+        LogoutEvent?.Invoke(this, null);
+        SwitchToPrimary();
     }
 
     private void BtnMainButton_LeftClick(object sender, EventArgs e)
@@ -368,14 +400,61 @@ public class TopBar : XNAPanel
             darkeningPanel.Alpha = 1.0f;
     }
 
-    private void BtnPrivateMessages_LeftClick(object sender, EventArgs e)
-        => privateMessageSwitch.SwitchOn();
-
     private void BtnOptions_LeftClick(object sender, EventArgs e)
     {
         privateMessageSwitch.SwitchOff();
         optionsWindow.Open();
     }
+
+    private void BtnPrivateMessages_LeftClick(object sender, EventArgs e)
+        => privateMessageSwitch.SwitchOn();
+
+    private void CnCNetInfoController_CnCNetGameCountUpdated(object sender, PlayerCountEventArgs e)
+    {
+        lock (Locker)
+        {
+            lblCnCNetPlayerCount.Text = e.PlayerCount == -1 ? "N/A".L10N("UI:Main:N/A") : e.PlayerCount.ToString();
+        }
+    }
+
+    private void ConnectionEvent(string text)
+    {
+        lblConnectionStatus.Text = text;
+        lblConnectionStatus.CenterOnParent();
+        isDown = true;
+        downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - EVENT_DOWN_TIME_WAIT_SECONDS);
+    }
+
+    private void ConnectionManager_AttemptedServerChanged(object sender, Online.EventArguments.AttemptedServerEventArgs e)
+    {
+        ConnectionEvent("CONNECTING...".L10N("UI:Main:StatusConnecting"));
+        BringDown();
+    }
+
+    private void ConnectionManager_ConnectAttemptFailed(object sender, EventArgs e)
+    {
+        if (!lanMode)
+            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
+    }
+
+    private void ConnectionManager_Connected(object sender, EventArgs e)
+        => btnLogout.AllowClick = true;
+
+    private void ConnectionManager_ConnectionLost(object sender, Online.EventArguments.ConnectionLostEventArgs e)
+    {
+        if (!lanMode)
+            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
+    }
+
+    private void ConnectionManager_Disconnected(object sender, EventArgs e)
+    {
+        btnLogout.AllowClick = false;
+        if (!lanMode)
+            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
+    }
+
+    private void ConnectionManager_WelcomeMessageReceived(object sender, Online.EventArguments.ServerMessageEventArgs e)
+        => ConnectionEvent("CONNECTED".L10N("UI:Main:StatusConnected"));
 
     private void Keyboard_OnKeyPressed(object sender, KeyPressEventArgs e)
     {
@@ -406,84 +485,26 @@ public class TopBar : XNAPanel
         }
     }
 
-    private void BringDown()
+    private void OptionsWindow_EnabledChanged(object sender, EventArgs e)
     {
-        isDown = true;
-        downTime = TimeSpan.Zero;
+        if (!lanMode)
+            SetSwitchButtonsClickable(!optionsWindow.Enabled);
+
+        SetOptionsButtonClickable(!optionsWindow.Enabled);
+
+        if (optionsWindow != null)
+            optionsWindow.ToggleMainMenuOnlyOptions(primarySwitches.Count == 1 && !lanMode);
     }
 
-    public void SetSwitchButtonsClickable(bool allowClick)
-    {
-        if (btnMainButton != null)
-            btnMainButton.AllowClick = allowClick;
-        if (btnCnCNetLobby != null)
-            btnCnCNetLobby.AllowClick = allowClick;
-        if (btnPrivateMessages != null)
-            btnPrivateMessages.AllowClick = allowClick;
-    }
+    private void PrivateMessageHandler_UnreadMessageCountUpdated(object sender, UnreadMessageCountEventArgs args)
+        => UpdatePrivateMessagesBtnLabel(args.UnreadMessageCount);
 
-    public void SetOptionsButtonClickable(bool allowClick)
+    private void UpdatePrivateMessagesBtnLabel(int unreadMessageCount)
     {
-        if (btnOptions != null)
-            btnOptions.AllowClick = allowClick;
-    }
-
-    public void SetLanMode(bool lanMode)
-    {
-        this.lanMode = lanMode;
-        SetSwitchButtonsClickable(!lanMode);
-        if (lanMode)
-            ConnectionEvent("LAN MODE".L10N("UI:Main:StatusLanMode"));
-        else
-            ConnectionEvent("OFFLINE".L10N("UI:Main:StatusOffline"));
-    }
-
-    public override void Update(GameTime gameTime)
-    {
-        if (Cursor.Location.Y < APPEAR_CURSOR_THRESHOLD_Y && Cursor.Location.Y > -1 && !ProgramConstants.IsInGame)
-            BringDown();
-
-        if (isDown)
+        btnPrivateMessages.Text = dEFAULT_PM_BTN_LABEL;
+        if (unreadMessageCount > 0)
         {
-            if (locationY < 0)
-            {
-                locationY += DOWN_MOVEMENT_RATE * (gameTime.ElapsedGameTime.TotalMilliseconds / 10.0);
-                ClientRectangle = new Rectangle(X, (int)locationY,
-                    Width, Height);
-            }
-
-            downTime += gameTime.ElapsedGameTime;
-
-            isDown = downTime < downTimeWaitTime;
+            // TODO need to make a wider button to accommodate count btnPrivateMessages.Text += $" ({unreadMessageCount})";
         }
-        else
-        {
-            if (locationY > -Height - 1)
-            {
-                locationY -= UP_MOVEMENT_RATE * (gameTime.ElapsedGameTime.TotalMilliseconds / 10.0);
-                ClientRectangle = new Rectangle(X, (int)locationY,
-                    Width, Height);
-            }
-            else
-            {
-                return; // Don't handle input when the cursor is above our game window
-            }
-        }
-
-        DateTime dtn = DateTime.Now;
-
-        lblTime.Text = Renderer.GetSafeString(dtn.ToLongTimeString(), lblTime.FontIndex);
-        string dateText = Renderer.GetSafeString(dtn.ToShortDateString(), lblDate.FontIndex);
-        if (lblDate.Text != dateText)
-            lblDate.Text = dateText;
-
-        base.Update(gameTime);
-    }
-
-    public override void Draw(GameTime gameTime)
-    {
-        base.Draw(gameTime);
-
-        Renderer.DrawRectangle(new Rectangle(X, ClientRectangle.Bottom - 2, Width, 1), UISettings.ActiveSettings.PanelBorderColor);
     }
 }

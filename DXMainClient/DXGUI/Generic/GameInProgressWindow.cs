@@ -28,11 +28,6 @@ public class GameInProgressWindow : XNAPanel
 
     private bool initialized = false;
 
-    public GameInProgressWindow(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
-
     private bool nativeCursorUsed = false;
 
 #if ARES
@@ -41,6 +36,11 @@ public class GameInProgressWindow : XNAPanel
 #else
     private bool deletingLogFilesFailed = false;
 #endif
+
+    public GameInProgressWindow(WindowManager windowManager)
+        : base(windowManager)
+    {
+    }
 
     public override void Initialize()
     {
@@ -95,6 +95,183 @@ public class GameInProgressWindow : XNAPanel
         }
 #endif
     }
+
+    /// <summary>
+    /// Attempts to copy a general error log from game directory to another directory.
+    /// </summary>
+    /// <param name="directory">Directory to copy error log to.</param>
+    /// <param name="filename">Filename of the error log.</param>
+    /// <param name="dateTime">Time to to apply as a timestamp to filename. Set to null to not apply a timestamp.</param>
+    /// <returns>True if error log was copied, false otherwise.</returns>
+    private static bool CopyErrorLog(string directory, string filename, DateTime? dateTime)
+    {
+        bool copied = false;
+
+        try
+        {
+            if (File.Exists(ProgramConstants.GamePath + filename))
+            {
+                if (!Directory.Exists(directory))
+                    _ = Directory.CreateDirectory(directory);
+
+                Logger.Log("The game crashed! Copying " + filename + " file.");
+
+                string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : string.Empty;
+
+                string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
+                    timeStamp + Path.GetExtension(filename);
+
+                File.Copy(ProgramConstants.GamePath + filename, directory + "/" + filenameCopy);
+                copied = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("An error occured while checking for " + filename + " file. Message: " + ex.Message);
+        }
+
+        return copied;
+    }
+
+    /// <summary>
+    /// Attempts to copy sync error logs from game directory to another directory.
+    /// </summary>
+    /// <param name="directory">Directory to copy sync error logs to.</param>
+    /// <param name="dateTime">Time to to apply as a timestamp to filename. Set to null to not apply a timestamp.</param>
+    /// <returns>True if any sync logs were copied, false otherwise.</returns>
+    private static bool CopySyncErrorLogs(string directory, DateTime? dateTime)
+    {
+        bool copied = false;
+
+        try
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                string filename = "SYNC" + i + ".TXT";
+
+                if (File.Exists(ProgramConstants.GamePath + filename))
+                {
+                    if (!Directory.Exists(directory))
+                        _ = Directory.CreateDirectory(directory);
+
+                    Logger.Log("There was a sync error! Copying file " + filename);
+
+                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : string.Empty;
+
+                    string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
+                        timeStamp + Path.GetExtension(filename);
+
+                    File.Copy(ProgramConstants.GamePath + filename, directory + "/" + filenameCopy);
+                    copied = true;
+                    File.Delete(ProgramConstants.GamePath + filename);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("An error occured while checking for SYNCX.TXT files. Message: " + ex.Message);
+        }
+
+        return copied;
+    }
+
+#if ARES
+    /// <summary>
+    /// Returns list of all debug snapshot directories in Ares debug logs directory.
+    /// </summary>
+    /// <returns>List of all debug snapshot directories in Ares debug logs directory. Empty list if none are found or an error was encountered.</returns>
+    private static System.Collections.Generic.List<string> GetAllDebugSnapshotDirectories()
+    {
+        List<string> directories = new();
+
+        try
+        {
+            directories.AddRange(Directory.GetDirectories(ProgramConstants.GamePath + "debug", "snapshot-*"));
+        }
+        catch
+        {
+        }
+
+        return directories;
+    }
+
+    /// <summary>
+    /// Returns the first debug snapshot directory found in Ares debug log directory that was created after last game launch and isn't empty.
+    /// Additionally any empty snapshot directories encountered are deleted.
+    /// </summary>
+    /// <returns>Full path of the debug snapshot directory. If one isn't found, null is returned.</returns>
+    private string GetNewestDebugSnapshotDirectory()
+    {
+        string snapshotDirectory = null;
+
+        if (debugSnapshotDirectories != null)
+        {
+            IEnumerable<string> newDirectories = GameInProgressWindow.GetAllDebugSnapshotDirectories().Except(debugSnapshotDirectories);
+
+            foreach (string directory in newDirectories)
+            {
+                if (Directory.EnumerateFileSystemEntries(directory).Any())
+                {
+                    snapshotDirectory = directory;
+                }
+                else
+                {
+                    try
+                    {
+                        Directory.Delete(directory);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+        }
+
+        return snapshotDirectory;
+    }
+
+    /// <summary>
+    /// Converts BMP screenshots to PNG and copies them from game directory to Screenshots sub-directory.
+    /// </summary>
+    private void ProcessScreenshots()
+    {
+        string[] filenames = Directory.GetFiles(ProgramConstants.GamePath, "SCRN*.bmp");
+        string screenshotsDirectory = ProgramConstants.GamePath + "Screenshots";
+
+        if (!Directory.Exists(screenshotsDirectory))
+        {
+            try
+            {
+                _ = Directory.CreateDirectory(screenshotsDirectory);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("ProcessScreenshots: An error occured trying to create Screenshots directory. Message: " + ex.Message);
+                return;
+            }
+        }
+
+        foreach (string filename in filenames)
+        {
+            try
+            {
+                System.Drawing.Bitmap bitmap = new(filename);
+                bitmap.Save(
+                    screenshotsDirectory + Path.DirectorySeparatorChar + Path.GetFileNameWithoutExtension(filename) +
+                    ".png", ImageFormat.Png);
+                bitmap.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(filename) + ".png. Message: " + ex.Message);
+                continue;
+            }
+
+            Logger.Log("ProcessScreenshots: " + Path.GetFileNameWithoutExtension(filename) + ".png has been saved to Screenshots directory.");
+            File.Delete(filename);
+        }
+    }
+#endif
 
     private void SharedUILogic_GameProcessStarted()
     {
@@ -206,181 +383,4 @@ public class GameInProgressWindow : XNAPanel
         CopySyncErrorLogs(ProgramConstants.ClientUserFilesPath + "SyncErrorLogs", dtn);
 #endif
     }
-
-    /// <summary>
-    /// Attempts to copy a general error log from game directory to another directory.
-    /// </summary>
-    /// <param name="directory">Directory to copy error log to.</param>
-    /// <param name="filename">Filename of the error log.</param>
-    /// <param name="dateTime">Time to to apply as a timestamp to filename. Set to null to not apply a timestamp.</param>
-    /// <returns>True if error log was copied, false otherwise.</returns>
-    private static bool CopyErrorLog(string directory, string filename, DateTime? dateTime)
-    {
-        bool copied = false;
-
-        try
-        {
-            if (File.Exists(ProgramConstants.GamePath + filename))
-            {
-                if (!Directory.Exists(directory))
-                    _ = Directory.CreateDirectory(directory);
-
-                Logger.Log("The game crashed! Copying " + filename + " file.");
-
-                string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : string.Empty;
-
-                string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
-                    timeStamp + Path.GetExtension(filename);
-
-                File.Copy(ProgramConstants.GamePath + filename, directory + "/" + filenameCopy);
-                copied = true;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("An error occured while checking for " + filename + " file. Message: " + ex.Message);
-        }
-
-        return copied;
-    }
-
-    /// <summary>
-    /// Attempts to copy sync error logs from game directory to another directory.
-    /// </summary>
-    /// <param name="directory">Directory to copy sync error logs to.</param>
-    /// <param name="dateTime">Time to to apply as a timestamp to filename. Set to null to not apply a timestamp.</param>
-    /// <returns>True if any sync logs were copied, false otherwise.</returns>
-    private static bool CopySyncErrorLogs(string directory, DateTime? dateTime)
-    {
-        bool copied = false;
-
-        try
-        {
-            for (int i = 0; i < 8; i++)
-            {
-                string filename = "SYNC" + i + ".TXT";
-
-                if (File.Exists(ProgramConstants.GamePath + filename))
-                {
-                    if (!Directory.Exists(directory))
-                        _ = Directory.CreateDirectory(directory);
-
-                    Logger.Log("There was a sync error! Copying file " + filename);
-
-                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : string.Empty;
-
-                    string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
-                        timeStamp + Path.GetExtension(filename);
-
-                    File.Copy(ProgramConstants.GamePath + filename, directory + "/" + filenameCopy);
-                    copied = true;
-                    File.Delete(ProgramConstants.GamePath + filename);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("An error occured while checking for SYNCX.TXT files. Message: " + ex.Message);
-        }
-
-        return copied;
-    }
-
-#if ARES
-    /// <summary>
-    /// Returns the first debug snapshot directory found in Ares debug log directory that was created after last game launch and isn't empty.
-    /// Additionally any empty snapshot directories encountered are deleted.
-    /// </summary>
-    /// <returns>Full path of the debug snapshot directory. If one isn't found, null is returned.</returns>
-    private string GetNewestDebugSnapshotDirectory()
-    {
-        string snapshotDirectory = null;
-
-        if (debugSnapshotDirectories != null)
-        {
-            IEnumerable<string> newDirectories = GameInProgressWindow.GetAllDebugSnapshotDirectories().Except(debugSnapshotDirectories);
-
-            foreach (string directory in newDirectories)
-            {
-                if (Directory.EnumerateFileSystemEntries(directory).Any())
-                {
-                    snapshotDirectory = directory;
-                }
-                else
-                {
-                    try
-                    {
-                        Directory.Delete(directory);
-                    }
-                    catch
-                    {
-                    }
-                }
-            }
-        }
-
-        return snapshotDirectory;
-    }
-
-    /// <summary>
-    /// Returns list of all debug snapshot directories in Ares debug logs directory.
-    /// </summary>
-    /// <returns>List of all debug snapshot directories in Ares debug logs directory. Empty list if none are found or an error was encountered.</returns>
-    private static System.Collections.Generic.List<string> GetAllDebugSnapshotDirectories()
-    {
-        List<string> directories = new();
-
-        try
-        {
-            directories.AddRange(Directory.GetDirectories(ProgramConstants.GamePath + "debug", "snapshot-*"));
-        }
-        catch
-        {
-        }
-
-        return directories;
-    }
-
-    /// <summary>
-    /// Converts BMP screenshots to PNG and copies them from game directory to Screenshots sub-directory.
-    /// </summary>
-    private void ProcessScreenshots()
-    {
-        string[] filenames = Directory.GetFiles(ProgramConstants.GamePath, "SCRN*.bmp");
-        string screenshotsDirectory = ProgramConstants.GamePath + "Screenshots";
-
-        if (!Directory.Exists(screenshotsDirectory))
-        {
-            try
-            {
-                _ = Directory.CreateDirectory(screenshotsDirectory);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("ProcessScreenshots: An error occured trying to create Screenshots directory. Message: " + ex.Message);
-                return;
-            }
-        }
-
-        foreach (string filename in filenames)
-        {
-            try
-            {
-                System.Drawing.Bitmap bitmap = new(filename);
-                bitmap.Save(
-                    screenshotsDirectory + Path.DirectorySeparatorChar + Path.GetFileNameWithoutExtension(filename) +
-                    ".png", ImageFormat.Png);
-                bitmap.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(filename) + ".png. Message: " + ex.Message);
-                continue;
-            }
-
-            Logger.Log("ProcessScreenshots: " + Path.GetFileNameWithoutExtension(filename) + ".png has been saved to Screenshots directory.");
-            File.Delete(filename);
-        }
-    }
-#endif
 }

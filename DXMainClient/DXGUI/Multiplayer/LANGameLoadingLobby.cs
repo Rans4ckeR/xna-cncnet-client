@@ -20,24 +20,44 @@ namespace DTAClient.DXGUI.Multiplayer;
 
 internal class LANGameLoadingLobby : GameLoadingLobbyBase
 {
+    private const string CHAT_COMMAND = "CHAT";
     private const double DROPOUT_TIMEOUT = 20.0;
+    private const string FILE_HASH_COMMAND = "FHASH";
     private const double GAME_BROADCAST_INTERVAL = 10.0;
 
-    private const string OPTIONS_COMMAND = "OPTS";
     private const string GAME_LAUNCH_COMMAND = "START";
-    private const string READY_STATUS_COMMAND = "READY";
-    private const string CHAT_COMMAND = "CHAT";
-    private const string PLAYER_QUIT_COMMAND = "QUIT";
+    private const string OPTIONS_COMMAND = "OPTS";
     private const string PLAYER_JOIN_COMMAND = "JOIN";
-    private const string FILE_HASH_COMMAND = "FHASH";
+    private const string PLAYER_QUIT_COMMAND = "QUIT";
+    private const string READY_STATUS_COMMAND = "READY";
     private readonly LANColor[] chatColors;
     private readonly Encoding encoding;
 
+    private readonly List<GameMode> gameModes;
+    private readonly LANServerCommandHandler[] hostCommandHandlers;
+    private readonly string localGame;
+    private readonly LANClientCommandHandler[] playerCommandHandlers;
+    private int chatColorIndex;
+    private TcpClient client;
     private TcpListener listener;
+
+    private int loadedGameId;
+
+    private string localFileHash;
+
+    private string overMessage = string.Empty;
+
+    private bool started = false;
+
+    private TimeSpan timeSinceGameBroadcast = TimeSpan.Zero;
+
+    private TimeSpan timeSinceLastReceivedCommand = TimeSpan.Zero;
 
     public LANGameLoadingLobby(
         WindowManager windowManager,
-        List<GameMode> gameModes, LANColor[] chatColors, DiscordHandler discordHandler)
+        List<GameMode> gameModes,
+        LANColor[] chatColors,
+        DiscordHandler discordHandler)
         : base(windowManager, discordHandler)
     {
         encoding = ProgramConstants.LANENCODING;
@@ -63,48 +83,34 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         WindowManager.GameClosing += WindowManager_GameClosing;
     }
 
-    public event EventHandler<LobbyNotificationEventArgs> LobbyNotification;
-
-    private void WindowManager_GameClosing(object sender, EventArgs e)
-    {
-        if (client != null && client.Connected)
-            Clear();
-    }
-
     public event EventHandler<GameBroadcastEventArgs> GameBroadcast;
 
-    private TcpClient client;
+    public event EventHandler<LobbyNotificationEventArgs> LobbyNotification;
 
-    private IPEndPoint hostEndPoint;
-    private int chatColorIndex;
+    public override string GetSwitchName()
+    {
+        return "Load Game".L10N("UI:Main:LoadGameSwitchName");
+    }
 
-    private readonly LANServerCommandHandler[] hostCommandHandlers;
-    private readonly LANClientCommandHandler[] playerCommandHandlers;
+    public void PostJoin()
+    {
+        FileHashCalculator fhc = new();
+        fhc.CalculateHashes(gameModes);
+        SendMessageToHost(FILE_HASH_COMMAND + " " + fhc.GetCompleteHash());
+        UpdateDiscordPresence(true);
+    }
 
-    private readonly string localGame;
-
-    private readonly List<GameMode> gameModes;
-
-    private TimeSpan timeSinceGameBroadcast = TimeSpan.Zero;
-
-    private TimeSpan timeSinceLastReceivedCommand = TimeSpan.Zero;
-
-    private string overMessage = string.Empty;
-
-    private string localFileHash;
-
-    private int loadedGameId;
-
-    private bool started = false;
+    public void SetChatColorIndex(int colorIndex)
+    {
+        chatColorIndex = colorIndex;
+    }
 
     public void SetUp(
         bool isHost,
-        IPEndPoint hostEndPoint, TcpClient client,
+        TcpClient client,
         int loadedGameId)
     {
         Refresh(isHost);
-
-        this.hostEndPoint = hostEndPoint;
 
         this.loadedGameId = loadedGameId;
 
@@ -136,23 +142,92 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
 
         new Thread(HandleServerCommunication).Start();
 
-        if (base.isHost)
+        if (IsHost)
             CopyPlayerDataToUI();
 
-        WindowManager.SelectedControl = tbChatInput;
+        WindowManager.SelectedControl = TbChatInput;
     }
 
-    public void PostJoin()
+    public override void Update(GameTime gameTime)
     {
-        FileHashCalculator fhc = new();
-        fhc.CalculateHashes(gameModes);
-        SendMessageToHost(FILE_HASH_COMMAND + " " + fhc.GetCompleteHash());
-        UpdateDiscordPresence(true);
+        if (IsHost)
+        {
+            for (int i = 1; i < Players.Count; i++)
+            {
+                LANPlayerInfo lpInfo = (LANPlayerInfo)Players[i];
+                if (!lpInfo.Update(gameTime))
+                {
+                    CleanUpPlayer(lpInfo);
+                    Players.RemoveAt(i);
+                    AddNotice(string.Format("{0} - connection timed out".L10N("UI:Main:PlayerTimeout"), lpInfo.Name));
+                    CopyPlayerDataToUI();
+                    BroadcastOptions();
+                    UpdateDiscordPresence();
+                    i--;
+                }
+            }
+
+            timeSinceGameBroadcast += gameTime.ElapsedGameTime;
+
+            if (timeSinceGameBroadcast > TimeSpan.FromSeconds(GAME_BROADCAST_INTERVAL))
+            {
+                BroadcastGame();
+                timeSinceGameBroadcast = TimeSpan.Zero;
+            }
+        }
+        else
+        {
+            timeSinceLastReceivedCommand += gameTime.ElapsedGameTime;
+
+            if (timeSinceLastReceivedCommand > TimeSpan.FromSeconds(DROPOUT_TIMEOUT))
+            {
+                LobbyNotification?.Invoke(
+                    this,
+                    new LobbyNotificationEventArgs("Connection to the game host timed out.".L10N("UI:Main:HostConnectTimeOut")));
+                LeaveGame();
+            }
+        }
+
+        base.Update(gameTime);
     }
 
-    public void SetChatColorIndex(int colorIndex)
+    protected override void AddNotice(string message, Color color)
     {
-        chatColorIndex = colorIndex;
+        LbChatMessages.AddMessage(null, message, color);
+    }
+
+    protected override void BroadcastOptions()
+    {
+        if (Players.Count > 0)
+            Players[0].Ready = true;
+
+        ExtendedStringBuilder sb = new(OPTIONS_COMMAND + " ", true)
+        {
+            Separator = ProgramConstants.LANDATASEPARATOR
+        };
+
+        sb.Append(DdSavedGame.SelectedIndex);
+
+        foreach (PlayerInfo pInfo in Players)
+        {
+            sb.Append(pInfo.Name);
+            sb.Append(Convert.ToInt32(pInfo.Ready));
+            sb.Append(pInfo.IPAddress);
+        }
+
+        BroadcastMessage(sb.ToString());
+    }
+
+    protected override void HandleGameProcessExited()
+    {
+        base.HandleGameProcessExited();
+
+        LeaveGame();
+    }
+
+    protected override void HostStartGame()
+    {
+        BroadcastMessage(GAME_LAUNCH_COMMAND);
     }
 
     protected override void LeaveGame()
@@ -163,166 +238,109 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         base.LeaveGame();
     }
 
-    protected override void AddNotice(string message, Color color)
+    protected override void RequestReadyStatus()
     {
-        lbChatMessages.AddMessage(null, message, color);
+        SendMessageToHost(READY_STATUS_COMMAND);
     }
 
-    #region Server code
-
-    private void ListenForClients()
+    protected override void SendChatMessage(string message)
     {
-        listener = new TcpListener(IPAddress.Any, ProgramConstants.LANGAMELOBBYPORT);
-        listener.Start();
+        SendMessageToHost(CHAT_COMMAND + " " + chatColorIndex +
+            ProgramConstants.LANDATASEPARATOR + message);
 
-        while (true)
-        {
-            TcpClient client;
-
-            try
-            {
-                client = listener.AcceptTcpClient();
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Listener error: " + ex.Message);
-                break;
-            }
-
-            Logger.Log("New client connected from " + ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString());
-
-            LANPlayerInfo lpInfo = new(encoding);
-            lpInfo.SetClient(client);
-
-            Thread thread = new(new ParameterizedThreadStart(HandleClientConnection));
-            thread.Start(lpInfo);
-        }
+        SndMessageSound.Play();
     }
 
-    private void HandleClientConnection(object clientInfo)
+    protected override void UpdateDiscordPresence(bool resetTimer = false)
     {
-        LANPlayerInfo lpInfo = (LANPlayerInfo)clientInfo;
-
-        byte[] message = new byte[1024];
-
-        while (true)
-        {
-            int bytesRead = 0;
-
-            try
-            {
-                bytesRead = lpInfo.TcpClient.GetStream().Read(message, 0, message.Length);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Socket error with client " + lpInfo.IPAddress + "; removing. Message: " + ex.Message);
-                break;
-            }
-
-            if (bytesRead == 0)
-            {
-                Logger.Log("Connect attempt from " + lpInfo.IPAddress + " failed! (0 bytes read)");
-
-                break;
-            }
-
-            string msg = encoding.GetString(message, 0, bytesRead);
-
-            string[] command = msg.Split(ProgramConstants.LANMESSAGESEPARATOR);
-            string[] parts = command[0].Split(ProgramConstants.LANDATASEPARATOR);
-
-            if (parts.Length != 3)
-                break;
-
-            string name = parts[1].Trim();
-            int loadedGameId = Conversions.IntFromString(parts[2], -1);
-
-            if (parts[0] == "JOIN" && !string.IsNullOrEmpty(name)
-                && loadedGameId == this.loadedGameId)
-            {
-                lpInfo.Name = name;
-
-                AddCallback(new Action<LANPlayerInfo>(AddPlayer), lpInfo);
-                return;
-            }
-
-            break;
-        }
-
-        if (lpInfo.TcpClient.Connected)
-            lpInfo.TcpClient.Close();
-    }
-
-    private void AddPlayer(LANPlayerInfo lpInfo)
-    {
-        if (players.Find(p => p.Name == lpInfo.Name) != null ||
-            players.Count >= sGPlayers.Count ||
-            sGPlayers.Find(p => p.Name == lpInfo.Name) == null)
-        {
-            lpInfo.TcpClient.Close();
+        if (DiscordHandler == null)
             return;
+
+        PlayerInfo player = Players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+        if (player == null)
+            return;
+        string currentState = ProgramConstants.IsInGame ? "In Game" : "In Lobby"; // not UI strings
+
+        DiscordHandler.UpdatePresence(
+            LblMapNameValue.Text,
+            LblGameModeValue.Text,
+            currentState,
+            "LAN",
+            Players.Count,
+            SGPlayers.Count,
+            "LAN Game",
+            IsHost,
+            resetTimer);
+    }
+
+    private void BroadcastGame()
+    {
+        ExtendedStringBuilder sb = new("GAME ", true)
+        {
+            Separator = ProgramConstants.LANDATASEPARATOR
+        };
+        sb.Append(ProgramConstants.LANPROTOCOLREVISION);
+        sb.Append(ProgramConstants.GameVersion);
+        sb.Append(localGame);
+        sb.Append(LblMapNameValue.Text);
+        sb.Append(LblGameModeValue.Text);
+        sb.Append(0); // LoadedGameID
+        StringBuilder sbPlayers = new();
+        SGPlayers.ForEach(p => sbPlayers.Append(p.Name + ","));
+        _ = sbPlayers.Remove(sbPlayers.Length - 1, 1);
+        sb.Append(sbPlayers.ToString());
+        sb.Append(Convert.ToInt32(started || Players.Count == SGPlayers.Count));
+        sb.Append(1); // IsLoadedGame
+
+        GameBroadcast?.Invoke(this, new GameBroadcastEventArgs(sb.ToString()));
+    }
+
+    /// <summary>
+    /// Broadcasts a command to all players in the game as the game host.
+    /// </summary>
+    /// <param name="message">The command to send.</param>
+    private void BroadcastMessage(string message)
+    {
+        if (!IsHost)
+            return;
+
+        foreach (PlayerInfo pInfo in Players)
+        {
+            LANPlayerInfo lpInfo = (LANPlayerInfo)pInfo;
+            lpInfo.SendMessage(message);
+        }
+    }
+
+    private void Clear()
+    {
+        if (IsHost)
+        {
+            BroadcastMessage(PLAYER_QUIT_COMMAND);
+            Players.ForEach(p => CleanUpPlayer((LANPlayerInfo)p));
+            Players.Clear();
+            listener.Stop();
+        }
+        else
+        {
+            SendMessageToHost(PLAYER_QUIT_COMMAND);
         }
 
-        if (players.Count == 0)
-            lpInfo.Ready = true;
-
-        players.Add(lpInfo);
-
-        lpInfo.MessageReceived += LpInfo_MessageReceived;
-        lpInfo.ConnectionLost += LpInfo_ConnectionLost;
-
-        sndJoinSound.Play();
-
-        AddNotice(string.Format("{0} connected from {1}".L10N("UI:Main:PlayerFromIP"), lpInfo.Name, lpInfo.IPAddress));
-        lpInfo.StartReceiveLoop();
-
-        CopyPlayerDataToUI();
-        BroadcastOptions();
-        UpdateDiscordPresence();
+        if (client.Connected)
+            client.Close();
     }
 
-    private void LpInfo_ConnectionLost(object sender, EventArgs e)
+    private void HandleMessageFromServer(string message)
     {
-        LANPlayerInfo lpInfo = (LANPlayerInfo)sender;
-        CleanUpPlayer(lpInfo);
-        _ = players.Remove(lpInfo);
+        timeSinceLastReceivedCommand = TimeSpan.Zero;
 
-        AddNotice(string.Format("{0} has left the game.".L10N("UI:Main:PlayerLeftGame"), lpInfo.Name));
-
-        sndLeaveSound.Play();
-
-        CopyPlayerDataToUI();
-        BroadcastOptions();
-        UpdateDiscordPresence();
-    }
-
-    private void LpInfo_MessageReceived(object sender, NetworkMessageEventArgs e)
-    {
-        AddCallback(
-            new Action<string, LANPlayerInfo>(HandleClientMessage),
-            e.Message, (LANPlayerInfo)sender);
-    }
-
-    private void HandleClientMessage(string data, LANPlayerInfo lpInfo)
-    {
-        lpInfo.TimeSinceLastReceivedMessage = TimeSpan.Zero;
-
-        foreach (LANServerCommandHandler cmdHandler in hostCommandHandlers)
+        foreach (LANClientCommandHandler cmdHandler in playerCommandHandlers)
         {
-            if (cmdHandler.Handle(lpInfo, data))
+            if (cmdHandler.Handle(message))
                 return;
         }
 
-        Logger.Log("Unknown LAN command from " + lpInfo.ToString() + " : " + data);
+        Logger.Log("Unknown LAN command from the server: " + message);
     }
-
-    private void CleanUpPlayer(LANPlayerInfo lpInfo)
-    {
-        lpInfo.MessageReceived -= LpInfo_MessageReceived;
-        lpInfo.TcpClient.Close();
-    }
-
-    #endregion Server code
 
     private void HandleServerCommunication()
     {
@@ -389,76 +407,189 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         }
     }
 
-    private void HandleMessageFromServer(string message)
+    private void SendMessageToHost(string message)
     {
-        timeSinceLastReceivedCommand = TimeSpan.Zero;
+        if (!client.Connected)
+            return;
 
-        foreach (LANClientCommandHandler cmdHandler in playerCommandHandlers)
+        byte[] buffer = encoding.GetBytes(
+            message + ProgramConstants.LANMESSAGESEPARATOR);
+
+        NetworkStream ns = client.GetStream();
+
+        try
         {
-            if (cmdHandler.Handle(message))
+            ns.Write(buffer, 0, buffer.Length);
+            ns.Flush();
+        }
+        catch
+        {
+            Logger.Log("Sending message to game host failed!");
+        }
+    }
+
+    private void WindowManager_GameClosing(object sender, EventArgs e)
+    {
+        if (client != null && client.Connected)
+            Clear();
+    }
+
+    #region Server code
+
+    private void AddPlayer(LANPlayerInfo lpInfo)
+    {
+        if (Players.Find(p => p.Name == lpInfo.Name) != null ||
+            Players.Count >= SGPlayers.Count ||
+            SGPlayers.Find(p => p.Name == lpInfo.Name) == null)
+        {
+            lpInfo.TcpClient.Close();
+            return;
+        }
+
+        if (Players.Count == 0)
+            lpInfo.Ready = true;
+
+        Players.Add(lpInfo);
+
+        lpInfo.MessageReceived += LpInfo_MessageReceived;
+        lpInfo.ConnectionLost += LpInfo_ConnectionLost;
+
+        SndJoinSound.Play();
+
+        AddNotice(string.Format("{0} connected from {1}".L10N("UI:Main:PlayerFromIP"), lpInfo.Name, lpInfo.IPAddress));
+        lpInfo.StartReceiveLoop();
+
+        CopyPlayerDataToUI();
+        BroadcastOptions();
+        UpdateDiscordPresence();
+    }
+
+    private void CleanUpPlayer(LANPlayerInfo lpInfo)
+    {
+        lpInfo.MessageReceived -= LpInfo_MessageReceived;
+        lpInfo.TcpClient.Close();
+    }
+
+    private void HandleClientConnection(object clientInfo)
+    {
+        LANPlayerInfo lpInfo = (LANPlayerInfo)clientInfo;
+
+        byte[] message = new byte[1024];
+
+        while (true)
+        {
+            int bytesRead = 0;
+
+            try
+            {
+                bytesRead = lpInfo.TcpClient.GetStream().Read(message, 0, message.Length);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Socket error with client " + lpInfo.IPAddress + "; removing. Message: " + ex.Message);
+                break;
+            }
+
+            if (bytesRead == 0)
+            {
+                Logger.Log("Connect attempt from " + lpInfo.IPAddress + " failed! (0 bytes read)");
+
+                break;
+            }
+
+            string msg = encoding.GetString(message, 0, bytesRead);
+
+            string[] command = msg.Split(ProgramConstants.LANMESSAGESEPARATOR);
+            string[] parts = command[0].Split(ProgramConstants.LANDATASEPARATOR);
+
+            if (parts.Length != 3)
+                break;
+
+            string name = parts[1].Trim();
+            int loadedGameId = Conversions.IntFromString(parts[2], -1);
+
+            if (parts[0] == "JOIN" && !string.IsNullOrEmpty(name)
+                && loadedGameId == this.loadedGameId)
+            {
+                lpInfo.Name = name;
+
+                AddCallback(new Action<LANPlayerInfo>(AddPlayer), lpInfo);
+                return;
+            }
+
+            break;
+        }
+
+        if (lpInfo.TcpClient.Connected)
+            lpInfo.TcpClient.Close();
+    }
+
+    private void HandleClientMessage(string data, LANPlayerInfo lpInfo)
+    {
+        lpInfo.TimeSinceLastReceivedMessage = TimeSpan.Zero;
+
+        foreach (LANServerCommandHandler cmdHandler in hostCommandHandlers)
+        {
+            if (cmdHandler.Handle(lpInfo, data))
                 return;
         }
 
-        Logger.Log("Unknown LAN command from the server: " + message);
+        Logger.Log("Unknown LAN command from " + lpInfo.ToString() + " : " + data);
     }
 
-    private void Clear()
+    private void ListenForClients()
     {
-        if (isHost)
+        listener = new TcpListener(IPAddress.Any, ProgramConstants.LANGAMELOBBYPORT);
+        listener.Start();
+
+        while (true)
         {
-            BroadcastMessage(PLAYER_QUIT_COMMAND);
-            players.ForEach(p => CleanUpPlayer((LANPlayerInfo)p));
-            players.Clear();
-            listener.Stop();
+            TcpClient client;
+
+            try
+            {
+                client = listener.AcceptTcpClient();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Listener error: " + ex.Message);
+                break;
+            }
+
+            Logger.Log("New client connected from " + ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString());
+
+            LANPlayerInfo lpInfo = new(encoding);
+            lpInfo.SetClient(client);
+
+            Thread thread = new(new ParameterizedThreadStart(HandleClientConnection));
+            thread.Start(lpInfo);
         }
-        else
-        {
-            SendMessageToHost(PLAYER_QUIT_COMMAND);
-        }
-
-        if (client.Connected)
-            client.Close();
     }
 
-    protected override void BroadcastOptions()
+    private void LpInfo_ConnectionLost(object sender, EventArgs e)
     {
-        if (players.Count > 0)
-            players[0].Ready = true;
+        LANPlayerInfo lpInfo = (LANPlayerInfo)sender;
+        CleanUpPlayer(lpInfo);
+        _ = Players.Remove(lpInfo);
 
-        ExtendedStringBuilder sb = new(OPTIONS_COMMAND + " ", true)
-        {
-            Separator = ProgramConstants.LANDATASEPARATOR
-        };
+        AddNotice(string.Format("{0} has left the game.".L10N("UI:Main:PlayerLeftGame"), lpInfo.Name));
 
-        sb.Append(ddSavedGame.SelectedIndex);
+        SndLeaveSound.Play();
 
-        foreach (PlayerInfo pInfo in players)
-        {
-            sb.Append(pInfo.Name);
-            sb.Append(Convert.ToInt32(pInfo.Ready));
-            sb.Append(pInfo.IPAddress);
-        }
-
-        BroadcastMessage(sb.ToString());
+        CopyPlayerDataToUI();
+        BroadcastOptions();
+        UpdateDiscordPresence();
     }
 
-    protected override void HostStartGame()
+    private void LpInfo_MessageReceived(object sender, NetworkMessageEventArgs e)
     {
-        BroadcastMessage(GAME_LAUNCH_COMMAND);
+        AddCallback(
+            new Action<string, LANPlayerInfo>(HandleClientMessage),
+            e.Message,
+            (LANPlayerInfo)sender);
     }
 
-    protected override void RequestReadyStatus()
-    {
-        SendMessageToHost(READY_STATUS_COMMAND);
-    }
-
-    protected override void SendChatMessage(string message)
-    {
-        SendMessageToHost(CHAT_COMMAND + " " + chatColorIndex +
-            ProgramConstants.LANDATASEPARATOR + message);
-
-        sndMessageSound.Play();
-    }
+    #endregion Server code
 
     #region Server's command handlers
 
@@ -514,16 +645,18 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
         if (colorIndex < 0 || colorIndex >= chatColors.Length)
             return;
 
-        lbChatMessages.AddMessage(new ChatMessage(
+        LbChatMessages.AddMessage(new ChatMessage(
             playerName,
-            chatColors[colorIndex].XNAColor, DateTime.Now, parts[2]));
+            chatColors[colorIndex].XNAColor,
+            DateTime.Now,
+            parts[2]));
 
-        sndMessageSound.Play();
+        SndMessageSound.Play();
     }
 
     private void Client_HandleOptionsMessage(string data)
     {
-        if (isHost)
+        if (IsHost)
             return;
 
         string[] parts = data.Split(ProgramConstants.LANDATASEPARATOR);
@@ -534,14 +667,14 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
             return;
 
         int savedGameIndex = Conversions.IntFromString(parts[0], -1);
-        if (savedGameIndex < 0 || savedGameIndex >= ddSavedGame.Items.Count)
+        if (savedGameIndex < 0 || savedGameIndex >= DdSavedGame.Items.Count)
         {
             return;
         }
 
-        ddSavedGame.SelectedIndex = savedGameIndex;
+        DdSavedGame.SelectedIndex = savedGameIndex;
 
-        players.Clear();
+        Players.Clear();
 
         for (int i = 0; i < pCount; i++)
         {
@@ -556,11 +689,11 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
                 Ready = ready,
                 IPAddress = ipAddress
             };
-            players.Add(pInfo);
+            Players.Add(pInfo);
         }
 
-        if (players.Count > 0) // Set IP of host
-            players[0].IPAddress = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+        if (Players.Count > 0) // Set IP of host
+            Players[0].IPAddress = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
 
         CopyPlayerDataToUI();
     }
@@ -573,134 +706,4 @@ internal class LANGameLoadingLobby : GameLoadingLobbyBase
     }
 
     #endregion Client's command handlers
-
-    /// <summary>
-    /// Broadcasts a command to all players in the game as the game host.
-    /// </summary>
-    /// <param name="message">The command to send.</param>
-    private void BroadcastMessage(string message)
-    {
-        if (!isHost)
-            return;
-
-        foreach (PlayerInfo pInfo in players)
-        {
-            LANPlayerInfo lpInfo = (LANPlayerInfo)pInfo;
-            lpInfo.SendMessage(message);
-        }
-    }
-
-    private void SendMessageToHost(string message)
-    {
-        if (!client.Connected)
-            return;
-
-        byte[] buffer = encoding.GetBytes(
-            message + ProgramConstants.LANMESSAGESEPARATOR);
-
-        NetworkStream ns = client.GetStream();
-
-        try
-        {
-            ns.Write(buffer, 0, buffer.Length);
-            ns.Flush();
-        }
-        catch
-        {
-            Logger.Log("Sending message to game host failed!");
-        }
-    }
-
-    public override string GetSwitchName()
-    {
-        return "Load Game".L10N("UI:Main:LoadGameSwitchName");
-    }
-
-    public override void Update(GameTime gameTime)
-    {
-        if (isHost)
-        {
-            for (int i = 1; i < players.Count; i++)
-            {
-                LANPlayerInfo lpInfo = (LANPlayerInfo)players[i];
-                if (!lpInfo.Update(gameTime))
-                {
-                    CleanUpPlayer(lpInfo);
-                    players.RemoveAt(i);
-                    AddNotice(string.Format("{0} - connection timed out".L10N("UI:Main:PlayerTimeout"), lpInfo.Name));
-                    CopyPlayerDataToUI();
-                    BroadcastOptions();
-                    UpdateDiscordPresence();
-                    i--;
-                }
-            }
-
-            timeSinceGameBroadcast += gameTime.ElapsedGameTime;
-
-            if (timeSinceGameBroadcast > TimeSpan.FromSeconds(GAME_BROADCAST_INTERVAL))
-            {
-                BroadcastGame();
-                timeSinceGameBroadcast = TimeSpan.Zero;
-            }
-        }
-        else
-        {
-            timeSinceLastReceivedCommand += gameTime.ElapsedGameTime;
-
-            if (timeSinceLastReceivedCommand > TimeSpan.FromSeconds(DROPOUT_TIMEOUT))
-            {
-                LobbyNotification?.Invoke(
-                    this,
-                    new LobbyNotificationEventArgs("Connection to the game host timed out.".L10N("UI:Main:HostConnectTimeOut")));
-                LeaveGame();
-            }
-        }
-
-        base.Update(gameTime);
-    }
-
-    protected override void HandleGameProcessExited()
-    {
-        base.HandleGameProcessExited();
-
-        LeaveGame();
-    }
-
-    private void BroadcastGame()
-    {
-        ExtendedStringBuilder sb = new("GAME ", true)
-        {
-            Separator = ProgramConstants.LANDATASEPARATOR
-        };
-        sb.Append(ProgramConstants.LANPROTOCOLREVISION);
-        sb.Append(ProgramConstants.GAME_VERSION);
-        sb.Append(localGame);
-        sb.Append(lblMapNameValue.Text);
-        sb.Append(lblGameModeValue.Text);
-        sb.Append(0); // LoadedGameID
-        StringBuilder sbPlayers = new();
-        sGPlayers.ForEach(p => sbPlayers.Append(p.Name + ","));
-        _ = sbPlayers.Remove(sbPlayers.Length - 1, 1);
-        sb.Append(sbPlayers.ToString());
-        sb.Append(Convert.ToInt32(started || players.Count == sGPlayers.Count));
-        sb.Append(1); // IsLoadedGame
-
-        GameBroadcast?.Invoke(this, new GameBroadcastEventArgs(sb.ToString()));
-    }
-
-    protected override void UpdateDiscordPresence(bool resetTimer = false)
-    {
-        if (discordHandler == null)
-            return;
-
-        PlayerInfo player = players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
-        if (player == null)
-            return;
-        string currentState = ProgramConstants.IsInGame ? "In Game" : "In Lobby"; // not UI strings
-
-        discordHandler.UpdatePresence(
-            lblMapNameValue.Text, lblGameModeValue.Text, currentState, "LAN",
-            players.Count, sGPlayers.Count,
-            "LAN Game", isHost, resetTimer);
-    }
 }

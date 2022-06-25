@@ -5,8 +5,6 @@
 /// </summary>
 public struct Server
 {
-    public string Host;
-
     public Server(string host, string name, int[] ports)
     {
         Host = host;
@@ -14,6 +12,9 @@ public struct Server
         Ports = ports;
     }
 
-    public string Name;
-    public int[] Ports;
+    public string Host { get; set; }
+
+    public string Name { get; set; }
+
+    public int[] Ports { get; set; }
 }

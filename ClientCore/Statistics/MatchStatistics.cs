@@ -9,8 +9,6 @@ namespace ClientCore.Statistics;
 
 public class MatchStatistics
 {
-    public List<PlayerStatistics> Players = new();
-
     public MatchStatistics()
     {
     }
@@ -25,6 +23,8 @@ public class MatchStatistics
         NumberOfHumanPlayers = numHumans;
         MapIsCoop = mapIsCoop;
     }
+
+    public List<PlayerStatistics> Players { get; } = new();
 
     public int LengthInSeconds { get; set; }
 
@@ -48,11 +48,25 @@ public class MatchStatistics
 
     public bool IsValidForStar { get; set; } = true;
 
-    public void AddPlayer(string name, bool isLocal, bool isAI, bool isSpectator,
-        int side, int team, int color, int aiLevel)
+    public void AddPlayer(
+        string name,
+        bool isLocal,
+        bool isAI,
+        bool isSpectator,
+        int side,
+        int team,
+        int color,
+        int aiLevel)
     {
-        PlayerStatistics ps = new(name, isLocal, isAI, isSpectator,
-            side, team, color, aiLevel);
+        PlayerStatistics ps = new(
+            name,
+            isLocal,
+            isAI,
+            isSpectator,
+            side,
+            team,
+            color,
+            aiLevel);
         Players.Add(ps);
     }
 
@@ -61,7 +75,7 @@ public class MatchStatistics
         Players.Add(ps);
     }
 
-    public void ParseStatistics(string gamePath, string gameName, bool isLoadedGame)
+    public void ParseStatistics(string gamePath, bool isLoadedGame)
     {
         Logger.Log("Parsing game statistics.");
 

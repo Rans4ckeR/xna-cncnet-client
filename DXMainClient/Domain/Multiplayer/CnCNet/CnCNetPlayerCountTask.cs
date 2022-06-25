@@ -15,9 +15,9 @@ public static class CnCNetPlayerCountTask
 
     private static string cncnetLiveStatusIdentifier;
 
-    public static int PlayerCount { get; private set; }
-
     internal static event EventHandler<PlayerCountEventArgs> CnCNetGameCountUpdated;
+
+    public static int PlayerCount { get; private set; }
 
     public static void InitializeService(CancellationTokenSource cts)
     {
@@ -26,24 +26,6 @@ public static class CnCNetPlayerCountTask
 
         CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(PlayerCount));
         _ = ThreadPool.QueueUserWorkItem(new WaitCallback(RunService), cts);
-    }
-
-    private static void RunService(object tokenObj)
-    {
-        WaitHandle waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
-
-        while (true)
-        {
-            if (waitHandle.WaitOne(REFRESH_INTERVAL))
-            {
-                // Cancellation signaled
-                return;
-            }
-            else
-            {
-                CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(GetCnCNetPlayerCount()));
-            }
-        }
     }
 
     private static int GetCnCNetPlayerCount()
@@ -84,14 +66,22 @@ public static class CnCNetPlayerCountTask
             return -1;
         }
     }
-}
 
-internal class PlayerCountEventArgs : EventArgs
-{
-    public PlayerCountEventArgs(int playerCount)
+    private static void RunService(object tokenObj)
     {
-        PlayerCount = playerCount;
-    }
+        WaitHandle waitHandle = ((CancellationTokenSource)tokenObj).Token.WaitHandle;
 
-    public int PlayerCount { get; set; }
+        while (true)
+        {
+            if (waitHandle.WaitOne(REFRESH_INTERVAL))
+            {
+                // Cancellation signaled
+                return;
+            }
+            else
+            {
+                CnCNetGameCountUpdated?.Invoke(null, new PlayerCountEventArgs(GetCnCNetPlayerCount()));
+            }
+        }
+    }
 }

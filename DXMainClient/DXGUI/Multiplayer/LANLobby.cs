@@ -27,12 +27,46 @@ internal class LANLobby : XNAWindow
 {
     private const double ALIVE_MESSAGE_INTERVAL = 5.0;
     private const double INACTIVITY_REMOVE_TIME = 10.0;
+    private readonly DiscordHandler discordHandler;
     private readonly GameCollection gameCollection;
 
+    private readonly List<GameMode> gameModes;
+    private readonly MapLoader mapLoader;
+    private readonly List<LANLobbyUser> players = new();
+    private XNAClientButton btnJoinGame;
+    private XNAClientButton btnMainMenu;
+    private XNAClientButton btnNewGame;
+    private LANColor[] chatColors;
+    private XNAClientDropDown ddColor;
+    private Encoding encoding;
+    private IPEndPoint endPoint;
+    private LANGameCreationWindow gameCreationWindow;
+    private bool initSuccess = false;
+    private LANGameLoadingLobby lanGameLoadingLobby;
+    private LANGameLobby lanGameLobby;
+    private ChatListBox lbChatMessages;
+    private GameListBox lbGameList;
+    private XNALabel lblColor;
     private XNAListBox lbPlayerList;
 
-    public LANLobby(WindowManager windowManager, GameCollection gameCollection,
-        List<GameMode> gameModes, MapLoader mapLoader, DiscordHandler discordHandler)
+    private string localGame;
+
+    private int localGameIndex;
+
+    private Socket socket;
+
+    private XNAChatTextBox tbChatInput;
+
+    private TimeSpan timeSinceAliveMessage = TimeSpan.Zero;
+
+    private Texture2D unknownGameIcon;
+
+    public LANLobby(
+        WindowManager windowManager,
+        GameCollection gameCollection,
+        List<GameMode> gameModes,
+        MapLoader mapLoader,
+        DiscordHandler discordHandler)
         : base(windowManager)
     {
         this.gameCollection = gameCollection;
@@ -43,38 +77,14 @@ internal class LANLobby : XNAWindow
 
     public event EventHandler Exited;
 
-    private ChatListBox lbChatMessages;
-    private GameListBox lbGameList;
-    private XNAClientButton btnMainMenu;
-    private XNAClientButton btnNewGame;
-    private XNAClientButton btnJoinGame;
-    private XNAChatTextBox tbChatInput;
-    private XNALabel lblColor;
-    private XNAClientDropDown ddColor;
-    private LANGameCreationWindow gameCreationWindow;
-    private LANGameLobby lanGameLobby;
-    private LANGameLoadingLobby lanGameLoadingLobby;
-    private Texture2D unknownGameIcon;
-    private LANColor[] chatColors;
-    private string localGame;
-    private int localGameIndex;
-    private readonly List<GameMode> gameModes;
-    private readonly List<LANLobbyUser> players = new();
-    private readonly MapLoader mapLoader;
-    private TimeSpan timeSinceGameRefresh = TimeSpan.Zero;
-    private EnhancedSoundEffect sndGameCreated;
-    private Socket socket;
-    private IPEndPoint endPoint;
-    private Encoding encoding;
-    private TimeSpan timeSinceAliveMessage = TimeSpan.Zero;
-    private readonly DiscordHandler discordHandler;
-    private bool initSuccess = false;
-
     public override void Initialize()
     {
         Name = "LANLobby";
         BackgroundTexture = AssetLoader.LoadTexture("cncnetlobbybg.png");
-        ClientRectangle = new Rectangle(0, 0, WindowManager.RenderResolutionX - 64,
+        ClientRectangle = new Rectangle(
+            0,
+            0,
+            WindowManager.RenderResolutionX - 64,
             WindowManager.RenderResolutionY - 64);
 
         localGame = ClientConfiguration.Instance.LocalGame;
@@ -84,7 +94,11 @@ internal class LANLobby : XNAWindow
         btnNewGame = new XNAClientButton(WindowManager)
         {
             Name = "btnNewGame",
-            ClientRectangle = new Rectangle(12, Height - 35, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(
+                12,
+                Height - 35,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
             Text = "Create Game".L10N("UI:Main:CreateGame")
         };
         btnNewGame.LeftClick += BtnNewGame_LeftClick;
@@ -94,7 +108,9 @@ internal class LANLobby : XNAWindow
             Name = "btnJoinGame",
             ClientRectangle = new Rectangle(
                 btnNewGame.Right + 12,
-            btnNewGame.Y, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+                btnNewGame.Y,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
             Text = "Join Game".L10N("UI:Main:JoinGame")
         };
         btnJoinGame.LeftClick += BtnJoinGame_LeftClick;
@@ -104,7 +120,9 @@ internal class LANLobby : XNAWindow
             Name = "btnMainMenu",
             ClientRectangle = new Rectangle(
                 Width - 145,
-            btnNewGame.Y, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+                btnNewGame.Y,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
             Text = "Main Menu".L10N("UI:Main:MainMenu")
         };
         btnMainMenu.LeftClick += BtnMainMenu_LeftClick;
@@ -114,8 +132,9 @@ internal class LANLobby : XNAWindow
             Name = "lbGameList",
             ClientRectangle = new Rectangle(
                 btnNewGame.X,
-            41, btnJoinGame.Right - btnNewGame.X,
-            btnNewGame.Y - 53),
+                41,
+                btnJoinGame.Right - btnNewGame.X,
+                btnNewGame.Y - 53),
             GameLifetime = 15.0, // Smaller lifetime in LAN
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1)
@@ -128,8 +147,9 @@ internal class LANLobby : XNAWindow
             Name = "lbPlayerList",
             ClientRectangle = new Rectangle(
                 Width - 202,
-            lbGameList.Y, 190,
-            lbGameList.Height),
+                lbGameList.Y,
+                190,
+                lbGameList.Height),
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1),
             LineHeight = 16
@@ -140,9 +160,9 @@ internal class LANLobby : XNAWindow
             Name = "lbChatMessages",
             ClientRectangle = new Rectangle(
                 lbGameList.Right + 12,
-            lbGameList.Y,
-            lbPlayerList.X - lbGameList.Right - 24,
-            lbGameList.Height),
+                lbGameList.Y,
+                lbPlayerList.X - lbGameList.Right - 24,
+                lbGameList.Height),
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1),
             LineHeight = 16
@@ -153,8 +173,9 @@ internal class LANLobby : XNAWindow
             Name = "tbChatInput",
             ClientRectangle = new Rectangle(
                 lbChatMessages.X,
-            btnNewGame.Y, lbChatMessages.Width,
-            btnNewGame.Height),
+                btnNewGame.Y,
+                lbChatMessages.Width,
+                btnNewGame.Height),
             Suggestion = "Type here to chat...".L10N("UI:Main:ChatHere"),
             MaximumTextLength = 200
         };
@@ -171,8 +192,11 @@ internal class LANLobby : XNAWindow
         ddColor = new XNAClientDropDown(WindowManager)
         {
             Name = "ddColor",
-            ClientRectangle = new Rectangle(lblColor.X + 95, 12,
-            150, 21)
+            ClientRectangle = new Rectangle(
+                lblColor.X + 95,
+                12,
+                150,
+                21)
         };
 
         chatColors = new LANColor[]
@@ -221,8 +245,7 @@ internal class LANLobby : XNAWindow
 
         unknownGameIcon = AssetLoader.TextureFromImage(ClientCore.Properties.Resources.unknownicon);
 
-        sndGameCreated = new EnhancedSoundEffect("gamecreated.wav");
-
+        //sndGameCreated = new EnhancedSoundEffect("gamecreated.wav");
         encoding = Encoding.UTF8;
 
         base.Initialize();
@@ -230,14 +253,21 @@ internal class LANLobby : XNAWindow
         CenterOnParent();
         gameCreationPanel.SetPositionAndSize();
 
-        lanGameLobby = new LANGameLobby(WindowManager, "MultiplayerGameLobby",
-            null, chatColors, mapLoader, discordHandler);
+        lanGameLobby = new LANGameLobby(
+            WindowManager,
+            "MultiplayerGameLobby",
+            null,
+            chatColors,
+            mapLoader,
+            discordHandler);
         DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLobby);
         lanGameLobby.Disable();
 
         lanGameLoadingLobby = new LANGameLoadingLobby(
             WindowManager,
-            gameModes, chatColors, discordHandler);
+            gameModes,
+            chatColors,
+            discordHandler);
         DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLoadingLobby);
         lanGameLoadingLobby.Disable();
 
@@ -322,68 +352,26 @@ internal class LANLobby : XNAWindow
         base.Update(gameTime);
     }
 
-    private void LanGameLoadingLobby_GameLeft(object sender, EventArgs e)
+    private void BtnJoinGame_LeftClick(object sender, EventArgs e)
     {
-        Enable();
+        LbGameList_DoubleLeftClick(this, EventArgs.Empty);
     }
 
-    private void WindowManager_GameClosing(object sender, EventArgs e)
+    private void BtnMainMenu_LeftClick(object sender, EventArgs e)
     {
-        if (socket == null)
-            return;
-
-        if (socket.IsBound)
-        {
-            try
-            {
-                SendMessage("QUIT");
-                socket.Close();
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-        }
+        Visible = false;
+        Enabled = false;
+        SendMessage("QUIT");
+        socket.Close();
+        Exited?.Invoke(this, EventArgs.Empty);
     }
 
-    private void LanGameLobby_GameBroadcast(object sender, GameBroadcastEventArgs e)
+    private void BtnNewGame_LeftClick(object sender, EventArgs e)
     {
-        SendMessage(e.Message);
-    }
-
-    private void LanGameLobby_GameLeft(object sender, EventArgs e)
-    {
-        Enable();
-    }
-
-    private void LanGameLoadingLobby_GameBroadcast(object sender, GameBroadcastEventArgs e)
-    {
-        SendMessage(e.Message);
-    }
-
-    private void GameCreationWindow_LoadGame(object sender, GameLoadEventArgs e)
-    {
-        lanGameLoadingLobby.SetUp(
-            true,
-            new IPEndPoint(IPAddress.Loopback, ProgramConstants.LANGAMELOBBYPORT),
-            null, e.LoadedGameID);
-
-        lanGameLoadingLobby.Enable();
-    }
-
-    private void GameCreationWindow_NewGame(object sender, EventArgs e)
-    {
-        lanGameLobby.SetUp(
-            true,
-            new IPEndPoint(IPAddress.Loopback, ProgramConstants.LANGAMELOBBYPORT), null);
-
-        lanGameLobby.Enable();
-    }
-
-    private void SetChatColor()
-    {
-        tbChatInput.TextColor = chatColors[ddColor.SelectedIndex].XNAColor;
-        lanGameLobby.SetChatColorIndex(ddColor.SelectedIndex);
-        UserINISettings.Instance.LANChatColor.Value = ddColor.SelectedIndex;
+        if (!ClientConfiguration.Instance.DisableMultiplayerGameLoading)
+            gameCreationWindow.Open();
+        else
+            GameCreationWindow_NewGame(sender, e);
     }
 
     private void DdColor_SelectedIndexChanged(object sender, EventArgs e)
@@ -392,43 +380,24 @@ internal class LANLobby : XNAWindow
         UserINISettings.Instance.SaveSettings();
     }
 
-    private void SendMessage(string message)
+    private void GameCreationWindow_LoadGame(object sender, GameLoadEventArgs e)
     {
-        if (!initSuccess)
-            return;
+        lanGameLoadingLobby.SetUp(
+            true,
+            null,
+            e.LoadedGameID);
 
-        byte[] buffer;
-
-        buffer = encoding.GetBytes(message);
-
-        _ = socket.SendTo(buffer, endPoint);
+        lanGameLoadingLobby.Enable();
     }
 
-    private void Listen()
+    private void GameCreationWindow_NewGame(object sender, EventArgs e)
     {
-        try
-        {
-            while (true)
-            {
-                EndPoint ep = new IPEndPoint(IPAddress.Any, ProgramConstants.LANLOBBYPORT);
-                byte[] buffer = new byte[4096];
-                int receivedBytes = 0;
-                receivedBytes = socket.ReceiveFrom(buffer, ref ep);
+        lanGameLobby.SetUp(
+            true,
+            new IPEndPoint(IPAddress.Loopback, ProgramConstants.LANGAMELOBBYPORT),
+            null);
 
-                IPEndPoint iep = (IPEndPoint)ep;
-
-                string data = encoding.GetString(buffer, 0, receivedBytes);
-
-                if (data == string.Empty)
-                    continue;
-
-                AddCallback(new Action<string, IPEndPoint>(HandleNetworkMessage), data, iep);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("LAN socket listener: exception: " + ex.Message);
-        }
+        lanGameLobby.Enable();
     }
 
     private void HandleNetworkMessage(string data, IPEndPoint endPoint)
@@ -485,7 +454,9 @@ internal class LANLobby : XNAWindow
 
                 lbChatMessages.AddMessage(new ChatMessage(
                     user.Name,
-                    chatColors[colorIndex].XNAColor, DateTime.Now, parameters[1]));
+                    chatColors[colorIndex].XNAColor,
+                    DateTime.Now,
+                    parameters[1]));
 
                 break;
 
@@ -525,31 +496,24 @@ internal class LANLobby : XNAWindow
         }
     }
 
-    private void SendAlive()
+    private void LanGameLoadingLobby_GameBroadcast(object sender, GameBroadcastEventArgs e)
     {
-        StringBuilder sb = new("ALIVE ");
-        _ = sb.Append(localGameIndex);
-        _ = sb.Append(ProgramConstants.LANDATASEPARATOR);
-        _ = sb.Append(ProgramConstants.PLAYERNAME);
-        SendMessage(sb.ToString());
-        timeSinceAliveMessage = TimeSpan.Zero;
+        SendMessage(e.Message);
     }
 
-    private void TbChatInput_EnterPressed(object sender, EventArgs e)
+    private void LanGameLoadingLobby_GameLeft(object sender, EventArgs e)
     {
-        if (string.IsNullOrEmpty(tbChatInput.Text))
-            return;
+        Enable();
+    }
 
-        string chatMessage = tbChatInput.Text.Replace((char)01, '?');
+    private void LanGameLobby_GameBroadcast(object sender, GameBroadcastEventArgs e)
+    {
+        SendMessage(e.Message);
+    }
 
-        StringBuilder sb = new("CHAT ");
-        _ = sb.Append(ddColor.SelectedIndex);
-        _ = sb.Append(ProgramConstants.LANDATASEPARATOR);
-        _ = sb.Append(chatMessage);
-
-        SendMessage(sb.ToString());
-
-        tbChatInput.Text = string.Empty;
+    private void LanGameLobby_GameLeft(object sender, EventArgs e)
+    {
+        Enable();
     }
 
     private void LbGameList_DoubleLeftClick(object sender, EventArgs e)
@@ -589,7 +553,7 @@ internal class LANLobby : XNAWindow
             }
         }
 
-        if (hg.GameVersion != ProgramConstants.GAME_VERSION)
+        if (hg.GameVersion != ProgramConstants.GameVersion)
         {
             // TODO Show warning
         }
@@ -609,7 +573,10 @@ internal class LANLobby : XNAWindow
 
                 int loadedGameId = spawnSGIni.GetIntValue("Settings", "GameID", -1);
 
-                lanGameLoadingLobby.SetUp(false, hg.EndPoint, client, loadedGameId);
+                lanGameLoadingLobby.SetUp(
+                    false,
+                    client,
+                    loadedGameId);
                 lanGameLoadingLobby.Enable();
 
                 buffer = encoding.GetBytes("JOIN" + ProgramConstants.LANDATASEPARATOR +
@@ -639,29 +606,99 @@ internal class LANLobby : XNAWindow
         {
             lbChatMessages.AddMessage(
                 null,
-                "Connecting to the game failed! Message:".L10N("UI:Main:ConnectGameFailed") + " " + ex.Message, Color.White);
+                "Connecting to the game failed! Message:".L10N("UI:Main:ConnectGameFailed") + " " + ex.Message,
+                Color.White);
         }
     }
 
-    private void BtnMainMenu_LeftClick(object sender, EventArgs e)
+    private void Listen()
     {
-        Visible = false;
-        Enabled = false;
-        SendMessage("QUIT");
-        socket.Close();
-        Exited?.Invoke(this, EventArgs.Empty);
+        try
+        {
+            while (true)
+            {
+                EndPoint ep = new IPEndPoint(IPAddress.Any, ProgramConstants.LANLOBBYPORT);
+                byte[] buffer = new byte[4096];
+                int receivedBytes = 0;
+                receivedBytes = socket.ReceiveFrom(buffer, ref ep);
+
+                IPEndPoint iep = (IPEndPoint)ep;
+
+                string data = encoding.GetString(buffer, 0, receivedBytes);
+
+                if (data == string.Empty)
+                    continue;
+
+                AddCallback(new Action<string, IPEndPoint>(HandleNetworkMessage), data, iep);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("LAN socket listener: exception: " + ex.Message);
+        }
     }
 
-    private void BtnJoinGame_LeftClick(object sender, EventArgs e)
+    private void SendAlive()
     {
-        LbGameList_DoubleLeftClick(this, EventArgs.Empty);
+        StringBuilder sb = new("ALIVE ");
+        _ = sb.Append(localGameIndex);
+        _ = sb.Append(ProgramConstants.LANDATASEPARATOR);
+        _ = sb.Append(ProgramConstants.PLAYERNAME);
+        SendMessage(sb.ToString());
+        timeSinceAliveMessage = TimeSpan.Zero;
     }
 
-    private void BtnNewGame_LeftClick(object sender, EventArgs e)
+    private void SendMessage(string message)
     {
-        if (!ClientConfiguration.Instance.DisableMultiplayerGameLoading)
-            gameCreationWindow.Open();
-        else
-            GameCreationWindow_NewGame(sender, e);
+        if (!initSuccess)
+            return;
+
+        byte[] buffer;
+
+        buffer = encoding.GetBytes(message);
+
+        _ = socket.SendTo(buffer, endPoint);
+    }
+
+    private void SetChatColor()
+    {
+        tbChatInput.TextColor = chatColors[ddColor.SelectedIndex].XNAColor;
+        lanGameLobby.SetChatColorIndex(ddColor.SelectedIndex);
+        UserINISettings.Instance.LANChatColor.Value = ddColor.SelectedIndex;
+    }
+
+    private void TbChatInput_EnterPressed(object sender, EventArgs e)
+    {
+        if (string.IsNullOrEmpty(tbChatInput.Text))
+            return;
+
+        string chatMessage = tbChatInput.Text.Replace((char)01, '?');
+
+        StringBuilder sb = new("CHAT ");
+        _ = sb.Append(ddColor.SelectedIndex);
+        _ = sb.Append(ProgramConstants.LANDATASEPARATOR);
+        _ = sb.Append(chatMessage);
+
+        SendMessage(sb.ToString());
+
+        tbChatInput.Text = string.Empty;
+    }
+
+    private void WindowManager_GameClosing(object sender, EventArgs e)
+    {
+        if (socket == null)
+            return;
+
+        if (socket.IsBound)
+        {
+            try
+            {
+                SendMessage("QUIT");
+                socket.Close();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+        }
     }
 }

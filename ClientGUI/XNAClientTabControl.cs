@@ -26,12 +26,16 @@ public class XNAClientTabControl : XNATabControl
 
         if (AssetLoader.AssetExists(tabAssetName + ".png"))
         {
-            AddTab(text, AssetLoader.LoadTexture(tabAssetName + ".png"),
+            AddTab(
+                text,
+                AssetLoader.LoadTexture(tabAssetName + ".png"),
                 AssetLoader.LoadTexture(tabAssetName + "_c.png"));
         }
         else
         {
-            AddTab(text, AssetLoader.LoadTexture(width + "pxbtn.png"),
+            AddTab(
+                text,
+                AssetLoader.LoadTexture(width + "pxbtn.png"),
                 AssetLoader.LoadTexture(width + "pxbtn_c.png"));
         }
     }

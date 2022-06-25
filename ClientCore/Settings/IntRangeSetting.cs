@@ -7,8 +7,8 @@ namespace ClientCore.Settings;
 /// </summary>
 public class IntRangeSetting : IntSetting
 {
-    private readonly int minValue;
     private readonly int maxValue;
+    private readonly int minValue;
 
     public IntRangeSetting(IniFile iniFile, string iniSection, string iniKey, int defaultValue, int minValue, int maxValue)
         : base(iniFile, iniSection, iniKey, defaultValue)
@@ -17,20 +17,14 @@ public class IntRangeSetting : IntSetting
         this.maxValue = maxValue;
     }
 
-    protected override int Get()
+    protected override int GetValue()
     {
         return NormalizeValue(IniFile.GetIntValue(IniSection, IniKey, DefaultValue));
     }
 
-    /// <summary>
-    /// Checks the validity of the value. If the value is invalid, return the default value of this setting.
-    /// Otherwise, return the set value.
-    /// </summary>
-    /// <param name="value"></param>
-    /// <returns></returns>
-    private int NormalizeValue(int value)
+    protected override void SetValue(int value)
     {
-        return InvalidValue(value) ? DefaultValue : value;
+        IniFile.SetIntValue(IniSection, IniKey, NormalizeValue(value));
     }
 
     private bool InvalidValue(int value)
@@ -38,8 +32,14 @@ public class IntRangeSetting : IntSetting
         return value < minValue || value > maxValue;
     }
 
-    protected override void Set(int value)
+    /// <summary>
+    /// Checks the validity of the value. If the value is invalid, return the default value of this
+    /// setting. Otherwise, return the set value.
+    /// </summary>
+    /// <param name="value">value.</param>
+    /// <returns>result.</returns>
+    private int NormalizeValue(int value)
     {
-        IniFile.SetIntValue(IniSection, IniKey, NormalizeValue(value));
+        return InvalidValue(value) ? DefaultValue : value;
     }
 }

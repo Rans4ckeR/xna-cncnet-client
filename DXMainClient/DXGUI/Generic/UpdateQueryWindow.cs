@@ -14,24 +14,19 @@ namespace DTAClient.DXGUI.Generic;
 /// </summary>
 public class UpdateQueryWindow : XNAWindow
 {
+    private string changelogUrl;
     private XNALabel lblDescription;
-
-    public UpdateQueryWindow(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
-
-    public delegate void UpdateAcceptedEventHandler(object sender, EventArgs e);
-
-    public delegate void UpdateDeclinedEventHandler(object sender, EventArgs e);
-
-    public event UpdateAcceptedEventHandler UpdateAccepted;
-
-    public event UpdateDeclinedEventHandler UpdateDeclined;
 
     private XNALabel lblUpdateSize;
 
-    private string changelogUrl;
+    public UpdateQueryWindow(WindowManager windowManager)
+            : base(windowManager)
+    {
+    }
+
+    public event EventHandler UpdateAccepted;
+
+    public event EventHandler UpdateDeclined;
 
     public override void Initialize()
     {
@@ -99,13 +94,9 @@ public class UpdateQueryWindow : XNAWindow
             : string.Format("The size of the update is {0} KB.".L10N("UI:Main:UpdateSizeKB"), updateSize);
     }
 
-    private void LblChangelogLink_LeftClick(object sender, EventArgs e)
+    private void BtnNo_LeftClick(object sender, EventArgs e)
     {
-        using Process _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = changelogUrl,
-            UseShellExecute = true
-        });
+        UpdateDeclined?.Invoke(this, e);
     }
 
     private void BtnYes_LeftClick(object sender, EventArgs e)
@@ -113,8 +104,12 @@ public class UpdateQueryWindow : XNAWindow
         UpdateAccepted?.Invoke(this, e);
     }
 
-    private void BtnNo_LeftClick(object sender, EventArgs e)
+    private void LblChangelogLink_LeftClick(object sender, EventArgs e)
     {
-        UpdateDeclined?.Invoke(this, e);
+        using Process proc = Process.Start(new ProcessStartInfo
+        {
+            FileName = changelogUrl,
+            UseShellExecute = true
+        });
     }
 }

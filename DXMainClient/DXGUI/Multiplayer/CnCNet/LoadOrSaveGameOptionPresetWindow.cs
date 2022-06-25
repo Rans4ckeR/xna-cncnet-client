@@ -12,27 +12,23 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 public class LoadOrSaveGameOptionPresetWindow : XNAWindow
 {
-    public EventHandler<GameOptionPresetEventArgs> PresetLoaded;
+    private readonly XNAClientButton btnDelete;
 
-    private readonly XNALabel lblHeader;
-
-    private bool _isLoad;
+    private readonly XNAClientButton btnLoadSave;
 
     private readonly XNADropDownItem ddiCreatePresetItem;
 
     private readonly XNADropDownItem ddiSelectPresetItem;
 
-    private readonly XNAClientButton btnLoadSave;
-
-    private readonly XNAClientButton btnDelete;
-
     private readonly XNAClientDropDown ddPresetSelect;
+
+    private readonly XNALabel lblHeader;
 
     private readonly XNALabel lblNewPresetName;
 
     private readonly XNATextBox tbNewPresetName;
 
-    public EventHandler<GameOptionPresetEventArgs> PresetSaved;
+    private bool _isLoad;
 
     public LoadOrSaveGameOptionPresetWindow(WindowManager windowManager)
         : base(windowManager)
@@ -45,15 +41,19 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         lblHeader.Name = nameof(lblHeader);
         lblHeader.FontIndex = 1;
         lblHeader.ClientRectangle = new Rectangle(
-            margin, margin,
-            150, 22);
+            margin,
+            margin,
+            150,
+            22);
 
         XNALabel lblPresetName = new(WindowManager);
         lblPresetName.Name = nameof(lblPresetName);
         lblPresetName.Text = "Preset Name".L10N("UI:Main:PresetName");
         lblPresetName.ClientRectangle = new Rectangle(
-            margin, lblHeader.Bottom + margin,
-            150, 18);
+            margin,
+            lblHeader.Bottom + margin,
+            150,
+            18);
 
         ddiCreatePresetItem = new XNADropDownItem
         {
@@ -69,22 +69,28 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         ddPresetSelect = new XNAClientDropDown(WindowManager);
         ddPresetSelect.Name = nameof(ddPresetSelect);
         ddPresetSelect.ClientRectangle = new Rectangle(
-            10, lblPresetName.Bottom + 2,
-            150, 22);
+            10,
+            lblPresetName.Bottom + 2,
+            150,
+            22);
         ddPresetSelect.SelectedIndexChanged += DropDownPresetSelect_SelectedIndexChanged;
 
         lblNewPresetName = new XNALabel(WindowManager);
         lblNewPresetName.Name = nameof(lblNewPresetName);
         lblNewPresetName.Text = "New Preset Name".L10N("UI:Main:NewPresetName");
         lblNewPresetName.ClientRectangle = new Rectangle(
-            margin, ddPresetSelect.Bottom + margin,
-            150, 18);
+            margin,
+            ddPresetSelect.Bottom + margin,
+            150,
+            18);
 
         tbNewPresetName = new XNATextBox(WindowManager);
         tbNewPresetName.Name = nameof(tbNewPresetName);
         tbNewPresetName.ClientRectangle = new Rectangle(
-            10, lblNewPresetName.Bottom + 2,
-            150, 22);
+            10,
+            lblNewPresetName.Bottom + 2,
+            150,
+            22);
         tbNewPresetName.TextChanged += (sender, args) => RefreshButtons();
 
         btnLoadSave = new XNAClientButton(WindowManager);
@@ -92,9 +98,9 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         btnLoadSave.LeftClick += BtnLoadSave_LeftClick;
         btnLoadSave.ClientRectangle = new Rectangle(
             margin,
-            Height - UIDesignConstants.BUTTONHEIGHT - margin,
-            UIDesignConstants.BUTTONWIDTH92,
-            UIDesignConstants.BUTTONHEIGHT);
+            Height - UIDesignConstants.ButtonHeight - margin,
+            UIDesignConstants.ButtonWidth92,
+            UIDesignConstants.ButtonHeight);
 
         btnDelete = new XNAClientButton(WindowManager);
         btnDelete.Name = nameof(btnDelete);
@@ -103,8 +109,8 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         btnDelete.ClientRectangle = new Rectangle(
             btnLoadSave.Right + margin,
             btnLoadSave.Y,
-            UIDesignConstants.BUTTONWIDTH92,
-            UIDesignConstants.BUTTONHEIGHT);
+            UIDesignConstants.ButtonWidth92,
+            UIDesignConstants.ButtonHeight);
 
         XNAClientButton btnCancel = new(WindowManager)
         {
@@ -112,8 +118,8 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
             ClientRectangle = new Rectangle(
             btnDelete.Right + margin,
             btnLoadSave.Y,
-            UIDesignConstants.BUTTONWIDTH92,
-            UIDesignConstants.BUTTONHEIGHT)
+            UIDesignConstants.ButtonWidth92,
+            UIDesignConstants.ButtonHeight)
         };
         btnCancel.LeftClick += (sender, args) => Disable();
 
@@ -129,7 +135,15 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         Disable();
     }
 
+    public EventHandler<GameOptionPresetEventArgs> PresetLoaded { get; set; }
+
+    public EventHandler<GameOptionPresetEventArgs> PresetSaved { get; set; }
+
     private bool IsCreatePresetSelected => ddPresetSelect.SelectedItem == ddiCreatePresetItem;
+
+    private bool IsNewPresetNameFieldEmpty => string.IsNullOrWhiteSpace(tbNewPresetName.Text);
+
+    private bool IsSelectPresetSelected => ddPresetSelect.SelectedItem == ddiSelectPresetItem;
 
     public override void Initialize()
     {
@@ -157,6 +171,37 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         RefreshButtons();
         CenterOnParent();
         Enable();
+    }
+
+    private void BtnDelete_LeftClick(object sender, EventArgs e)
+    {
+        XNADropDownItem selectedItem = ddPresetSelect.Items[ddPresetSelect.SelectedIndex];
+        XNAMessageBox messageBox = XNAMessageBox.ShowYesNoDialog(
+            WindowManager,
+            "Confirm Preset Delete".L10N("UI:Main:ConfirmPresetDeleteTitle"),
+            "Are you sure you want to delete this preset?".L10N("UI:Main:ConfirmPresetDeleteText") + "\n\n" + selectedItem.Text);
+        messageBox.YesClickedAction = box =>
+        {
+            GameOptionPresets.Instance.DeletePreset(selectedItem.Text);
+            _ = ddPresetSelect.Items.Remove(selectedItem);
+            ddPresetSelect.SelectedIndex = 0;
+        };
+    }
+
+    private void BtnLoadSave_LeftClick(object sender, EventArgs e)
+    {
+        XNADropDownItem selectedItem = ddPresetSelect.Items[ddPresetSelect.SelectedIndex];
+        if (_isLoad)
+        {
+            PresetLoaded?.Invoke(this, new GameOptionPresetEventArgs(selectedItem.Text));
+        }
+        else
+        {
+            string presetName = IsCreatePresetSelected ? tbNewPresetName.Text : selectedItem.Text;
+            PresetSaved?.Invoke(this, new GameOptionPresetEventArgs(presetName));
+        }
+
+        Disable();
     }
 
     /// <summary>
@@ -190,20 +235,6 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
     }
 
     /// <summary>
-    /// Refresh the state of the load/save button.
-    /// </summary>
-    private void RefreshButtons()
-    {
-        btnLoadSave.Enabled = _isLoad ? !IsSelectPresetSelected : !IsCreatePresetSelected || !IsNewPresetNameFieldEmpty;
-
-        btnDelete.Enabled = !IsCreatePresetSelected && !IsSelectPresetSelected;
-    }
-
-    private bool IsSelectPresetSelected => ddPresetSelect.SelectedItem == ddiSelectPresetItem;
-
-    private bool IsNewPresetNameFieldEmpty => string.IsNullOrWhiteSpace(tbNewPresetName.Text);
-
-    /// <summary>
     /// Populate the preset drop down from saved presets.
     /// </summary>
     private void LoadPresets()
@@ -219,6 +250,16 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
             {
                 Text = name
             }));
+    }
+
+    /// <summary>
+    /// Refresh the state of the load/save button.
+    /// </summary>
+    private void RefreshButtons()
+    {
+        btnLoadSave.Enabled = _isLoad ? !IsSelectPresetSelected : !IsCreatePresetSelected || !IsNewPresetNameFieldEmpty;
+
+        btnDelete.Enabled = !IsCreatePresetSelected && !IsSelectPresetSelected;
     }
 
     /// <summary>
@@ -244,36 +285,5 @@ public class LoadOrSaveGameOptionPresetWindow : XNAWindow
         lblNewPresetName.Enable();
         tbNewPresetName.Enable();
         tbNewPresetName.Text = string.Empty;
-    }
-
-    private void BtnLoadSave_LeftClick(object sender, EventArgs e)
-    {
-        XNADropDownItem selectedItem = ddPresetSelect.Items[ddPresetSelect.SelectedIndex];
-        if (_isLoad)
-        {
-            PresetLoaded?.Invoke(this, new GameOptionPresetEventArgs(selectedItem.Text));
-        }
-        else
-        {
-            string presetName = IsCreatePresetSelected ? tbNewPresetName.Text : selectedItem.Text;
-            PresetSaved?.Invoke(this, new GameOptionPresetEventArgs(presetName));
-        }
-
-        Disable();
-    }
-
-    private void BtnDelete_LeftClick(object sender, EventArgs e)
-    {
-        XNADropDownItem selectedItem = ddPresetSelect.Items[ddPresetSelect.SelectedIndex];
-        XNAMessageBox messageBox = XNAMessageBox.ShowYesNoDialog(
-            WindowManager,
-            "Confirm Preset Delete".L10N("UI:Main:ConfirmPresetDeleteTitle"),
-            "Are you sure you want to delete this preset?".L10N("UI:Main:ConfirmPresetDeleteText") + "\n\n" + selectedItem.Text);
-        messageBox.YesClickedAction = box =>
-        {
-            GameOptionPresets.Instance.DeletePreset(selectedItem.Text);
-            _ = ddPresetSelect.Items.Remove(selectedItem);
-            ddPresetSelect.SelectedIndex = 0;
-        };
     }
 }

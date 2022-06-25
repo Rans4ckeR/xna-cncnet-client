@@ -8,42 +8,10 @@ namespace Localization;
 
 public class TranslationTable : ICloneable
 {
-    private readonly HashSet<string> notifiedMissingLabelsSet = new();
-
-    // public bool IsRightToLeft { get; set; } // TODO
-
-    /// <summary>
-    /// Get notified when a translation table does not contain a label that is needed.
-    /// </summary>
-    public event EventHandler<MissingTranslationEventArgs> MissingTranslationEvent;
-
-    /// <summary>
-    /// Gets or sets the internal ID for a language. Should be unique.
-    /// It is recommended to use BCP-47 Language Tags.
-    /// </summary>
-    public string LanguageTag { get; set; } = "en-US";
-
-    /// <summary>
-    /// Gets or sets the user-friendly name for a language.
-    /// </summary>
-    public string LanguageName { get; set; } = "English (United States)";
-
-    /// <summary>
-    /// Gets the translation table. The key stands for a label name, and the value stands for a string that is used in System.string.Format().
-    /// It is advised that the label name is started with "UI:" prefix.
-    /// The value can not contains IniNewLinePattern when loading or saving via ini format.
-    /// </summary>
-    public Dictionary<string, string> Table { get; } = new Dictionary<string, string>();
-
-    public CultureInfo CultureInfo { get; set; } = new CultureInfo("en-US");
-
-    /// <summary>
-    /// Gets or sets this a string showing the information about the authors. The program will not depend on this string.
-    /// </summary>
-    public string Author { get; set; } = string.Empty;
-
     // As the ini value can not contains NewLine character '\n', it will be replaced with '@@' pattern.
     public static readonly string IniNewLinePattern = "@@";
+
+    private readonly HashSet<string> notifiedMissingLabelsSet = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TranslationTable"/> class.
@@ -52,8 +20,6 @@ public class TranslationTable : ICloneable
     public TranslationTable()
     {
     }
-
-    public static TranslationTable Instance { get; set; } = new TranslationTable();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TranslationTable"/> class.
@@ -72,7 +38,7 @@ public class TranslationTable : ICloneable
         if (general == null || translation == null || LanguageTag == null
             || LanguageName == null || cultureInfoName == null)
         {
-            throw new Exception("Invalid translation table file.");
+            throw new InvalidDataException("Invalid translation table file.");
         }
 
         CultureInfo = new CultureInfo(cultureInfoName);
@@ -99,6 +65,39 @@ public class TranslationTable : ICloneable
         }
     }
 
+    /// <summary>
+    /// Get notified when a translation table does not contain a label that is needed.
+    /// </summary>
+    public event EventHandler<MissingTranslationEventArgs> MissingTranslationEvent;
+
+    public static TranslationTable Instance { get; set; } = new TranslationTable();
+
+    /// <summary>
+    /// Gets or sets the internal ID for a language. Should be unique.
+    /// It is recommended to use BCP-47 Language Tags.
+    /// </summary>
+    public string LanguageTag { get; set; } = "en-US";
+
+    /// <summary>
+    /// Gets or sets the user-friendly name for a language.
+    /// </summary>
+    public string LanguageName { get; set; } = "English (United States)";
+
+    /// <summary>
+    /// Gets the translation table. The key stands for a label name, and the value stands for a string that is used in System.string.Format().
+    /// It is advised that the label name is started with "UI:" prefix.
+    /// The value can not contains IniNewLinePattern when loading or saving via ini format.
+    /// </summary>
+    public Dictionary<string, string> Table { get; } = new Dictionary<string, string>();
+
+    public CultureInfo CultureInfo { get; set; } = new CultureInfo("en-US");
+
+    /// <summary>
+    /// Gets or sets this a string showing the information about the authors. The program will not depend on this string.
+    /// </summary>
+    public string Author { get; set; } = string.Empty;
+
+    // public bool IsRightToLeft { get; set; } // TODO
     public static TranslationTable LoadFromIniFile(string iniPath)
     {
         using FileStream stream = File.Open(iniPath, FileMode.Open);
@@ -109,15 +108,18 @@ public class TranslationTable : ICloneable
     public static string EscapeIniValue(string raw)
     {
         if (raw.Contains(IniNewLinePattern))
-            throw new Exception($"Pattern {IniNewLinePattern} is forbidden as this pattern is used to represent the new line.");
+            throw new InvalidDataException($"Pattern {IniNewLinePattern} is forbidden as this pattern is used to represent the new line.");
 
         if (raw.Contains(";"))
-            throw new Exception("The semi-colon(;) is forbidden as this pattern is used to represent a comment line.");
+            throw new InvalidDataException("The semi-colon(;) is forbidden as this pattern is used to represent a comment line.");
 
         string value = raw.Replace(Environment.NewLine, "\n");
         value = value.Replace("\n", IniNewLinePattern);
         return value;
     }
+
+    public static string UnescapeIniValue(string escaped)
+        => escaped.Replace(IniNewLinePattern, "\n");
 
     public TranslationTable Clone() => new(this);
 
@@ -174,7 +176,4 @@ public class TranslationTable : ICloneable
         MissingTranslationEvent?.Invoke(this, e);
         _ = notifiedMissingLabelsSet.Add(e.Label);
     }
-
-    public static string UnescapeIniValue(string escaped)
-        => escaped.Replace(IniNewLinePattern, "\n");
 }

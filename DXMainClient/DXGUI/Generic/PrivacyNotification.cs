@@ -26,28 +26,29 @@ internal class PrivacyNotification : XNAWindow
 
         XNALabel lblDescription = new(WindowManager);
         lblDescription.Name = nameof(lblDescription);
-        lblDescription.X = UIDesignConstants.EMPTYSPACESIDES;
-        lblDescription.Y = UIDesignConstants.EMPTYSPACETOP;
+        lblDescription.X = UIDesignConstants.EmptySpaceSides;
+        lblDescription.Y = UIDesignConstants.EmptySpaceTop;
         lblDescription.Text = Renderer.FixText(
             "By using the client you agree to the CnCNet Terms & Conditions as well as the CnCNet Privacy Policy. Privacy-related options can be configured in the client options.".L10N("UI:Main:TOSText"),
-            lblDescription.FontIndex, WindowManager.RenderResolutionX - (UIDesignConstants.EMPTYSPACESIDES * 2)).Text;
+            lblDescription.FontIndex,
+            WindowManager.RenderResolutionX - (UIDesignConstants.EmptySpaceSides * 2)).Text;
         AddChild(lblDescription);
 
         XNALabel lblMoreInformation = new(WindowManager);
         lblMoreInformation.Name = nameof(lblMoreInformation);
         lblMoreInformation.X = lblDescription.X;
-        lblMoreInformation.Y = lblDescription.Bottom + UIDesignConstants.CONTROLVERTICALMARGIN;
+        lblMoreInformation.Y = lblDescription.Bottom + UIDesignConstants.ControlVerticalMargin;
         lblMoreInformation.Text = "More information:".L10N("UI:Main:TOSMoreInfo") + " ";
         AddChild(lblMoreInformation);
 
         XNALinkLabel lblTermsAndConditions = new(WindowManager);
         lblTermsAndConditions.Name = nameof(lblTermsAndConditions);
-        lblTermsAndConditions.X = lblMoreInformation.Right + UIDesignConstants.CONTROLHORIZONTALMARGIN;
+        lblTermsAndConditions.X = lblMoreInformation.Right + UIDesignConstants.ControlHorizontalMargin;
         lblTermsAndConditions.Y = lblMoreInformation.Y;
         lblTermsAndConditions.Text = "https://cncnet.org/terms-and-conditions";
         lblTermsAndConditions.LeftClick += (s, e) =>
         {
-            using Process _ = Process.Start(new ProcessStartInfo
+            using Process proc = Process.Start(new ProcessStartInfo
             {
                 FileName = lblTermsAndConditions.Text,
                 UseShellExecute = true
@@ -57,12 +58,12 @@ internal class PrivacyNotification : XNAWindow
 
         XNALinkLabel lblPrivacyPolicy = new(WindowManager);
         lblPrivacyPolicy.Name = nameof(lblPrivacyPolicy);
-        lblPrivacyPolicy.X = lblTermsAndConditions.Right + UIDesignConstants.CONTROLHORIZONTALMARGIN;
+        lblPrivacyPolicy.X = lblTermsAndConditions.Right + UIDesignConstants.ControlHorizontalMargin;
         lblPrivacyPolicy.Y = lblMoreInformation.Y;
         lblPrivacyPolicy.Text = "https://cncnet.org/privacy-policy";
         lblPrivacyPolicy.LeftClick += (s, e) =>
         {
-            using Process _ = Process.Start(new ProcessStartInfo
+            using Process proc = Process.Start(new ProcessStartInfo
             {
                 FileName = lblPrivacyPolicy.Text,
                 UseShellExecute = true
@@ -72,8 +73,8 @@ internal class PrivacyNotification : XNAWindow
 
         XNALabel lblExplanation = new(WindowManager);
         lblExplanation.Name = nameof(lblExplanation);
-        lblExplanation.X = UIDesignConstants.EMPTYSPACESIDES;
-        lblExplanation.Y = lblMoreInformation.Bottom + (UIDesignConstants.CONTROLVERTICALMARGIN * 2);
+        lblExplanation.X = UIDesignConstants.EmptySpaceSides;
+        lblExplanation.Y = lblMoreInformation.Bottom + (UIDesignConstants.ControlVerticalMargin * 2);
         lblExplanation.Text = "No worries, we're not actually using your data for anything evil, but we have to display this message due to regulations.".L10N("UI:Main:TOSExplanation");
         lblExplanation.TextColor = UISettings.ActiveSettings.SubtleTextColor;
         AddChild(lblExplanation);
@@ -82,7 +83,7 @@ internal class PrivacyNotification : XNAWindow
         btnOK.Name = nameof(btnOK);
         btnOK.Width = 75;
         btnOK.Y = lblExplanation.Y;
-        btnOK.X = WindowManager.RenderResolutionX - btnOK.Width - UIDesignConstants.CONTROLHORIZONTALMARGIN;
+        btnOK.X = WindowManager.RenderResolutionX - btnOK.Width - UIDesignConstants.ControlHorizontalMargin;
         btnOK.Text = "Got it".L10N("UI:Main:TOSButtonOK");
         AddChild(btnOK);
         btnOK.LeftClick += (s, e) =>
@@ -94,7 +95,7 @@ internal class PrivacyNotification : XNAWindow
             Disable();
         };
 
-        Height = btnOK.Bottom + UIDesignConstants.EMPTYSPACEBOTTOM;
+        Height = btnOK.Bottom + UIDesignConstants.EmptySpaceBottom;
         Y = WindowManager.RenderResolutionY - Height;
 
         base.Initialize();

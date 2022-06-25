@@ -13,15 +13,25 @@ using Rampastring.XNAUI;
 namespace DTAClient.Online;
 
 /// <summary>
-/// Acts as an interface between the CnCNet connection class
-/// and the user-interface's classes.
+/// Acts as an interface between the CnCNet connection class and the user-interface's classes.
 /// </summary>
 public class CnCNetManager : IConnectionManager
 {
-    /// <summary>
-    /// The list of all users that we can see on the IRC network.
-    /// </summary>
-    public List<IRCUser> UserList = new();
+    private readonly List<Channel> channels = new();
+
+    private readonly CnCNetUserData cncNetUserData;
+
+    private readonly Connection connection;
+
+    private readonly GameCollection gameCollection;
+
+    private readonly IRCColor[] ircChatColors;
+
+    private readonly WindowManager wm;
+
+    private Color cDefaultChatColor;
+
+    private bool disconnect = false;
 
     public CnCNetManager(WindowManager wm, GameCollection gc, CnCNetUserData cncNetUserData)
     {
@@ -54,37 +64,34 @@ public class CnCNetManager : IConnectionManager
         };
     }
 
-    // When implementing IConnectionManager functions, pay special attention
-    // to thread-safety.
-    // The functions in IConnectionManager are usually called from the networking
-    // thread, so if they affect anything in the UI or affect data that the
-    // UI thread might be reading, use WindowManager.AddCallback to execute a function
-    // on the UI thread instead of modifying the data or raising events directly.
-    public delegate void UserListDelegate(string channelName, string[] userNames);
-
-    public event EventHandler<ServerMessageEventArgs> WelcomeMessageReceived;
-
-    public event EventHandler<UserAwayEventArgs> AwayMessageReceived;
-
-    public event EventHandler<WhoEventArgs> WhoReplyReceived;
-
-    public event EventHandler<CnCNetPrivateMessageEventArgs> PrivateMessageReceived;
-
-    public event EventHandler<PrivateCTCPEventArgs> PrivateCTCPReceived;
-
-    public event EventHandler<ChannelEventArgs> BannedFromChannel;
+    // When implementing IConnectionManager functions, pay special attention to thread-safety. The
+    // functions in IConnectionManager are usually called from the networking thread, so if they
+    // affect anything in the UI or affect data that the UI thread might be reading, use
+    // WindowManager.AddCallback to execute a function on the UI thread instead of modifying the
+    // data or raising events directly.
+    public delegate void UserListAction(string channelName, string[] userNames);
 
     public event EventHandler<AttemptedServerEventArgs> AttemptedServerChanged;
 
+    public event EventHandler<UserAwayEventArgs> AwayMessageReceived;
+
+    public event EventHandler<ChannelEventArgs> BannedFromChannel;
+
     public event EventHandler ConnectAttemptFailed;
+
+    public event EventHandler Connected;
 
     public event EventHandler<ConnectionLostEventArgs> ConnectionLost;
 
-    public event EventHandler ReconnectAttempt;
-
     public event EventHandler Disconnected;
 
-    public event EventHandler Connected;
+    public event EventHandler MultipleUsersAdded;
+
+    public event EventHandler<PrivateCTCPEventArgs> PrivateCTCPReceived;
+
+    public event EventHandler<CnCNetPrivateMessageEventArgs> PrivateMessageReceived;
+
+    public event EventHandler ReconnectAttempt;
 
     public event EventHandler<UserEventArgs> UserAdded;
 
@@ -92,53 +99,31 @@ public class CnCNetManager : IConnectionManager
 
     public event EventHandler<UserNameIndexEventArgs> UserRemoved;
 
-    public event EventHandler MultipleUsersAdded;
+    public event EventHandler<ServerMessageEventArgs> WelcomeMessageReceived;
 
-    public Channel MainChannel { get; private set; }
-
-    /// <summary>
-    /// Gets a value indicating whether gets a value that determines whether the client is
-    /// currently connected to CnCNet.
-    /// </summary>
-    public bool IsConnected { get; private set; } = false;
+    public event EventHandler<WhoEventArgs> WhoReplyReceived;
 
     public bool IsAttemptingConnection
     {
         get { return connection.AttemptingConnection; }
     }
 
-    private readonly Connection connection;
+    /// <summary>
+    /// Gets a value indicating whether gets a value that determines whether the client is currently
+    /// connected to CnCNet.
+    /// </summary>
+    public bool IsConnected { get; private set; } = false;
 
-    private readonly List<Channel> channels = new();
+    public Channel MainChannel { get; private set; }
 
-    private readonly GameCollection gameCollection;
-    private readonly CnCNetUserData cncNetUserData;
-    private readonly IRCColor[] ircChatColors;
-
-    private Color cDefaultChatColor;
-
-    private readonly WindowManager wm;
-
-    private bool disconnect = false;
+    /// <summary>
+    /// Gets or sets the list of all users that we can see on the IRC network.
+    /// </summary>
+    public List<IRCUser> UserList { get; set; } = new();
 
     public static bool IsCnCNetInitialized()
     {
         return Connection.IsIdSet();
-    }
-
-    /// <summary>
-    /// Factory method for creating a new channel.
-    /// </summary>
-    /// <param name="uiName">The user-interface name of the channel.</param>
-    /// <param name="channelName">The name of the channel.</param>
-    /// <param name="persistent">Determines whether the channel's information
-    /// should remain in memory even after a disconnect.</param>
-    /// <param name="password">The password for the channel. Use null for none.</param>
-    /// <returns>A channel.</returns>
-    public Channel CreateChannel(string uiName, string channelName,
-        bool persistent, bool isChatChannel, string password)
-    {
-        return new Channel(uiName, channelName, persistent, isChatChannel, password, connection);
     }
 
     public void AddChannel(Channel channel)
@@ -149,12 +134,67 @@ public class CnCNetManager : IConnectionManager
         channels.Add(channel);
     }
 
-    public void RemoveChannel(Channel channel)
+    /// <summary>
+    /// Connects to CnCNet.
+    /// </summary>
+    public void Connect()
     {
-        if (channel.Persistent)
-            throw new ArgumentException("Persistent channels cannot be removed.".L10N("UI:Main:PersistentChannelRemove"), nameof(channel));
+        disconnect = false;
+        MainChannel.AddMessage(new ChatMessage("Connecting to CnCNet...".L10N("UI:Main:ConnectingToCncNet")));
+        connection.ConnectAsync();
+    }
 
-        _ = channels.Remove(channel);
+    /// <summary>
+    /// Factory method for creating a new channel.
+    /// </summary>
+    /// <param name="uiName">The user-interface name of the channel.</param>
+    /// <param name="channelName">The name of the channel.</param>
+    /// <param name="persistent">
+    /// Determines whether the channel's information should remain in memory even after a disconnect.
+    /// </param>
+    /// <param name="isChatChannel">isChatChannel.</param>
+    /// <param name="password">The password for the channel. Use null for none.</param>
+    /// <returns>A channel.</returns>
+    public Channel CreateChannel(
+        string uiName,
+        string channelName,
+        bool persistent,
+        bool isChatChannel,
+        string password)
+    {
+        return new Channel(uiName, channelName, persistent, isChatChannel, password, connection);
+    }
+
+    /// <summary>
+    /// Disconnects from CnCNet.
+    /// </summary>
+    public void Disconnect()
+    {
+        connection.Disconnect();
+        disconnect = true;
+    }
+
+    /// <summary>
+    /// Finds a channel with the specified internal name, case-insensitively.
+    /// </summary>
+    /// <param name="channelName">The internal name of the channel.</param>
+    /// <returns>A channel if one matching the name is found, otherwise null.</returns>
+    public Channel FindChannel(string channelName)
+    {
+        channelName = channelName.ToLower();
+
+        foreach (Channel channel in channels)
+        {
+            if (channel.ChannelName.ToLower() == channelName)
+                return channel;
+        }
+
+        return null;
+    }
+
+    public bool GetDisconnectStatus()
+    {
+        return disconnect;
     }
 
     public IRCColor[] GetIRCColors()
@@ -170,9 +210,229 @@ public class CnCNetManager : IConnectionManager
             _ = channels.Remove(channel);
     }
 
-    public void SetMainChannel(Channel channel)
+    public void OnAttemptedServerChanged(string serverName)
     {
-        MainChannel = channel;
+        // AddCallback is necessary for thread-safety; OnAttemptedServerChanged is called by the
+        // networking thread, and AddCallback schedules DoAttemptedServerChanged to be executed on
+        // the main (UI) thread.
+        wm.AddCallback(new Action<string>(DoAttemptedServerChanged), serverName);
+    }
+
+    public void OnAwayMessageReceived(string userName, string reason)
+    {
+        wm.AddCallback(new Action<string, string>(DoAwayMessageReceived), userName, reason);
+    }
+
+    public void OnBannedFromChannel(string channelName)
+    {
+        wm.AddCallback(new Action<string>(DoBannedFromChannel), channelName);
+    }
+
+    public void OnChannelFull(string channelName)
+    {
+        wm.AddCallback(new Action<string>(DoChannelFull), channelName);
+    }
+
+    public void OnChannelInviteOnly(string channelName)
+    {
+        wm.AddCallback(new Action<string>(DoChannelInviteOnly), channelName);
+    }
+
+    public void OnChannelModesChanged(string userName, string channelName, string modeString, List<string> modeParameters)
+    {
+        wm.AddCallback(
+            new Action<string, string, string, List<string>>(DoChannelModesChanged),
+            userName,
+            channelName,
+            modeString,
+            modeParameters);
+    }
+
+    public void OnChannelTopicChanged(string userName, string channelName, string topic)
+    {
+        wm.AddCallback(new Action<string, string>(DoChannelTopicReceived), channelName, topic);
+    }
+
+    public void OnChannelTopicReceived(string channelName, string topic)
+    {
+        wm.AddCallback(new Action<string, string>(DoChannelTopicReceived), channelName, topic);
+    }
+
+    public void OnChatMessageReceived(string receiver, string senderName, string senderIdent, string message)
+    {
+        wm.AddCallback(
+            new Action<string, string, string, string>(DoChatMessageReceived),
+            receiver,
+            senderName,
+            senderIdent,
+            message);
+    }
+
+    public void OnConnectAttemptFailed()
+    {
+        wm.AddCallback(new Action(DoConnectAttemptFailed), null);
+    }
+
+    public void OnConnected()
+    {
+        wm.AddCallback(new Action(DoConnected), null);
+    }
+
+    /// <summary>
+    /// Called when the connection has got cut un-intentionally.
+    /// </summary>
+    /// <param name="reason">reason.</param>
+    public void OnConnectionLost(string reason)
+    {
+        wm.AddCallback(new Action<string>(DoConnectionLost), reason);
+    }
+
+    public void OnCTCPParsed(string channelName, string userName, string message)
+    {
+        wm.AddCallback(
+            new Action<string, string, string>(DoCTCPParsed),
+            channelName,
+            userName,
+            message);
+    }
+
+    /// <summary>
+    /// Called when the connection has been aborted intentionally.
+    /// </summary>
+    public void OnDisconnected()
+    {
+        wm.AddCallback(new Action(DoDisconnected), null);
+    }
+
+    public void OnErrorReceived(string errorMessage)
+    {
+        MainChannel.AddMessage(new ChatMessage(Color.Red, errorMessage));
+    }
+
+    public void OnGenericServerMessageReceived(string message)
+    {
+        wm.AddCallback(new Action<string>(DoGenericServerMessageReceived), message);
+    }
+
+    public void OnIncorrectChannelPassword(string channelName)
+    {
+        wm.AddCallback(new Action<string>(DoIncorrectChannelPassword), channelName);
+    }
+
+    public void OnNameAlreadyInUse()
+    {
+        wm.AddCallback(new Action(DoNameAlreadyInUse), null);
+    }
+
+    public void OnNoticeMessageParsed(string notice, string userName)
+    {
+        // TODO Parse as private message
+    }
+
+    public void OnPrivateMessageReceived(string sender, string message)
+    {
+        wm.AddCallback(
+            new Action<string, string>(DoPrivateMessageReceived),
+            sender,
+            message);
+    }
+
+    public void OnReconnectAttempt()
+    {
+        wm.AddCallback(new Action(DoReconnectAttempt), null);
+    }
+
+    public void OnTargetChangeTooFast(string channelName, string message)
+    {
+        wm.AddCallback(new Action<string, string>(DoTargetChangeTooFast), channelName, message);
+    }
+
+    public void OnUserJoinedChannel(string channelName, string hostName, string userName, string ident)
+    {
+        wm.AddCallback(
+            new Action<string, string, string, string>(DoUserJoinedChannel),
+            channelName,
+            hostName,
+            userName,
+            ident);
+    }
+
+    public void OnUserKicked(string channelName, string userName)
+    {
+        wm.AddCallback(
+            new Action<string, string>(DoUserKicked),
+            channelName,
+            userName);
+    }
+
+    public void OnUserLeftChannel(string channelName, string userName)
+    {
+        wm.AddCallback(
+            new Action<string, string>(DoUserLeftChannel),
+            channelName,
+            userName);
+    }
+
+    public void OnUserListReceived(string channelName, string[] userList)
+    {
+        wm.AddCallback(
+            new UserListAction(DoUserListReceived),
+            channelName,
+            userList);
+    }
+
+    public void OnUserNicknameChange(string oldNickname, string newNickname)
+        => wm.AddCallback(new Action<string, string>(DoUserNicknameChange), oldNickname, newNickname);
+
+    public void OnUserQuitIRC(string userName)
+    {
+        wm.AddCallback(new Action<string>(DoUserQuitIRC), userName);
+    }
+
+    public void OnWelcomeMessageReceived(string message)
+    {
+        wm.AddCallback(new Action<string>(DoWelcomeMessageReceived), message);
+    }
+
+    public void OnWhoReplyReceived(string ident, string hostName, string userName, string extraInfo)
+    {
+        wm.AddCallback(
+            new Action<string, string, string, string>(DoWhoReplyReceived),
+            ident,
+            hostName,
+            userName,
+            extraInfo);
+    }
+
+    public void RemoveChannel(Channel channel)
+    {
+        if (channel.Persistent)
+            throw new ArgumentException("Persistent channels cannot be removed.".L10N("UI:Main:PersistentChannelRemove"), nameof(channel));
+
+        _ = channels.Remove(channel);
+    }
+
+    /// <summary>
+    /// Looks up an user in the global user list and removes a channel from the user. If the user is
+    /// left with 0 channels (meaning we have no common channel with the user), the user is removed
+    /// from the global user list.
+    /// </summary>
+    /// <param name="userName">The name of the user.</param>
+    /// <param name="channelName">The name of the channel.</param>
+    public void RemoveChannelFromUser(string userName, string channelName)
+    {
+        int userIndex = UserList.FindIndex(user => user.Name.ToLower() == userName.ToLower());
+        if (userIndex > -1)
+        {
+            IRCUser ircUser = UserList[userIndex];
+            _ = ircUser.Channels.Remove(channelName);
+
+            if (ircUser.Channels.Count == 0)
+            {
+                UserList.RemoveAt(userIndex);
+                UserRemoved?.Invoke(this, new UserNameIndexEventArgs(userIndex, userName));
+            }
+        }
     }
 
     public void SendCustomMessage(QueuedMessage qm)
@@ -185,97 +445,9 @@ public class CnCNetManager : IConnectionManager
         SendCustomMessage(new QueuedMessage($"WHOIS {nick}", QueuedMessageType.WHOISMESSAGE, 0));
     }
 
-    public void OnAttemptedServerChanged(string serverName)
+    public void SetMainChannel(Channel channel)
     {
-        // AddCallback is necessary for thread-safety; OnAttemptedServerChanged
-        // is called by the networking thread, and AddCallback schedules DoAttemptedServerChanged
-        // to be executed on the main (UI) thread.
-        wm.AddCallback(new Action<string>(DoAttemptedServerChanged), serverName);
-    }
-
-    public void OnAwayMessageReceived(string userName, string reason)
-    {
-        wm.AddCallback(new Action<string, string>(DoAwayMessageReceived), userName, reason);
-    }
-
-    public void OnChannelFull(string channelName)
-    {
-        wm.AddCallback(new Action<string>(DoChannelFull), channelName);
-    }
-
-    public void OnTargetChangeTooFast(string channelName, string message)
-    {
-        wm.AddCallback(new Action<string, string>(DoTargetChangeTooFast), channelName, message);
-    }
-
-    public void OnChannelInviteOnly(string channelName)
-    {
-        wm.AddCallback(new Action<string>(DoChannelInviteOnly), channelName);
-    }
-
-    public void OnChannelModesChanged(string userName, string channelName, string modeString, List<string> modeParameters)
-    {
-        wm.AddCallback(
-            new Action<string, string, string, List<string>>(DoChannelModesChanged),
-            userName, channelName, modeString, modeParameters);
-    }
-
-    public void OnChannelTopicReceived(string channelName, string topic)
-    {
-        wm.AddCallback(new Action<string, string>(DoChannelTopicReceived), channelName, topic);
-    }
-
-    public void OnChannelTopicChanged(string userName, string channelName, string topic)
-    {
-        wm.AddCallback(new Action<string, string>(DoChannelTopicReceived), channelName, topic);
-    }
-
-    private void DoAttemptedServerChanged(string serverName)
-    {
-        MainChannel.AddMessage(new ChatMessage(
-            string.Format("Attempting connection to {0}".L10N("UI:Main:AttemptConnectToServer"), serverName)));
-        AttemptedServerChanged?.Invoke(this, new AttemptedServerEventArgs(serverName));
-    }
-
-    private void DoAwayMessageReceived(string userName, string reason)
-    {
-        AwayMessageReceived?.Invoke(this, new UserAwayEventArgs(userName, reason));
-    }
-
-    private void DoChannelFull(string channelName)
-    {
-        Channel channel = FindChannel(channelName);
-
-        if (channel != null)
-            channel.OnChannelFull();
-    }
-
-    private void DoTargetChangeTooFast(string channelName, string message)
-    {
-        Channel channel = FindChannel(channelName);
-
-        if (channel != null)
-            channel.OnTargetChangeTooFast(message);
-    }
-
-    private void DoChannelInviteOnly(string channelName)
-    {
-        Channel channel = FindChannel(channelName);
-
-        if (channel != null)
-            channel.OnInviteOnlyOnJoin();
-    }
-
-    private void DoChannelModesChanged(string userName, string channelName, string modeString, List<string> modeParameters)
-    {
-        Channel channel = FindChannel(channelName);
-
-        if (channel == null)
-            return;
-
-        CnCNetManager.ApplyChannelModes(channel, modeString, modeParameters);
-
-        channel.OnChannelModesChanged(userName, modeString);
+        MainChannel = channel;
     }
 
     private static void ApplyChannelModes(Channel channel, string modeString, List<string> modeParameters)
@@ -311,6 +483,58 @@ public class CnCNetManager : IConnectionManager
         }
     }
 
+    private void AddUserToGlobalUserList(IRCUser user)
+    {
+        UserList.Add(user);
+        UserList = UserList.OrderBy(u => u.Name).ToList();
+        UserAdded?.Invoke(this, new UserEventArgs(user));
+    }
+
+    private void DoAttemptedServerChanged(string serverName)
+    {
+        MainChannel.AddMessage(new ChatMessage(
+            string.Format("Attempting connection to {0}".L10N("UI:Main:AttemptConnectToServer"), serverName)));
+        AttemptedServerChanged?.Invoke(this, new AttemptedServerEventArgs(serverName));
+    }
+
+    private void DoAwayMessageReceived(string userName, string reason)
+    {
+        AwayMessageReceived?.Invoke(this, new UserAwayEventArgs(userName, reason));
+    }
+
+    private void DoBannedFromChannel(string channelName)
+    {
+        BannedFromChannel?.Invoke(this, new ChannelEventArgs(channelName));
+    }
+
+    private void DoChannelFull(string channelName)
+    {
+        Channel channel = FindChannel(channelName);
+
+        if (channel != null)
+            channel.OnChannelFull();
+    }
+
+    private void DoChannelInviteOnly(string channelName)
+    {
+        Channel channel = FindChannel(channelName);
+
+        if (channel != null)
+            channel.OnInviteOnlyOnJoin();
+    }
+
+    private void DoChannelModesChanged(string userName, string channelName, string modeString, List<string> modeParameters)
+    {
+        Channel channel = FindChannel(channelName);
+
+        if (channel == null)
+            return;
+
+        CnCNetManager.ApplyChannelModes(channel, modeString, modeParameters);
+
+        channel.OnChannelModesChanged(userName, modeString);
+    }
+
     private void DoChannelTopicReceived(string channelName, string topic)
     {
         Channel channel = FindChannel(channelName);
@@ -319,48 +543,6 @@ public class CnCNetManager : IConnectionManager
             return;
 
         channel.Topic = topic;
-    }
-
-    public void OnChatMessageReceived(string receiver, string senderName, string senderIdent, string message)
-    {
-        wm.AddCallback(
-            new Action<string, string, string, string>(DoChatMessageReceived),
-            receiver, senderName, senderIdent, message);
-    }
-
-    public void OnCTCPParsed(string channelName, string userName, string message)
-    {
-        wm.AddCallback(
-            new Action<string, string, string>(DoCTCPParsed),
-            channelName, userName, message);
-    }
-
-    public void OnConnectAttemptFailed()
-    {
-        wm.AddCallback(new Action(DoConnectAttemptFailed), null);
-    }
-
-    public void OnConnected()
-    {
-        wm.AddCallback(new Action(DoConnected), null);
-    }
-
-    /// <summary>
-    /// Called when the connection has got cut un-intentionally.
-    /// </summary>
-    /// <param name="reason"></param>
-    public void OnConnectionLost(string reason)
-    {
-        wm.AddCallback(new Action<string>(DoConnectionLost), reason);
-    }
-
-    /// <summary>
-    /// Disconnects from CnCNet.
-    /// </summary>
-    public void Disconnect()
-    {
-        connection.Disconnect();
-        disconnect = true;
     }
 
     private void DoChatMessageReceived(string receiver, string senderName, string ident, string message)
@@ -424,27 +606,6 @@ public class CnCNetManager : IConnectionManager
         channel.AddMessage(new ChatMessage(senderName, ident, senderIsAdmin, foreColor, DateTime.Now, message.Replace('\r', ' ')));
     }
 
-    private void DoCTCPParsed(string channelName, string userName, string message)
-    {
-        Channel channel = FindChannel(channelName);
-
-        // it's possible that we received this CTCP via PRIVMSG, in which case we
-        // expect our username instead of a channel as the first parameter
-        if (channel == null)
-        {
-            if (channelName == ProgramConstants.PLAYERNAME)
-            {
-                PrivateCTCPEventArgs e = new(userName, message);
-
-                PrivateCTCPReceived?.Invoke(this, e);
-            }
-
-            return;
-        }
-
-        channel.OnCTCPReceived(userName, message);
-    }
-
     private void DoConnectAttemptFailed()
     {
         ConnectAttemptFailed?.Invoke(this, EventArgs.Empty);
@@ -482,27 +643,25 @@ public class CnCNetManager : IConnectionManager
         IsConnected = false;
     }
 
-    /// <summary>
-    /// Connects to CnCNet.
-    /// </summary>
-    public void Connect()
+    private void DoCTCPParsed(string channelName, string userName, string message)
     {
-        disconnect = false;
-        MainChannel.AddMessage(new ChatMessage("Connecting to CnCNet...".L10N("UI:Main:ConnectingToCncNet")));
-        connection.ConnectAsync();
-    }
+        Channel channel = FindChannel(channelName);
 
-    /// <summary>
-    /// Called when the connection has been aborted intentionally.
-    /// </summary>
-    public void OnDisconnected()
-    {
-        wm.AddCallback(new Action(DoDisconnected), null);
-    }
+        // it's possible that we received this CTCP via PRIVMSG, in which case we expect our
+        // username instead of a channel as the first parameter
+        if (channel == null)
+        {
+            if (channelName == ProgramConstants.PLAYERNAME)
+            {
+                PrivateCTCPEventArgs e = new(userName, message);
 
-    public void OnErrorReceived(string errorMessage)
-    {
-        MainChannel.AddMessage(new ChatMessage(Color.Red, errorMessage));
+                PrivateCTCPReceived?.Invoke(this, e);
+            }
+
+            return;
+        }
+
+        channel.OnCTCPReceived(userName, message);
     }
 
     private void DoDisconnected()
@@ -528,21 +687,6 @@ public class CnCNetManager : IConnectionManager
         Disconnected?.Invoke(this, EventArgs.Empty);
     }
 
-    public void OnGenericServerMessageReceived(string message)
-    {
-        wm.AddCallback(new Action<string>(DoGenericServerMessageReceived), message);
-    }
-
-    public void OnIncorrectChannelPassword(string channelName)
-    {
-        wm.AddCallback(new Action<string>(DoIncorrectChannelPassword), channelName);
-    }
-
-    public void OnNoticeMessageParsed(string notice, string userName)
-    {
-        // TODO Parse as private message
-    }
-
     private void DoGenericServerMessageReceived(string message)
     {
         MainChannel.AddMessage(new ChatMessage(message));
@@ -555,60 +699,46 @@ public class CnCNetManager : IConnectionManager
             channel.OnInvalidJoinPassword();
     }
 
-    public void OnPrivateMessageReceived(string sender, string message)
-    {
-        wm.AddCallback(
-            new Action<string, string>(DoPrivateMessageReceived),
-            sender, message);
-    }
-
-    public void OnReconnectAttempt()
-    {
-        wm.AddCallback(new Action(DoReconnectAttempt), null);
-    }
-
-    public void OnUserJoinedChannel(string channelName, string hostName, string userName, string ident)
-    {
-        wm.AddCallback(
-            new Action<string, string, string, string>(DoUserJoinedChannel),
-            channelName, hostName, userName, ident);
-    }
-
-    public void OnUserKicked(string channelName, string userName)
-    {
-        wm.AddCallback(
-            new Action<string, string>(DoUserKicked),
-            channelName, userName);
-    }
-
-    public void OnUserLeftChannel(string channelName, string userName)
-    {
-        wm.AddCallback(
-            new Action<string, string>(DoUserLeftChannel),
-            channelName, userName);
-    }
-
     /// <summary>
-    /// Looks up an user in the global user list and removes a channel from the user.
-    /// If the user is left with 0 channels (meaning we have no common channel with the user),
-    /// the user is removed from the global user list.
+    /// Handles situations when the requested name is already in use by another IRC user. Adds
+    /// additional underscores to the name or replaces existing characters with underscores.
     /// </summary>
-    /// <param name="userName">The name of the user.</param>
-    /// <param name="channelName">The name of the channel.</param>
-    public void RemoveChannelFromUser(string userName, string channelName)
+    private void DoNameAlreadyInUse()
     {
-        int userIndex = UserList.FindIndex(user => user.Name.ToLower() == userName.ToLower());
-        if (userIndex > -1)
-        {
-            IRCUser ircUser = UserList[userIndex];
-            _ = ircUser.Channels.Remove(channelName);
+        List<char> charList = ProgramConstants.PLAYERNAME.ToList();
+        int maxNameLength = ClientConfiguration.Instance.MaxNameLength;
 
-            if (ircUser.Channels.Count == 0)
-            {
-                UserList.RemoveAt(userIndex);
-                UserRemoved?.Invoke(this, new UserNameIndexEventArgs(userIndex, userName));
-            }
+        if (charList.Count < maxNameLength)
+        {
+            charList.Add('_');
         }
+        else
+        {
+            int lastNonUnderscoreIndex = charList.FindLastIndex(c => c != '_');
+
+            if (lastNonUnderscoreIndex == -1)
+            {
+                MainChannel.AddMessage(new ChatMessage(
+                    Color.White,
+                    "Your nickname is invalid or already in use. Please change your nickname in the login screen.".L10N("UI:Main:PickAnotherNickName")));
+                UserINISettings.Instance.SkipConnectDialog.Value = false;
+                Disconnect();
+                return;
+            }
+
+            charList[lastNonUnderscoreIndex] = '_';
+        }
+
+        StringBuilder sb = new();
+        foreach (char c in charList)
+            _ = sb.Append(c);
+
+        MainChannel.AddMessage(new ChatMessage(
+            Color.White,
+            string.Format("Your name is already in use. Retrying with {0}...".L10N("UI:Main:NameInUseRetry"), sb.ToString())));
+
+        ProgramConstants.PLAYERNAME = sb.ToString();
+        connection.ChangeNickname();
     }
 
     private void DoPrivateMessageReceived(string sender, string message)
@@ -625,6 +755,14 @@ public class CnCNetManager : IConnectionManager
         MainChannel.AddMessage(new ChatMessage("Attempting to reconnect to CnCNet...".L10N("UI:Main:ReconnectingCncNet")));
 
         connection.ConnectAsync();
+    }
+
+    private void DoTargetChangeTooFast(string channelName, string message)
+    {
+        Channel channel = FindChannel(channelName);
+
+        if (channel != null)
+            channel.OnTargetChangeTooFast(message);
     }
 
     private void DoUserJoinedChannel(string channelName, string host, string userName, string userAddress)
@@ -645,8 +783,7 @@ public class CnCNetManager : IConnectionManager
 
         IRCUser ircUser = null;
 
-        // Check if we already know this user from another channel
-        // Avoid LINQ here for performance reasons
+        // Check if we already know this user from another channel Avoid LINQ here for performance reasons
         foreach (IRCUser user in UserList)
         {
             if (user.Name == name)
@@ -681,13 +818,6 @@ public class CnCNetManager : IConnectionManager
         channel.OnUserJoined(channelUser);
 
         //UserJoinedChannel?.Invoke(this, new ChannelUserEventArgs(channelName, userName));
-    }
-
-    private void AddUserToGlobalUserList(IRCUser user)
-    {
-        UserList.Add(user);
-        UserList = UserList.OrderBy(u => u.Name).ToList();
-        UserAdded?.Invoke(this, new UserEventArgs(user));
     }
 
     private void DoUserKicked(string channelName, string userName)
@@ -743,23 +873,6 @@ public class CnCNetManager : IConnectionManager
         RemoveChannelFromUser(userName, channelName);
     }
 
-    public void OnUserListReceived(string channelName, string[] userList)
-    {
-        wm.AddCallback(
-            new UserListDelegate(DoUserListReceived),
-            channelName, userList);
-    }
-
-    public void OnUserQuitIRC(string userName)
-    {
-        wm.AddCallback(new Action<string>(DoUserQuitIRC), userName);
-    }
-
-    public void OnWelcomeMessageReceived(string message)
-    {
-        wm.AddCallback(new Action<string>(DoWelcomeMessageReceived), message);
-    }
-
     private void DoUserListReceived(string channelName, string[] userList)
     {
         Channel channel = FindChannel(channelName);
@@ -787,8 +900,8 @@ public class CnCNetManager : IConnectionManager
             // Check if we already know the IRC user from another channel
             IRCUser ircUser = UserList.Find(u => u.Name == name);
 
-            // If the user isn't familiar to us already,
-            // create a new user instance and add it to the global user list
+            // If the user isn't familiar to us already, create a new user instance and add it to
+            // the global user list
             if (ircUser == null)
             {
                 ircUser = new IRCUser(name);
@@ -810,6 +923,21 @@ public class CnCNetManager : IConnectionManager
         channel.OnUserListReceived(channelUserList);
     }
 
+    private void DoUserNicknameChange(string oldNickname, string newNickname)
+    {
+        IRCUser user = UserList.Find(u => u.Name.ToUpper() == oldNickname.ToUpper());
+        if (user == null)
+        {
+            Logger.Log("DoUserNicknameChange: Failed to find user with nickname " + oldNickname);
+            return;
+        }
+
+        string realOldNickname = user.Name; // To make sure that case matches
+        user.Name = newNickname;
+
+        channels.ForEach(ch => ch.OnUserNameChanged(realOldNickname, newNickname));
+    }
+
     private void DoUserQuitIRC(string userName)
     {
         new List<Channel>(channels).ForEach(ch => ch.OnUserQuitIRC(userName));
@@ -821,36 +949,6 @@ public class CnCNetManager : IConnectionManager
             UserList.RemoveAt(userIndex);
             UserRemoved?.Invoke(this, new UserNameIndexEventArgs(userIndex, userName));
         }
-    }
-
-    /// <summary>
-    /// Finds a channel with the specified internal name, case-insensitively.
-    /// </summary>
-    /// <param name="channelName">The internal name of the channel.</param>
-    /// <returns>A channel if one matching the name is found, otherwise null.</returns>
-    public Channel FindChannel(string channelName)
-    {
-        channelName = channelName.ToLower();
-
-        foreach (Channel channel in channels)
-        {
-            if (channel.ChannelName.ToLower() == channelName)
-                return channel;
-        }
-
-        return null;
-    }
-
-    public void OnWhoReplyReceived(string ident, string hostName, string userName, string extraInfo)
-    {
-        wm.AddCallback(
-            new Action<string, string, string, string>(DoWhoReplyReceived),
-            ident, hostName, userName, extraInfo);
-    }
-
-    public bool GetDisconnectStatus()
-    {
-        return disconnect;
     }
 
     private void DoWelcomeMessageReceived(string message)
@@ -891,113 +989,4 @@ public class CnCNetManager : IConnectionManager
             }
         }
     }
-
-    public void OnNameAlreadyInUse()
-    {
-        wm.AddCallback(new Action(DoNameAlreadyInUse), null);
-    }
-
-    public void OnBannedFromChannel(string channelName)
-    {
-        wm.AddCallback(new Action<string>(DoBannedFromChannel), channelName);
-    }
-
-    public void OnUserNicknameChange(string oldNickname, string newNickname)
-        => wm.AddCallback(new Action<string, string>(DoUserNicknameChange), oldNickname, newNickname);
-
-    /// <summary>
-    /// Handles situations when the requested name is already in use by another
-    /// IRC user. Adds additional underscores to the name or replaces existing
-    /// characters with underscores.
-    /// </summary>
-    private void DoNameAlreadyInUse()
-    {
-        List<char> charList = ProgramConstants.PLAYERNAME.ToList();
-        int maxNameLength = ClientConfiguration.Instance.MaxNameLength;
-
-        if (charList.Count < maxNameLength)
-        {
-            charList.Add('_');
-        }
-        else
-        {
-            int lastNonUnderscoreIndex = charList.FindLastIndex(c => c != '_');
-
-            if (lastNonUnderscoreIndex == -1)
-            {
-                MainChannel.AddMessage(new ChatMessage(
-                    Color.White,
-                    "Your nickname is invalid or already in use. Please change your nickname in the login screen.".L10N("UI:Main:PickAnotherNickName")));
-                UserINISettings.Instance.SkipConnectDialog.Value = false;
-                Disconnect();
-                return;
-            }
-
-            charList[lastNonUnderscoreIndex] = '_';
-        }
-
-        StringBuilder sb = new();
-        foreach (char c in charList)
-            _ = sb.Append(c);
-
-        MainChannel.AddMessage(new ChatMessage(
-            Color.White,
-            string.Format("Your name is already in use. Retrying with {0}...".L10N("UI:Main:NameInUseRetry"), sb.ToString())));
-
-        ProgramConstants.PLAYERNAME = sb.ToString();
-        connection.ChangeNickname();
-    }
-
-    private void DoBannedFromChannel(string channelName)
-    {
-        BannedFromChannel?.Invoke(this, new ChannelEventArgs(channelName));
-    }
-
-    private void DoUserNicknameChange(string oldNickname, string newNickname)
-    {
-        IRCUser user = UserList.Find(u => u.Name.ToUpper() == oldNickname.ToUpper());
-        if (user == null)
-        {
-            Logger.Log("DoUserNicknameChange: Failed to find user with nickname " + oldNickname);
-            return;
-        }
-
-        string realOldNickname = user.Name; // To make sure that case matches
-        user.Name = newNickname;
-
-        channels.ForEach(ch => ch.OnUserNameChanged(realOldNickname, newNickname));
-    }
-}
-
-public class UserEventArgs : EventArgs
-{
-    public UserEventArgs(IRCUser ircUser)
-    {
-        User = ircUser;
-    }
-
-    public IRCUser User { get; private set; }
-}
-
-public class IndexEventArgs : EventArgs
-{
-    public IndexEventArgs(int index)
-    {
-        Index = index;
-    }
-
-    public int Index { get; private set; }
-}
-
-public class UserNameChangedEventArgs : EventArgs
-{
-    public UserNameChangedEventArgs(string oldUserName, IRCUser user)
-    {
-        OldUserName = oldUserName;
-        User = user;
-    }
-
-    public string OldUserName { get; }
-
-    public IRCUser User { get; }
 }

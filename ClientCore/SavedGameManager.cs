@@ -14,6 +14,36 @@ public static class SavedGameManager
 
     private static bool saveRenameInProgress = false;
 
+    public static bool AreSavedGamesAvailable()
+    {
+        if (Directory.Exists(GetSaveGameDirectoryPath()))
+            return true;
+
+        return false;
+    }
+
+    public static bool EraseSavedGames()
+    {
+        Logger.Log("Erasing previous MP saved games.");
+
+        try
+        {
+            for (int i = 0; i < 1000; i++)
+            {
+                File.Delete(GetSaveGameDirectoryPath() +
+                    "/" + string.Format("SVGM_{0}.NET", i.ToString("D3")));
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Erasing previous MP saved games failed! Exception message: " + ex.Message);
+            return false;
+        }
+
+        Logger.Log("MP saved games succesfully erased.");
+        return true;
+    }
+
     public static int GetSaveGameCount()
     {
         string saveGameDirectory = GetSaveGameDirectoryPath() + "/";
@@ -52,18 +82,10 @@ public static class SavedGameManager
         return timestamps;
     }
 
-    public static bool AreSavedGamesAvailable()
-    {
-        if (Directory.Exists(GetSaveGameDirectoryPath()))
-            return true;
-
-        return false;
-    }
-
     /// <summary>
     /// Initializes saved MP games for a match.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>result.</returns>
     public static bool InitSavedGames()
     {
         bool success = EraseSavedGames();
@@ -84,11 +106,6 @@ public static class SavedGameManager
         }
 
         return true;
-    }
-
-    private static string GetSaveGameDirectoryPath()
-    {
-        return ProgramConstants.GamePath + SAVED_GAMES_DIRECTORY;
     }
 
     public static void RenameSavedGame()
@@ -160,25 +177,8 @@ public static class SavedGameManager
         Logger.Log("Saved game SAVEGAME.NET succesfully renamed to " + Path.GetFileName(sgPath));
     }
 
-    public static bool EraseSavedGames()
+    private static string GetSaveGameDirectoryPath()
     {
-        Logger.Log("Erasing previous MP saved games.");
-
-        try
-        {
-            for (int i = 0; i < 1000; i++)
-            {
-                File.Delete(GetSaveGameDirectoryPath() +
-                    "/" + string.Format("SVGM_{0}.NET", i.ToString("D3")));
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("Erasing previous MP saved games failed! Exception message: " + ex.Message);
-            return false;
-        }
-
-        Logger.Log("MP saved games succesfully erased.");
-        return true;
+        return ProgramConstants.GamePath + SAVED_GAMES_DIRECTORY;
     }
 }

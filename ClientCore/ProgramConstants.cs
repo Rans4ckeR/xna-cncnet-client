@@ -19,20 +19,6 @@ public static class ProgramConstants
 
     public const string CNCNETPROTOCOLREVISION = "R9";
 
-    /* For .NET 6 Release mode we split up the DXMainClient dll from the AppHost executable.
-     * The AppHost is located in the root, as is the case for the .NET 4.8 executables.
-     * The actual DXMainClient dll is 2 directories up in Application.StartupPath\Binaries\<WindowsGL,OpenGL,XNA> */
-#if DEBUG
-    public static readonly string GamePath = Application.StartupPath.Replace('\\', '/') + "/";
-#elif NETFRAMEWORK
-    public static readonly string GamePath = Directory.GetParent(Application.StartupPath.TrimEnd(new char[] { '\\' })).FullName.Replace('\\', '/') + "/";
-#else
-    public static readonly string GamePath = Directory.GetParent(Path.GetFullPath(Path.Combine(Application.StartupPath, "..\\..\\")).TrimEnd(new char[] { '\\' })).FullName.Replace('\\', '/') + "/";
-#endif
-
-    public static event EventHandler PlayerNameChanged;
-
-    public static string ClientUserFilesPath => GamePath + "Client/";
     public const string LANPROTOCOLREVISION = "RL6";
     public const int LANPORT = 1234;
     public const int LANINGAMEPORT = 1234;
@@ -51,14 +37,30 @@ public static class ProgramConstants
 
     public const string GAMEINVITATIONFAILEDCTCPCOMMAND = "INVITATION_FAILED";
 
+    /* For .NET 6 Release mode we split up the DXMainClient dll from the AppHost executable.
+     * The AppHost is located in the root, as is the case for the .NET 4.8 executables.
+     * The actual DXMainClient dll is 2 directories up in Application.StartupPath\Binaries\<WindowsGL,OpenGL,XNA> */
+#if DEBUG
+    public static readonly string GamePath = Application.StartupPath.Replace('\\', '/') + "/";
+#elif NETFRAMEWORK
+    public static readonly string GamePath = Directory.GetParent(Application.StartupPath.TrimEnd(new char[] { '\\' })).FullName.Replace('\\', '/') + "/";
+#else
+    public static readonly string GamePath = Directory.GetParent(Path.GetFullPath(Path.Combine(Application.StartupPath, "..\\..\\")).TrimEnd(new char[] { '\\' })).FullName.Replace('\\', '/') + "/";
+#endif
+
     public static readonly Encoding LANENCODING = Encoding.UTF8;
 
     public static readonly List<string> TEAMS = new() { "A", "B", "C", "D" };
 
-    public static string GAME_VERSION = "Undefined";
-    public static string BASE_RESOURCE_PATH = "Resources/";
-
     private static string playerName = "No name";
+
+    public static event EventHandler PlayerNameChanged;
+
+    public static string ClientUserFilesPath => GamePath + "Client/";
+
+    public static string GameVersion { get; set; } = "Undefined";
+
+    public static string BaseResourcePath { get; set; } = "Resources/";
 
     public static string PLAYERNAME
     {
@@ -76,20 +78,24 @@ public static class ProgramConstants
         }
     }
 
-    public static string RESOURCES_DIR = BASE_RESOURCE_PATH;
+    public static string ResourceDir { get; set; } = BaseResourcePath;
 
-    public static int LOG_LEVEL = 1;
+    public static int LogLevel { get; set; } = 1;
 
     public static bool IsInGame { get; set; }
 
+    // Static fields might be initialized before the translation file is loaded. Change to readonly
+    // properties here.
+    public static List<string> AIPLAYERNAMES => new() { "Easy AI".L10N("UI:Main:EasyAIName"), "Medium AI".L10N("UI:Main:MediumAIName"), "Hard AI".L10N("UI:Main:HardAIName") };
+
     public static string GetResourcePath()
     {
-        return GamePath + RESOURCES_DIR;
+        return GamePath + ResourceDir;
     }
 
     public static string GetBaseResourcePath()
     {
-        return GamePath + BASE_RESOURCE_PATH;
+        return GamePath + BaseResourcePath;
     }
 
     public static string GetAILevelName(int aiLevel)
@@ -99,7 +105,4 @@ public static class ProgramConstants
 
         return string.Empty;
     }
-
-    // Static fields might be initialized before the translation file is loaded. Change to readonly properties here.
-    public static List<string> AIPLAYERNAMES => new() { "Easy AI".L10N("UI:Main:EasyAIName"), "Medium AI".L10N("UI:Main:MediumAIName"), "Hard AI".L10N("UI:Main:HardAIName") };
 }

@@ -109,7 +109,8 @@ public static class AllianceHolder
                 {
                     spawnIni.SetIntValue(
                         "Multi" + houseId + "_Alliances",
-                        "HouseAlly" + GetHouseAllyIndexString(allyId, selfFound), allyHouseId - 1);
+                        "HouseAlly" + GetHouseAllyIndexString(allyId, selfFound),
+                        allyHouseId - 1);
                 }
             }
         }

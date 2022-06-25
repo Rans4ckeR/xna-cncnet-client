@@ -23,10 +23,15 @@ public class XNALinkButton : XNAClientButton
         CreateToolTip();
     }
 
-    private void CreateToolTip()
+    public override void OnLeftClick()
     {
-        if (toolTip == null)
-            toolTip = new ToolTip(WindowManager, this);
+        using Process proc = Process.Start(new ProcessStartInfo
+        {
+            FileName = URL,
+            UseShellExecute = true
+        });
+
+        base.OnLeftClick();
     }
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
@@ -46,14 +51,9 @@ public class XNALinkButton : XNAClientButton
         base.ParseAttributeFromINI(iniFile, key, value);
     }
 
-    public override void OnLeftClick()
+    private void CreateToolTip()
     {
-        using Process _ = Process.Start(new ProcessStartInfo
-        {
-            FileName = URL,
-            UseShellExecute = true
-        });
-
-        base.OnLeftClick();
+        if (toolTip == null)
+            toolTip = new ToolTip(WindowManager, this);
     }
 }

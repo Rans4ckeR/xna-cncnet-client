@@ -3,13 +3,9 @@ using System.Collections.Generic;
 
 namespace DTAClient.Online;
 
-public interface IUserCollection<T>
+public interface IUserCollection<T> : ICollection<T>
 {
-    int Count { get; }
-
     void Add(string username, T item);
-
-    void Clear();
 
     void DoForAllUsers(Action<T> action);
 

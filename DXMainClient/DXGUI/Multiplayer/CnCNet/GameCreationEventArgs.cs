@@ -5,8 +5,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 internal class GameCreationEventArgs : EventArgs
 {
-    public GameCreationEventArgs(string roomName, int maxPlayers,
-        string password, CnCNetTunnel tunnel)
+    public GameCreationEventArgs(
+        string roomName,
+        int maxPlayers,
+        string password,
+        CnCNetTunnel tunnel)
     {
         GameRoomName = roomName;
         MaxPlayers = maxPlayers;

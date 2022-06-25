@@ -35,7 +35,7 @@ internal class HostedLANGame : GenericHostedGame
             return false;
 
         GameVersion = parameters[1];
-        Incompatible = GameVersion != ProgramConstants.GAME_VERSION;
+        Incompatible = GameVersion != ProgramConstants.GameVersion;
         Game = gc.GameList.Find(g => g.InternalName.ToUpper() == parameters[2]);
         Map = parameters[3];
         GameMode = parameters[4];

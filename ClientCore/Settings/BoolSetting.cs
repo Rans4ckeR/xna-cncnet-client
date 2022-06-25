@@ -11,21 +11,21 @@ public class BoolSetting : INISetting<bool>
 
     public override void Write()
     {
-        IniFile.SetBooleanValue(IniSection, IniKey, Get());
-    }
-
-    protected override bool Get()
-    {
-        return IniFile.GetBooleanValue(IniSection, IniKey, DefaultValue);
-    }
-
-    protected override void Set(bool value)
-    {
-        IniFile.SetBooleanValue(IniSection, IniKey, value);
+        IniFile.SetBooleanValue(IniSection, IniKey, GetValue());
     }
 
     public override string ToString()
     {
-        return Get().ToString();
+        return GetValue().ToString();
+    }
+
+    protected override bool GetValue()
+    {
+        return IniFile.GetBooleanValue(IniSection, IniKey, DefaultValue);
+    }
+
+    protected override void SetValue(bool value)
+    {
+        IniFile.SetBooleanValue(IniSection, IniKey, value);
     }
 }

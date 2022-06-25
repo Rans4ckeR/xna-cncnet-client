@@ -7,15 +7,13 @@ namespace DTAConfig.Settings;
 
 public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
 {
-    protected string defaultSection = "CustomSettings";
-
-    private string _settingSection;
-
-    private string _settingKey;
+    private XNAClientCheckBox _parentCheckBox;
 
     private string _parentCheckBoxName;
 
-    private XNAClientCheckBox _parentCheckBox;
+    private string _settingKey;
+
+    private string _settingSection;
 
     public SettingCheckBoxBase(WindowManager windowManager)
         : base(windowManager)
@@ -32,37 +30,6 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
     }
 
     public bool DefaultValue { get; set; }
-
-    public string SettingSection
-    {
-        get => string.IsNullOrEmpty(_settingSection) ? defaultSection : _settingSection;
-        set => _settingSection = value;
-    }
-
-    public string SettingKey
-    {
-        get => string.IsNullOrEmpty(_settingKey) ? $"{Name}{defaultKeySuffix}" : _settingKey;
-        set => _settingKey = value;
-    }
-
-    public bool RestartRequired { get; set; }
-
-    /// <summary>
-    /// Gets or sets name of parent check-box control.
-    /// </summary>
-    public string ParentCheckBoxName
-    {
-        get
-        {
-            return _parentCheckBoxName;
-        }
-
-        set
-        {
-            _parentCheckBoxName = value;
-            UpdateParentCheckBox(FindParentCheckBox());
-        }
-    }
 
     /// <summary>
     /// Gets or sets parent check-box control.
@@ -82,12 +49,48 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
     }
 
     /// <summary>
+    /// Gets or sets name of parent check-box control.
+    /// </summary>
+    public string ParentCheckBoxName
+    {
+        get
+        {
+            return _parentCheckBoxName;
+        }
+
+        set
+        {
+            _parentCheckBoxName = value;
+            UpdateParentCheckBox(FindParentCheckBox());
+        }
+    }
+
+    /// <summary>
     /// Gets or sets a value indicating whether value required from parent check-box control if set.
     /// </summary>
     public bool ParentCheckBoxRequiredValue { get; set; } = true;
 
-    protected string defaultKeySuffix = "_Checked";
-    protected bool originalState;
+    public bool RestartRequired { get; set; }
+
+    public string SettingKey
+    {
+        get => string.IsNullOrEmpty(_settingKey) ? $"{Name}{DefaultKeySuffix}" : _settingKey;
+        set => _settingKey = value;
+    }
+
+    public string SettingSection
+    {
+        get => string.IsNullOrEmpty(_settingSection) ? DefaultSection : _settingSection;
+        set => _settingSection = value;
+    }
+
+    protected string DefaultKeySuffix { get; set; } = "_Checked";
+
+    protected string DefaultSection { get; set; } = "CustomSettings";
+
+    protected bool OriginalState { get; set; }
+
+    public abstract void Load();
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
     {
@@ -122,8 +125,6 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
         base.ParseAttributeFromINI(iniFile, key, value);
     }
 
-    public abstract void Load();
-
     public abstract bool Save();
 
     private XNAClientCheckBox FindParentCheckBox()
@@ -138,18 +139,6 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
         }
 
         return null;
-    }
-
-    private void UpdateParentCheckBox(XNAClientCheckBox parentCheckBox)
-    {
-        if (ParentCheckBox != null)
-            ParentCheckBox.CheckedChanged -= ParentCheckBox_CheckedChanged;
-
-        _parentCheckBox = parentCheckBox;
-        UpdateAllowChecking();
-
-        if (ParentCheckBox != null)
-            ParentCheckBox.CheckedChanged += ParentCheckBox_CheckedChanged;
     }
 
     private void ParentCheckBox_CheckedChanged(object sender, EventArgs e) => UpdateAllowChecking();
@@ -168,5 +157,17 @@ public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
                 Checked = false;
             }
         }
+    }
+
+    private void UpdateParentCheckBox(XNAClientCheckBox parentCheckBox)
+    {
+        if (ParentCheckBox != null)
+            ParentCheckBox.CheckedChanged -= ParentCheckBox_CheckedChanged;
+
+        _parentCheckBox = parentCheckBox;
+        UpdateAllowChecking();
+
+        if (ParentCheckBox != null)
+            ParentCheckBox.CheckedChanged += ParentCheckBox_CheckedChanged;
     }
 }

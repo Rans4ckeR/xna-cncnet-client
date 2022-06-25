@@ -14,17 +14,17 @@ namespace DTAClient.DXGUI.Multiplayer;
 /// </summary>
 public class PlayerListBox : XNAListBox
 {
-    public List<ChannelUser> Users;
-
     private const int MARGIN = 2;
 
     private readonly Texture2D adminGameIcon;
-    private readonly Texture2D unknownGameIcon;
-    private readonly Texture2D badgeGameIcon;
+
     private readonly Texture2D friendIcon;
-    private readonly Texture2D ignoreIcon;
 
     private readonly GameCollection gameCollection;
+
+    private readonly Texture2D ignoreIcon;
+
+    private readonly Texture2D unknownGameIcon;
 
     public PlayerListBox(WindowManager windowManager, GameCollection gameCollection)
         : base(windowManager)
@@ -37,20 +37,17 @@ public class PlayerListBox : XNAListBox
         unknownGameIcon = AssetLoader.TextureFromImage(ClientCore.Properties.Resources.unknownicon);
         friendIcon = AssetLoader.LoadTexture("friendicon.png");
         ignoreIcon = AssetLoader.LoadTexture("ignoreicon.png");
-        badgeGameIcon = AssetLoader.LoadTexture("Badges/badge.png");
+
+        //badgeGameIcon = AssetLoader.LoadTexture("Badges/badge.png");
     }
+
+    public List<ChannelUser> Users { get; set; }
 
     public void AddUser(ChannelUser user)
     {
         XNAListBoxItem item = new();
         UpdateItemInfo(user, item);
         AddItem(item);
-    }
-
-    public void UpdateUserInfo(ChannelUser user)
-    {
-        XNAListBoxItem item = Items.Find(x => x.Tag == user);
-        UpdateItemInfo(user, item);
     }
 
     public override void Draw(GameTime gameTime)
@@ -73,13 +70,22 @@ public class PlayerListBox : XNAListBox
             {
                 int drawnWidth = DrawSelectionUnderScrollbar || !ScrollBar.IsDrawn() || !EnableScrollbar ? Width - 2 : Width - 2 - ScrollBar.Width;
                 FillRectangle(
-                    new Rectangle(1, height,
-                    drawnWidth, lbItem.TextLines.Count * LineHeight),
+                    new Rectangle(
+                        1,
+                        height,
+                        drawnWidth,
+                        lbItem.TextLines.Count * LineHeight),
                     FocusColor);
             }
 
-            DrawTexture(user.IsAdmin ? adminGameIcon : lbItem.Texture, new Rectangle(x, height,
-                    adminGameIcon.Width, adminGameIcon.Height), Color.White);
+            DrawTexture(
+                user.IsAdmin ? adminGameIcon : lbItem.Texture,
+                new Rectangle(
+                    x,
+                    height,
+                    adminGameIcon.Width,
+                    adminGameIcon.Height),
+                Color.White);
 
             x += adminGameIcon.Width + MARGIN;
 
@@ -88,8 +94,12 @@ public class PlayerListBox : XNAListBox
             {
                 DrawTexture(
                     friendIcon,
-                    new Rectangle(x, height,
-                    friendIcon.Width, friendIcon.Height), Color.White);
+                    new Rectangle(
+                        x,
+                        height,
+                        friendIcon.Width,
+                        friendIcon.Height),
+                    Color.White);
 
                 x += friendIcon.Width + MARGIN;
             }
@@ -99,8 +109,12 @@ public class PlayerListBox : XNAListBox
             {
                 DrawTexture(
                     ignoreIcon,
-                    new Rectangle(x, height,
-                    ignoreIcon.Width, ignoreIcon.Height), Color.White);
+                    new Rectangle(
+                        x,
+                        height,
+                        ignoreIcon.Width,
+                        ignoreIcon.Height),
+                    Color.White);
 
                 x += ignoreIcon.Width + MARGIN;
             }
@@ -118,7 +132,9 @@ public class PlayerListBox : XNAListBox
             string name = user.IsAdmin ? user.IRCUser.Name + " " + "(Admin)".L10N("UI:Main:AdminSuffix") : user.IRCUser.Name;
             x += lbItem.TextXPadding;
 
-            DrawStringWithShadow(name, FontIndex,
+            DrawStringWithShadow(
+                name,
+                FontIndex,
                 new Vector2(x, height),
                 user.IsAdmin ? Color.Red : lbItem.TextColor);
 
@@ -129,6 +145,12 @@ public class PlayerListBox : XNAListBox
             DrawPanelBorders();
 
         DrawChildren(gameTime);
+    }
+
+    public void UpdateUserInfo(ChannelUser user)
+    {
+        XNAListBoxItem item = Items.Find(x => x.Tag == user);
+        UpdateItemInfo(user, item);
     }
 
     private void UpdateItemInfo(ChannelUser user, XNAListBoxItem item)

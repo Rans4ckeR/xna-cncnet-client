@@ -5,17 +5,17 @@
 /// </summary>
 public static class UIDesignConstants
 {
-    public const int EMPTYSPACESIDES = 6;
-    public const int EMPTYSPACETOP = 6;
-    public const int EMPTYSPACEBOTTOM = 6;
+    public const int EmptySpaceSides = 6;
+    public const int EmptySpaceTop = 6;
+    public const int EmptySpaceBottom = 6;
 
-    public const int CONTROLVERTICALMARGIN = 6;
-    public const int CONTROLHORIZONTALMARGIN = 6;
+    public const int ControlVerticalMargin = 6;
+    public const int ControlHorizontalMargin = 6;
 
-    public const int BUTTONHEIGHT = 23;
-    public const int BUTTONWIDTH75 = 75;
-    public const int BUTTONWIDTH92 = 92;
-    public const int BUTTONWIDTH121 = 121;
-    public const int BUTTONWIDTH133 = 133;
-    public const int BUTTONWIDTH160 = 160;
+    public const int ButtonHeight = 23;
+    public const int ButtonWidth75 = 75;
+    public const int ButtonWidth92 = 92;
+    public const int ButtonWidth121 = 121;
+    public const int ButtonWidth133 = 133;
+    public const int ButtonWidth160 = 160;
 }

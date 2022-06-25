@@ -19,6 +19,7 @@ namespace DTAClient;
 internal static class Program
 {
     private static readonly string COMMON_LIBRARY_PATH;
+    private static readonly string SPECIFIC_LIBRARY_PATH;
 
     static Program()
     {
@@ -70,8 +71,6 @@ internal static class Program
         Environment.CurrentDirectory = startupPath.Replace('\\', '/');
 #endif
     }
-
-    private static readonly string SPECIFIC_LIBRARY_PATH;
 
     /// <summary>
     /// The main entry point for the application.
@@ -128,7 +127,7 @@ internal static class Program
 
         using Mutex mutex = new(false, mutexId, out bool _, securitySettings);
 #else
-        using var mutex = new Mutex(false, mutexId, out _);
+        using Mutex mutex = new(false, mutexId, out _);
 #endif
         bool hasHandle = false;
         try
@@ -186,12 +185,12 @@ internal static class Program
         if (assemblyName.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        var commonFileInfo = new FileInfo(FormattableString.Invariant($"{Path.Combine(COMMON_LIBRARY_PATH, assemblyName.Name)}.dll"));
+        FileInfo commonFileInfo = new(FormattableString.Invariant($"{Path.Combine(COMMON_LIBRARY_PATH, assemblyName.Name)}.dll"));
 
         if (commonFileInfo.Exists)
             return assemblyLoadContext.LoadFromAssemblyPath(commonFileInfo.FullName);
 
-        var specificFileInfo = new FileInfo(FormattableString.Invariant($"{Path.Combine(SPECIFIC_LIBRARY_PATH, assemblyName.Name)}.dll"));
+        FileInfo specificFileInfo = new(FormattableString.Invariant($"{Path.Combine(SPECIFIC_LIBRARY_PATH, assemblyName.Name)}.dll"));
 
         if (specificFileInfo.Exists)
             return assemblyLoadContext.LoadFromAssemblyPath(specificFileInfo.FullName);

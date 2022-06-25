@@ -12,24 +12,19 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
 #if TS
-using Microsoft.Win32;
 using System.Diagnostics;
+using Microsoft.Win32;
 #endif
 
 namespace DTAConfig.OptionPanels;
 
-internal class DisplayOptionsPanel : XNAOptionsPanel
+internal partial class DisplayOptionsPanel : XNAOptionsPanel
 {
     private const int DRAG_DISTANCE_DEFAULT = 4;
     private const int ORIGINAL_RESOLUTION_WIDTH = 640;
     private const string RENDERERS_INI = "Renderers.ini";
 
     private XNAClientDropDown ddIngameResolution;
-
-    public DisplayOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
-        : base(windowManager, iniSettings)
-    {
-    }
 
     private XNAClientDropDown ddDetailLevel;
     private XNAClientDropDown ddRenderer;
@@ -52,11 +47,17 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
     private XNAClientButton btnGameCompatibilityFix;
     private XNAClientButton btnMapEditorCompatibilityFix;
 
-    private bool GameCompatFixInstalled = false;
-    private bool FinalSunCompatFixInstalled = false;
-    private bool GameCompatFixDeclined = false;
+    private bool gameCompatFixInstalled = false;
+    private bool finalSunCompatFixInstalled = false;
+    private bool gameCompatFixDeclined = false;
+
     //private bool FinalSunCompatFixDeclined = false;
 #endif
+
+    public DisplayOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
+        : base(windowManager, iniSettings)
+    {
+    }
 
     public override void Initialize()
     {
@@ -76,15 +77,18 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             Name = "ddIngameResolution",
             ClientRectangle = new Rectangle(
             lblIngameResolution.Right + 12,
-            lblIngameResolution.Y - 2, 120, 19)
+            lblIngameResolution.Y - 2,
+            120,
+            19)
         };
 
         ClientConfiguration clientConfig = ClientConfiguration.Instance;
 
-        List<ScreenResolution> resolutions = DisplayOptionsPanel.GetResolutions(
+        List<ScreenResolution> resolutions = GetResolutions(
             clientConfig.MinimumIngameWidth,
             clientConfig.MinimumIngameHeight,
-            clientConfig.MaximumIngameWidth, clientConfig.MaximumIngameHeight);
+            clientConfig.MaximumIngameWidth,
+            clientConfig.MaximumIngameHeight);
 
         resolutions.Sort();
 
@@ -96,7 +100,9 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             Name = "lblDetailLevel",
             ClientRectangle = new Rectangle(
                 lblIngameResolution.X,
-            ddIngameResolution.Bottom + 16, 0, 0),
+                ddIngameResolution.Bottom + 16,
+                0,
+                0),
             Text = "Detail Level:".L10N("UI:DTAConfig:DetailLevel")
         };
 
@@ -118,7 +124,9 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             Name = "lblRenderer",
             ClientRectangle = new Rectangle(
                 lblDetailLevel.X,
-            ddDetailLevel.Bottom + 16, 0, 0),
+                ddDetailLevel.Bottom + 16,
+                0,
+                0),
             Text = "Renderer:".L10N("UI:DTAConfig:Renderer")
         };
 
@@ -160,7 +168,9 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             Name = "chkWindowedMode",
             ClientRectangle = new Rectangle(
                 lblDetailLevel.X,
-            ddRenderer.Bottom + 16, 0, 0),
+                ddRenderer.Bottom + 16,
+                0,
+                0),
             Text = "Windowed Mode".L10N("UI:DTAConfig:WindowedMode")
         };
         chkWindowedMode.CheckedChanged += ChkWindowedMode_CheckedChanged;
@@ -169,8 +179,10 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         {
             Name = "chkBorderlessWindowedMode",
             ClientRectangle = new Rectangle(
-            chkWindowedMode.X + 50,
-            chkWindowedMode.Bottom + 24, 0, 0),
+                chkWindowedMode.X + 50,
+                chkWindowedMode.Bottom + 24,
+                0,
+                0),
             Text = "Borderless Windowed Mode".L10N("UI:DTAConfig:BorderlessWindowedMode"),
             AllowChecking = false
         };
@@ -179,8 +191,10 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         {
             Name = "chkBackBufferInVRAM",
             ClientRectangle = new Rectangle(
-            lblDetailLevel.X,
-            chkBorderlessWindowedMode.Bottom + 28, 0, 0),
+                lblDetailLevel.X,
+                chkBorderlessWindowedMode.Bottom + 28,
+                0,
+                0),
             Text = ("Back Buffer in Video Memory" + Environment.NewLine +
             "(lower performance, but is" + Environment.NewLine + "necessary on some systems)").L10N("UI:DTAConfig:BackBuffer")
         };
@@ -188,8 +202,7 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         XNALabel lblClientResolution = new(WindowManager)
         {
             Name = "lblClientResolution",
-            ClientRectangle = new Rectangle(
-            285, 14, 0, 0),
+            ClientRectangle = new Rectangle(285, 14, 0, 0),
             Text = "Client Resolution:".L10N("UI:DTAConfig:ClientResolution")
         };
 
@@ -207,17 +220,19 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
         System.Drawing.Rectangle screenBounds = Screen.PrimaryScreen.Bounds;
 
-        resolutions = DisplayOptionsPanel.GetResolutions(800, 600,
-            screenBounds.Width, screenBounds.Height);
+        resolutions = GetResolutions(
+            800,
+            600,
+            screenBounds.Width,
+            screenBounds.Height);
 
-        // Add "optimal" client resolutions for windowed mode
-        // if they're not supported in fullscreen mode
-        DisplayOptionsPanel.AddResolutionIfFitting(1024, 600, resolutions);
-        DisplayOptionsPanel.AddResolutionIfFitting(1024, 720, resolutions);
-        DisplayOptionsPanel.AddResolutionIfFitting(1280, 600, resolutions);
-        DisplayOptionsPanel.AddResolutionIfFitting(1280, 720, resolutions);
-        DisplayOptionsPanel.AddResolutionIfFitting(1280, 768, resolutions);
-        DisplayOptionsPanel.AddResolutionIfFitting(1280, 800, resolutions);
+        // Add "optimal" client resolutions for windowed mode if they're not supported in fullscreen mode
+        AddResolutionIfFitting(1024, 600, resolutions);
+        AddResolutionIfFitting(1024, 720, resolutions);
+        AddResolutionIfFitting(1280, 600, resolutions);
+        AddResolutionIfFitting(1280, 720, resolutions);
+        AddResolutionIfFitting(1280, 768, resolutions);
+        AddResolutionIfFitting(1280, 800, resolutions);
 
         resolutions.Sort();
 
@@ -231,8 +246,8 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             ddClientResolution.AddItem(item);
         }
 
-        // So we add the optimal resolutions to the list, sort it and then find
-        // out the optimal resolution index - it's inefficient, but works
+        // So we add the optimal resolutions to the list, sort it and then find out the optimal
+        // resolution index - it's inefficient, but works
         string[] recommendedResolutions = clientConfig.RecommendedResolutions;
 
         foreach (string resolution in recommendedResolutions)
@@ -247,8 +262,10 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         {
             Name = "chkBorderlessClient",
             ClientRectangle = new Rectangle(
-            lblClientResolution.X,
-            lblDetailLevel.Y, 0, 0),
+                lblClientResolution.X,
+                lblDetailLevel.Y,
+                0,
+                0),
             Text = "Fullscreen Client".L10N("UI:DTAConfig:FullscreenClient")
         };
         chkBorderlessClient.CheckedChanged += ChkBorderlessMenu_CheckedChanged;
@@ -258,8 +275,10 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         {
             Name = "lblClientTheme",
             ClientRectangle = new Rectangle(
-            lblClientResolution.X,
-            lblRenderer.Y, 0, 0),
+                lblClientResolution.X,
+                lblRenderer.Y,
+                0,
+                0),
             Text = "Client Theme:".L10N("UI:DTAConfig:ClientTheme")
         };
 
@@ -267,10 +286,10 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         {
             Name = "ddClientTheme",
             ClientRectangle = new Rectangle(
-            ddClientResolution.X,
-            ddRenderer.Y,
-            ddClientResolution.Width,
-            ddRenderer.Height)
+                ddClientResolution.X,
+                ddRenderer.Y,
+                ddClientResolution.Width,
+                ddRenderer.Height)
         };
 
         int themeCount = ClientConfiguration.Instance.ThemeCount;
@@ -279,45 +298,62 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
             ddClientTheme.AddItem(ClientConfiguration.Instance.GetThemeInfoFromIndex(i)[0]);
 
 #if TS
-        lblCompatibilityFixes = new XNALabel(WindowManager);
-        lblCompatibilityFixes.Name = "lblCompatibilityFixes";
-        lblCompatibilityFixes.FontIndex = 1;
-        lblCompatibilityFixes.Text = "Compatibility Fixes (advanced):".L10N("UI:DTAConfig:TSCompatibilityFixAdv");
+        lblCompatibilityFixes = new XNALabel(WindowManager)
+        {
+            Name = "lblCompatibilityFixes",
+            FontIndex = 1,
+            Text = "Compatibility Fixes (advanced):".L10N("UI:DTAConfig:TSCompatibilityFixAdv")
+        };
         AddChild(lblCompatibilityFixes);
         lblCompatibilityFixes.CenterOnParent();
         lblCompatibilityFixes.Y = Height - 103;
 
-        lblGameCompatibilityFix = new XNALabel(WindowManager);
-        lblGameCompatibilityFix.Name = "lblGameCompatibilityFix";
-        lblGameCompatibilityFix.ClientRectangle = new Rectangle(132,
-            lblCompatibilityFixes.Bottom + 20, 0, 0);
-        lblGameCompatibilityFix.Text = "DTA/TI/TS Compatibility Fix:".L10N("UI:DTAConfig:TSCompatibilityFix");
+        lblGameCompatibilityFix = new XNALabel(WindowManager)
+        {
+            Name = "lblGameCompatibilityFix",
+            ClientRectangle = new Rectangle(
+                132,
+                lblCompatibilityFixes.Bottom + 20,
+                0,
+                0),
+            Text = "DTA/TI/TS Compatibility Fix:".L10N("UI:DTAConfig:TSCompatibilityFix")
+        };
 
-        btnGameCompatibilityFix = new XNAClientButton(WindowManager);
-        btnGameCompatibilityFix.Name = "btnGameCompatibilityFix";
-        btnGameCompatibilityFix.ClientRectangle = new Rectangle(
-            lblGameCompatibilityFix.Right + 20,
-            lblGameCompatibilityFix.Y - 4, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT);
-        btnGameCompatibilityFix.FontIndex = 1;
-        btnGameCompatibilityFix.Text = "Enable".L10N("UI:DTAConfig:Enable");
+        btnGameCompatibilityFix = new XNAClientButton(WindowManager)
+        {
+            Name = "btnGameCompatibilityFix",
+            ClientRectangle = new Rectangle(
+                lblGameCompatibilityFix.Right + 20,
+                lblGameCompatibilityFix.Y - 4,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
+            FontIndex = 1,
+            Text = "Enable".L10N("UI:DTAConfig:Enable")
+        };
         btnGameCompatibilityFix.LeftClick += BtnGameCompatibilityFix_LeftClick;
 
-        lblMapEditorCompatibilityFix = new XNALabel(WindowManager);
-        lblMapEditorCompatibilityFix.Name = "lblMapEditorCompatibilityFix";
-        lblMapEditorCompatibilityFix.ClientRectangle = new Rectangle(
-            lblGameCompatibilityFix.X,
-            lblGameCompatibilityFix.Bottom + 20, 0, 0);
-        lblMapEditorCompatibilityFix.Text = "FinalSun Compatibility Fix:".L10N("UI:DTAConfig:TSFinalSunFix");
+        lblMapEditorCompatibilityFix = new XNALabel(WindowManager)
+        {
+            Name = "lblMapEditorCompatibilityFix",
+            ClientRectangle = new Rectangle(
+                lblGameCompatibilityFix.X,
+                lblGameCompatibilityFix.Bottom + 20,
+                0,
+                0),
+            Text = "FinalSun Compatibility Fix:".L10N("UI:DTAConfig:TSFinalSunFix")
+        };
 
-        btnMapEditorCompatibilityFix = new XNAClientButton(WindowManager);
-        btnMapEditorCompatibilityFix.Name = "btnMapEditorCompatibilityFix";
-        btnMapEditorCompatibilityFix.ClientRectangle = new Rectangle(
+        btnMapEditorCompatibilityFix = new XNAClientButton(WindowManager)
+        {
+            Name = "btnMapEditorCompatibilityFix",
+            ClientRectangle = new Rectangle(
             btnGameCompatibilityFix.X,
             lblMapEditorCompatibilityFix.Y - 4,
             btnGameCompatibilityFix.Width,
-            btnGameCompatibilityFix.Height);
-        btnMapEditorCompatibilityFix.FontIndex = 1;
-        btnMapEditorCompatibilityFix.Text = "Enable".L10N("UI:DTAConfig:TSButtonEnable");
+            btnGameCompatibilityFix.Height),
+            FontIndex = 1,
+            Text = "Enable".L10N("UI:DTAConfig:TSButtonEnable")
+        };
         btnMapEditorCompatibilityFix.LeftClick += BtnMapEditorCompatibilityFix_LeftClick;
 
         AddChild(lblGameCompatibilityFix);
@@ -356,30 +392,30 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
         ddIngameResolution.SelectedIndex = index > -1 ? index : 0;
 
-        // Wonder what this "Win8CompatMode" actually does..
-        // Disabling it used to be TS-DDRAW only, but it was never enabled after
-        // you had tried TS-DDRAW once, so most players probably have it always
-        // disabled anyway
+        // Wonder what this "Win8CompatMode" actually does.. Disabling it used to be TS-DDRAW only,
+        // but it was never enabled after you had tried TS-DDRAW once, so most players probably have
+        // it always disabled anyway
         IniSettings.Win8CompatMode.Value = "No";
 
         DirectDrawWrapper renderer = (DirectDrawWrapper)ddRenderer.SelectedItem.Tag;
 
         if (renderer.UsesCustomWindowedOption())
         {
-            // For renderers that have their own windowed mode implementation
-            // enabled through their own config INI file
-            // (for example DxWnd and CnC-DDRAW)
+            // For renderers that have their own windowed mode implementation enabled through their
+            // own config INI file (for example DxWnd and CnC-DDRAW)
             IniFile rendererSettingsIni = new(ProgramConstants.GamePath + renderer.ConfigFileName);
 
             chkWindowedMode.Checked = rendererSettingsIni.GetBooleanValue(
                 renderer.WindowedModeSection,
-                renderer.WindowedModeKey, false);
+                renderer.WindowedModeKey,
+                false);
 
             if (!string.IsNullOrEmpty(renderer.BorderlessWindowedModeKey))
             {
                 bool setting = rendererSettingsIni.GetBooleanValue(
                     renderer.WindowedModeSection,
-                    renderer.BorderlessWindowedModeKey, false);
+                    renderer.BorderlessWindowedModeKey,
+                    false);
                 chkBorderlessWindowedMode.Checked = renderer.IsBorderlessWindowedModeKeyReversed ? !setting : setting;
             }
             else
@@ -418,7 +454,7 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
         if (tsCompatFixString == "Yes")
         {
-            GameCompatFixInstalled = true;
+            gameCompatFixInstalled = true;
             btnGameCompatibilityFix.Text = "Disable".L10N("UI:DTAConfig:TSDisable");
         }
 
@@ -427,7 +463,7 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
         if (fsCompatFixString == "Yes")
         {
-            FinalSunCompatFixInstalled = true;
+            finalSunCompatFixInstalled = true;
             btnMapEditorCompatibilityFix.Text = "Disable".L10N("UI:DTAConfig:TSDisable");
         }
 
@@ -435,7 +471,7 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
         if (((string)tsCompatFixDeclinedValue) == "Yes")
         {
-            GameCompatFixDeclined = true;
+            gameCompatFixDeclined = true;
         }
 
         //object fsCompatFixDeclinedValue = regKey.GetValue("FSCompatFixDeclined", "No");
@@ -447,290 +483,6 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 #else
         chkBackBufferInVRAM.Checked = UserINISettings.Instance.BackBufferInVRAM;
 #endif
-    }
-
-    /// <summary>
-    /// Adds a screen resolution to a list of resolutions if it fits on the screen.
-    /// Checks if the resolution already exists before adding it.
-    /// </summary>
-    /// <param name="width">The width of the new resolution.</param>
-    /// <param name="height">The height of the new resolution.</param>
-    /// <param name="resolutions">A list of screen resolutions.</param>
-    private static void AddResolutionIfFitting(int width, int height, List<ScreenResolution> resolutions)
-    {
-        if (resolutions.Find(res => res.Width == width && res.Height == height) != null)
-            return;
-
-        System.Drawing.Rectangle screenBounds = Screen.PrimaryScreen.Bounds;
-
-        if (screenBounds.Width >= width && screenBounds.Height >= height)
-        {
-            resolutions.Add(new ScreenResolution(width, height));
-        }
-    }
-
-    private void GetRenderers()
-    {
-        renderers = new List<DirectDrawWrapper>();
-
-        IniFile renderersIni = new(ProgramConstants.GetBaseResourcePath() + RENDERERS_INI);
-
-        List<string> keys = renderersIni.GetSectionKeys("Renderers");
-        if (keys == null)
-            throw new ClientConfigurationException("[Renderers] not found from Renderers.ini!");
-
-        foreach (string key in keys)
-        {
-            string internalName = renderersIni.GetStringValue("Renderers", key, string.Empty);
-
-            DirectDrawWrapper ddWrapper = new(internalName, renderersIni);
-            renderers.Add(ddWrapper);
-        }
-
-        OSVersion osVersion = ClientConfiguration.GetOperatingSystemVersion();
-
-        defaultRenderer = renderersIni.GetStringValue("DefaultRenderer", osVersion.ToString(), string.Empty);
-
-        if (defaultRenderer == null)
-            throw new ClientConfigurationException("Invalid or missing default renderer for operating system: " + osVersion);
-
-        string renderer = UserINISettings.Instance.Renderer;
-
-        selectedRenderer = renderers.Find(r => r.InternalName == renderer);
-
-        if (selectedRenderer == null)
-            selectedRenderer = renderers.Find(r => r.InternalName == defaultRenderer);
-
-        if (selectedRenderer == null)
-            throw new ClientConfigurationException("Missing renderer: " + renderer);
-
-        GameProcessLogic.UseQres = selectedRenderer.UseQres;
-        GameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
-    }
-
-#if TS
-
-    /// <summary>
-    /// Asks the user whether they want to install the DTA/TI/TS compatibility fix.
-    /// </summary>
-    public void PostInit()
-    {
-        Load();
-
-        if (!GameCompatFixInstalled && !GameCompatFixDeclined)
-        {
-            string defaultGame = ClientConfiguration.Instance.LocalGame;
-
-            var messageBox = XNAMessageBox.ShowYesNoDialog(WindowManager, "New Compatibility Fix".L10N("UI:DTAConfig:TSFixTitle"),
-                string.Format("A performance-enhancing compatibility fix for modern Windows versions" + Environment.NewLine +
-                    "has been included in this version of {0}. Enabling it requires" + Environment.NewLine +
-                    "administrative priveleges. Would you like to install the compatibility fix?" + Environment.NewLine + Environment.NewLine +
-                    "You'll always be able to install or uninstall the compatibility fix later from the options menu.", defaultGame
-                ).L10N("UI:DTAConfig:TSFixText"));
-            messageBox.YesClickedAction = MessageBox_YesClicked;
-            messageBox.NoClickedAction = MessageBox_NoClicked;
-        }
-    }
-
-    private void MessageBox_NoClicked(XNAMessageBox messageBox)
-    {
-        // Set compatibility fix declined flag in registry
-        try
-        {
-            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Tiberian Sun Client");
-
-            try
-            {
-                regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
-                regKey = regKey.CreateSubKey("Tiberian Sun Client");
-                regKey.SetValue("TSCompatFixDeclined", "Yes");
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Setting TSCompatFixDeclined failed! Returned error: " + ex.Message);
-            }
-        }
-        catch { }
-    }
-
-    private void MessageBox_YesClicked(XNAMessageBox messageBox)
-    {
-        BtnGameCompatibilityFix_LeftClick(messageBox, EventArgs.Empty);
-    }
-
-    private void BtnGameCompatibilityFix_LeftClick(object sender, EventArgs e)
-    {
-        if (GameCompatFixInstalled)
-        {
-            try
-            {
-                Process sdbinst = Process.Start("sdbinst.exe", "-q -n \"TS Compatibility Fix\"");
-
-                sdbinst.WaitForExit();
-
-                Logger.Log("DTA/TI/TS Compatibility Fix succesfully uninstalled.");
-                XNAMessageBox.Show(WindowManager, "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFixUninstallTitle"),
-                    "The DTA/TI/TS Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFixUninstallText"));
-
-                RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
-                regKey = regKey.CreateSubKey("Tiberian Sun Client");
-                regKey.SetValue("TSCompatFixInstalled", "No");
-
-                btnGameCompatibilityFix.Text = "Enable";
-
-                GameCompatFixInstalled = false;
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Uninstalling DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
-                XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixUninstallFailTitle"),
-                    "Uninstalling DTA/TI/TS Compatibility Fix failed. Returned error:".L10N("UI:DTAConfig:TSFixUninstallFailText") + " " + ex.Message);
-            }
-
-            return;
-        }
-
-        try
-        {
-            Process sdbinst = Process.Start("sdbinst.exe", "-q \"" + ProgramConstants.GamePath + "Resources/compatfix.sdb\"");
-
-            sdbinst.WaitForExit();
-
-            Logger.Log("DTA/TI/TS Compatibility Fix succesfully installed.");
-            XNAMessageBox.Show(WindowManager, "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFixInstallSuccessTitle"),
-                "The DTA/TI/TS Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFixInstallSuccessText"));
-
-            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
-            regKey = regKey.CreateSubKey("Tiberian Sun Client");
-            regKey.SetValue("TSCompatFixInstalled", "Yes");
-
-            btnGameCompatibilityFix.Text = "Disable";
-
-            GameCompatFixInstalled = true;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("Installing DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
-            XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixInstallFailTitle"),
-                "Installing DTA/TI/TS Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFixInstallFailText") + " " + ex.Message);
-        }
-    }
-
-    private void BtnMapEditorCompatibilityFix_LeftClick(object sender, EventArgs e)
-    {
-        if (FinalSunCompatFixInstalled)
-        {
-            try
-            {
-                Process sdbinst = Process.Start("sdbinst.exe", "-q -n \"Final Sun Compatibility Fix\"");
-
-                sdbinst.WaitForExit();
-
-                RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
-                regKey = regKey.CreateSubKey("Tiberian Sun Client");
-                regKey.SetValue("FSCompatFixInstalled", "No");
-
-                btnMapEditorCompatibilityFix.Text = "Enable".L10N("UI:DTAConfig:TSFEnable");
-
-                Logger.Log("FinalSun Compatibility Fix succesfully uninstalled.");
-                XNAMessageBox.Show(WindowManager, "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFinalSunFixUninstallTitle"),
-                    "The FinalSun Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFinalSunFixUninstallText"));
-
-                FinalSunCompatFixInstalled = false;
-            }
-            catch (Exception ex)
-            {
-                Logger.Log("Uninstalling FinalSun Compatibility Fix failed. Error message: " + ex.Message);
-                XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedTitle"),
-                    "Uninstalling FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedText") +" "+ ex.Message);
-            }
-
-            return;
-        }
-
-        try
-        {
-            Process sdbinst = Process.Start("sdbinst.exe", "-q \"" + ProgramConstants.GamePath + "Resources/FSCompatFix.sdb\"");
-
-            sdbinst.WaitForExit();
-
-            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
-            regKey = regKey.CreateSubKey("Tiberian Sun Client");
-            regKey.SetValue("FSCompatFixInstalled", "Yes");
-
-            btnMapEditorCompatibilityFix.Text = "Disable".L10N("UI:DTAConfig:TSDisable");
-
-            Logger.Log("FinalSun Compatibility Fix succesfully installed.");
-            XNAMessageBox.Show(WindowManager, "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledTitle"),
-                "The FinalSun Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledText"));
-
-            FinalSunCompatFixInstalled = true;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log("Installing FinalSun Compatibility Fix failed. Error message: " + ex.Message);
-            XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedTitle"),
-                "Installing FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedText") + " " + ex.Message);
-        }
-    }
-
-#endif
-
-    private void ChkBorderlessMenu_CheckedChanged(object sender, EventArgs e)
-    {
-        if (chkBorderlessClient.Checked)
-        {
-            ddClientResolution.AllowDropDown = false;
-            string nativeRes = Screen.PrimaryScreen.Bounds.Width +
-                "x" + Screen.PrimaryScreen.Bounds.Height;
-
-            int nativeResIndex = ddClientResolution.Items.FindIndex(i => (string)i.Tag == nativeRes);
-            if (nativeResIndex > -1)
-                ddClientResolution.SelectedIndex = nativeResIndex;
-        }
-        else
-        {
-            ddClientResolution.AllowDropDown = true;
-
-            if (ddClientResolution.PreferredItemIndexes.Count > 0)
-            {
-                int optimalWindowedResIndex = ddClientResolution.PreferredItemIndexes[0];
-                ddClientResolution.SelectedIndex = optimalWindowedResIndex;
-            }
-        }
-    }
-
-    private void ChkWindowedMode_CheckedChanged(object sender, EventArgs e)
-    {
-        if (chkWindowedMode.Checked)
-        {
-            chkBorderlessWindowedMode.AllowChecking = true;
-            return;
-        }
-
-        chkBorderlessWindowedMode.AllowChecking = false;
-        chkBorderlessWindowedMode.Checked = false;
-    }
-
-    /// <summary>
-    /// Loads the user's preferred renderer.
-    /// </summary>
-    private void LoadRenderer()
-    {
-        int index = ddRenderer.Items.FindIndex(
-                       r => ((DirectDrawWrapper)r.Tag).InternalName == selectedRenderer.InternalName);
-
-        if (index < 0 && selectedRenderer.Hidden)
-        {
-            ddRenderer.AddItem(new XNADropDownItem()
-            {
-                Text = selectedRenderer.UIName,
-                Tag = selectedRenderer
-            });
-            index = ddRenderer.Items.Count - 1;
-        }
-
-        ddRenderer.SelectedIndex = index;
     }
 
     public override bool Save()
@@ -810,7 +562,8 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
             rendererSettingsIni.SetBooleanValue(
                 selectedRenderer.WindowedModeSection,
-                selectedRenderer.WindowedModeKey, chkWindowedMode.Checked);
+                selectedRenderer.WindowedModeKey,
+                chkWindowedMode.Checked);
 
             if (!string.IsNullOrEmpty(selectedRenderer.BorderlessWindowedModeKey))
             {
@@ -820,7 +573,8 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
                 rendererSettingsIni.SetBooleanValue(
                     selectedRenderer.WindowedModeSection,
-                    selectedRenderer.BorderlessWindowedModeKey, borderlessModeIniValue);
+                    selectedRenderer.BorderlessWindowedModeKey,
+                    borderlessModeIniValue);
             }
 
             rendererSettingsIni.WriteIniFile();
@@ -842,6 +596,33 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
         return restartRequired;
     }
 
+#if TS
+    /// <summary>
+    /// Asks the user whether they want to install the DTA/TI/TS compatibility fix.
+    /// </summary>
+    public void PostInit()
+    {
+        Load();
+
+        if (!gameCompatFixInstalled && !gameCompatFixDeclined)
+        {
+            string defaultGame = ClientConfiguration.Instance.LocalGame;
+
+            using XNAMessageBox messageBox = XNAMessageBox.ShowYesNoDialog(
+                WindowManager,
+                "New Compatibility Fix".L10N("UI:DTAConfig:TSFixTitle"),
+                string.Format(
+                    "A performance-enhancing compatibility fix for modern Windows versions" + Environment.NewLine +
+                    "has been included in this version of {0}. Enabling it requires" + Environment.NewLine +
+                    "administrative priveleges. Would you like to install the compatibility fix?" + Environment.NewLine + Environment.NewLine +
+                    "You'll always be able to install or uninstall the compatibility fix later from the options menu.",
+                    defaultGame).L10N("UI:DTAConfig:TSFixText"));
+            messageBox.YesClickedAction = MessageBox_YesClicked;
+            messageBox.NoClickedAction = MessageBox_NoClicked;
+        }
+    }
+#endif
+
     private static List<ScreenResolution> GetResolutions(int minWidth, int minHeight, int maxWidth, int maxHeight)
     {
         List<ScreenResolution> screenResolutions = new();
@@ -853,9 +634,9 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
 
             ScreenResolution resolution = new(dm.Width, dm.Height);
 
-            // SupportedDisplayModes can include the same resolution multiple times
-            // because it takes the refresh rate into consideration.
-            // Which means that we have to check if the resolution is already listed
+            // SupportedDisplayModes can include the same resolution multiple times because it takes
+            // the refresh rate into consideration. Which means that we have to check if the
+            // resolution is already listed
             if (screenResolutions.Find(res => res.Equals(resolution)) != null)
                 continue;
 
@@ -866,63 +647,281 @@ internal class DisplayOptionsPanel : XNAOptionsPanel
     }
 
     /// <summary>
-    /// A single screen resolution.
+    /// Adds a screen resolution to a list of resolutions if it fits on the screen. Checks if the
+    /// resolution already exists before adding it.
     /// </summary>
-    private sealed class ScreenResolution : IComparable<ScreenResolution>
+    /// <param name="width">The width of the new resolution.</param>
+    /// <param name="height">The height of the new resolution.</param>
+    /// <param name="resolutions">A list of screen resolutions.</param>
+    private static void AddResolutionIfFitting(int width, int height, List<ScreenResolution> resolutions)
     {
-        public ScreenResolution(int width, int height)
+        if (resolutions.Find(res => res.Width == width && res.Height == height) != null)
+            return;
+
+        System.Drawing.Rectangle screenBounds = Screen.PrimaryScreen.Bounds;
+
+        if (screenBounds.Width >= width && screenBounds.Height >= height)
         {
-            Width = width;
-            Height = height;
+            resolutions.Add(new ScreenResolution(width, height));
+        }
+    }
+
+    private void GetRenderers()
+    {
+        renderers = new List<DirectDrawWrapper>();
+
+        IniFile renderersIni = new(ProgramConstants.GetBaseResourcePath() + RENDERERS_INI);
+
+        List<string> keys = renderersIni.GetSectionKeys("Renderers");
+        if (keys == null)
+            throw new ClientConfigurationException("[Renderers] not found from Renderers.ini!");
+
+        foreach (string key in keys)
+        {
+            string internalName = renderersIni.GetStringValue("Renderers", key, string.Empty);
+
+            DirectDrawWrapper ddWrapper = new(internalName, renderersIni);
+            renderers.Add(ddWrapper);
         }
 
-        /// <summary>
-        /// Gets or sets the width of the resolution in pixels.
-        /// </summary>
-        public int Width { get; set; }
+        OSVersion osVersion = ClientConfiguration.GetOperatingSystemVersion();
 
-        /// <summary>
-        /// Gets or sets the height of the resolution in pixels.
-        /// </summary>
-        public int Height { get; set; }
+        defaultRenderer = renderersIni.GetStringValue("DefaultRenderer", osVersion.ToString(), string.Empty);
 
-        public override string ToString()
+        if (defaultRenderer == null)
+            throw new ClientConfigurationException("Invalid or missing default renderer for operating system: " + osVersion);
+
+        string renderer = UserINISettings.Instance.Renderer;
+
+        selectedRenderer = renderers.Find(r => r.InternalName == renderer);
+
+        if (selectedRenderer == null)
+            selectedRenderer = renderers.Find(r => r.InternalName == defaultRenderer);
+
+        if (selectedRenderer == null)
+            throw new ClientConfigurationException("Missing renderer: " + renderer);
+
+        GameProcessLogic.UseQres = selectedRenderer.UseQres;
+        GameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
+    }
+
+#if TS
+    private void MessageBox_NoClicked(XNAMessageBox messageBox)
+    {
+        // Set compatibility fix declined flag in registry
+        try
         {
-            return Width + "x" + Height;
-        }
+            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Tiberian Sun Client");
 
-        public int CompareTo(ScreenResolution res2)
-        {
-            if (Width < res2.Width)
+            try
             {
-                return -1;
+                regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
+                regKey = regKey.CreateSubKey("Tiberian Sun Client");
+                regKey.SetValue("TSCompatFixDeclined", "Yes");
             }
-            else if (Width > res2.Width)
+            catch (Exception ex)
             {
-                return 1;
+                Logger.Log("Setting TSCompatFixDeclined failed! Returned error: " + ex.Message);
             }
-            else // equal
+        }
+        catch
+        {
+        }
+    }
+
+    private void MessageBox_YesClicked(XNAMessageBox messageBox)
+    {
+        BtnGameCompatibilityFix_LeftClick(messageBox, EventArgs.Empty);
+    }
+
+    private void BtnGameCompatibilityFix_LeftClick(object sender, EventArgs e)
+    {
+        if (gameCompatFixInstalled)
+        {
+            try
             {
-                if (Height < res2.Height)
-                    return -1;
-                else if (Height > res2.Height)
-                    return 1;
-                else
-                    return 0;
+                Process sdbinst = Process.Start("sdbinst.exe", "-q -n \"TS Compatibility Fix\"");
+
+                sdbinst.WaitForExit();
+
+                Logger.Log("DTA/TI/TS Compatibility Fix succesfully uninstalled.");
+                XNAMessageBox.Show(
+                    WindowManager,
+                    "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFixUninstallTitle"),
+                    "The DTA/TI/TS Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFixUninstallText"));
+
+                RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
+                regKey = regKey.CreateSubKey("Tiberian Sun Client");
+                regKey.SetValue("TSCompatFixInstalled", "No");
+
+                btnGameCompatibilityFix.Text = "Enable";
+
+                gameCompatFixInstalled = false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Uninstalling DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
+                XNAMessageBox.Show(
+                    WindowManager,
+                    "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixUninstallFailTitle"),
+                    "Uninstalling DTA/TI/TS Compatibility Fix failed. Returned error:".L10N("UI:DTAConfig:TSFixUninstallFailText") + " " + ex.Message);
+            }
+
+            return;
+        }
+
+        try
+        {
+            Process sdbinst = Process.Start("sdbinst.exe", "-q \"" + ProgramConstants.GamePath + "Resources/compatfix.sdb\"");
+
+            sdbinst.WaitForExit();
+
+            Logger.Log("DTA/TI/TS Compatibility Fix succesfully installed.");
+            XNAMessageBox.Show(
+                WindowManager,
+                "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFixInstallSuccessTitle"),
+                "The DTA/TI/TS Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFixInstallSuccessText"));
+
+            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
+            regKey = regKey.CreateSubKey("Tiberian Sun Client");
+            regKey.SetValue("TSCompatFixInstalled", "Yes");
+
+            btnGameCompatibilityFix.Text = "Disable";
+
+            gameCompatFixInstalled = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Installing DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
+            XNAMessageBox.Show(
+                WindowManager,
+                "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixInstallFailTitle"),
+                "Installing DTA/TI/TS Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFixInstallFailText") + " " + ex.Message);
+        }
+    }
+
+    private void BtnMapEditorCompatibilityFix_LeftClick(object sender, EventArgs e)
+    {
+        if (finalSunCompatFixInstalled)
+        {
+            try
+            {
+                Process sdbinst = Process.Start("sdbinst.exe", "-q -n \"Final Sun Compatibility Fix\"");
+
+                sdbinst.WaitForExit();
+
+                RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
+                regKey = regKey.CreateSubKey("Tiberian Sun Client");
+                regKey.SetValue("FSCompatFixInstalled", "No");
+
+                btnMapEditorCompatibilityFix.Text = "Enable".L10N("UI:DTAConfig:TSFEnable");
+
+                Logger.Log("FinalSun Compatibility Fix succesfully uninstalled.");
+                XNAMessageBox.Show(
+                    WindowManager,
+                    "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFinalSunFixUninstallTitle"),
+                    "The FinalSun Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFinalSunFixUninstallText"));
+
+                finalSunCompatFixInstalled = false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Uninstalling FinalSun Compatibility Fix failed. Error message: " + ex.Message);
+                XNAMessageBox.Show(
+                    WindowManager,
+                    "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedTitle"),
+                    "Uninstalling FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedText") + " " + ex.Message);
+            }
+
+            return;
+        }
+
+        try
+        {
+            Process sdbinst = Process.Start("sdbinst.exe", "-q \"" + ProgramConstants.GamePath + "Resources/FSCompatFix.sdb\"");
+
+            sdbinst.WaitForExit();
+
+            RegistryKey regKey = Registry.CurrentUser.OpenSubKey("SOFTWARE", true);
+            regKey = regKey.CreateSubKey("Tiberian Sun Client");
+            regKey.SetValue("FSCompatFixInstalled", "Yes");
+
+            btnMapEditorCompatibilityFix.Text = "Disable".L10N("UI:DTAConfig:TSDisable");
+
+            Logger.Log("FinalSun Compatibility Fix succesfully installed.");
+            XNAMessageBox.Show(
+                WindowManager,
+                "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledTitle"),
+                "The FinalSun Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledText"));
+
+            finalSunCompatFixInstalled = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Installing FinalSun Compatibility Fix failed. Error message: " + ex.Message);
+            XNAMessageBox.Show(
+                WindowManager,
+                "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedTitle"),
+                "Installing FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedText") + " " + ex.Message);
+        }
+    }
+
+#endif
+
+    private void ChkBorderlessMenu_CheckedChanged(object sender, EventArgs e)
+    {
+        if (chkBorderlessClient.Checked)
+        {
+            ddClientResolution.AllowDropDown = false;
+            string nativeRes = Screen.PrimaryScreen.Bounds.Width +
+                "x" + Screen.PrimaryScreen.Bounds.Height;
+
+            int nativeResIndex = ddClientResolution.Items.FindIndex(i => (string)i.Tag == nativeRes);
+            if (nativeResIndex > -1)
+                ddClientResolution.SelectedIndex = nativeResIndex;
+        }
+        else
+        {
+            ddClientResolution.AllowDropDown = true;
+
+            if (ddClientResolution.PreferredItemIndexes.Count > 0)
+            {
+                int optimalWindowedResIndex = ddClientResolution.PreferredItemIndexes[0];
+                ddClientResolution.SelectedIndex = optimalWindowedResIndex;
             }
         }
+    }
 
-        public override bool Equals(object obj)
+    private void ChkWindowedMode_CheckedChanged(object sender, EventArgs e)
+    {
+        if (chkWindowedMode.Checked)
         {
-            if (obj is not ScreenResolution resolution)
-                return false;
-
-            return CompareTo(resolution) == 0;
+            chkBorderlessWindowedMode.AllowChecking = true;
+            return;
         }
 
-        public override int GetHashCode()
+        chkBorderlessWindowedMode.AllowChecking = false;
+        chkBorderlessWindowedMode.Checked = false;
+    }
+
+    /// <summary>
+    /// Loads the user's preferred renderer.
+    /// </summary>
+    private void LoadRenderer()
+    {
+        int index = ddRenderer.Items.FindIndex(
+                       r => ((DirectDrawWrapper)r.Tag).InternalName == selectedRenderer.InternalName);
+
+        if (index < 0 && selectedRenderer.Hidden)
         {
-            return new { Width, Height }.GetHashCode();
+            ddRenderer.AddItem(new XNADropDownItem()
+            {
+                Text = selectedRenderer.UIName,
+                Tag = selectedRenderer
+            });
+            index = ddRenderer.Items.Count - 1;
         }
+
+        ddRenderer.SelectedIndex = index;
     }
 }

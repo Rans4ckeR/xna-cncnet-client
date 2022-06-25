@@ -23,10 +23,10 @@ public class XNAClientDropDown : XNADropDown
         base.Initialize();
     }
 
-    private void CreateToolTip()
+    public override void OnMouseLeftDown()
     {
-        if (ToolTip == null)
-            ToolTip = new ToolTip(WindowManager, this);
+        base.OnMouseLeftDown();
+        UpdateToolTipBlock();
     }
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
@@ -41,12 +41,6 @@ public class XNAClientDropDown : XNADropDown
         base.ParseAttributeFromINI(iniFile, key, value);
     }
 
-    public override void OnMouseLeftDown()
-    {
-        base.OnMouseLeftDown();
-        UpdateToolTipBlock();
-    }
-
     protected override void CloseDropDown()
     {
         base.CloseDropDown();
@@ -56,5 +50,11 @@ public class XNAClientDropDown : XNADropDown
     protected void UpdateToolTipBlock()
     {
         ToolTip.Blocked = DropDownState != DropDownState.CLOSED;
+    }
+
+    private void CreateToolTip()
+    {
+        if (ToolTip == null)
+            ToolTip = new ToolTip(WindowManager, this);
     }
 }

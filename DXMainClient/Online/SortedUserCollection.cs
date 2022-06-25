@@ -1,16 +1,21 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace DTAClient.Online;
 
 /// <summary>
-/// A custom collection that aims to provide quick insertion,
-/// removal and lookup operations while always keeping the list sorted
-/// by combining Dictionary and LinkedList.
+/// A custom collection that aims to provide quick insertion, removal and lookup operations while
+/// always keeping the list sorted by combining Dictionary and LinkedList.
 /// </summary>
+/// <typeparam name="T">Type.</typeparam>
 public class SortedUserCollection<T> : IUserCollection<T>
 {
     private readonly Dictionary<string, LinkedListNode<T>> dictionary;
+
+    private readonly LinkedList<T> linkedList;
+
+    private readonly Func<T, T, int> userComparer;
 
     public SortedUserCollection(Func<T, T, int> userComparer)
     {
@@ -19,11 +24,9 @@ public class SortedUserCollection<T> : IUserCollection<T>
         this.userComparer = userComparer;
     }
 
-    private readonly LinkedList<T> linkedList;
-
-    private readonly Func<T, T, int> userComparer;
-
     public int Count => dictionary.Count;
+
+    bool ICollection<T>.IsReadOnly => throw new NotImplementedException();
 
     public void Add(string username, T item)
     {
@@ -55,6 +58,67 @@ public class SortedUserCollection<T> : IUserCollection<T>
         }
     }
 
+    void ICollection<T>.Add(T item)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void Clear()
+    {
+        linkedList.Clear();
+        dictionary.Clear();
+    }
+
+    bool ICollection<T>.Contains(T item)
+    {
+        throw new NotImplementedException();
+    }
+
+    void ICollection<T>.CopyTo(T[] array, int arrayIndex)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void DoForAllUsers(Action<T> action)
+    {
+        LinkedListNode<T> current = linkedList.First;
+        while (current != null)
+        {
+            action(current.Value);
+            current = current.Next;
+        }
+    }
+
+    public T Find(string username)
+    {
+        if (dictionary.TryGetValue(username.ToLower(), out LinkedListNode<T> node))
+            return node.Value;
+
+        return default;
+    }
+
+    IEnumerator<T> IEnumerable<T>.GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        throw new NotImplementedException();
+    }
+
+    public LinkedListNode<T> GetFirst() => linkedList.First;
+
+    public void Reinsert(string username)
+    {
+        T existing = Find(username.ToLower());
+        if (existing == null)
+            return;
+
+        _ = Remove(username);
+        Add(username, existing);
+    }
+
     public bool Remove(string username)
     {
         if (dictionary.TryGetValue(username.ToLower(), out LinkedListNode<T> node))
@@ -67,39 +131,8 @@ public class SortedUserCollection<T> : IUserCollection<T>
         return false;
     }
 
-    public T Find(string username)
+    bool ICollection<T>.Remove(T item)
     {
-        if (dictionary.TryGetValue(username.ToLower(), out LinkedListNode<T> node))
-            return node.Value;
-
-        return default;
-    }
-
-    public void Reinsert(string username)
-    {
-        T existing = Find(username.ToLower());
-        if (existing == null)
-            return;
-
-        _ = Remove(username);
-        Add(username, existing);
-    }
-
-    public void Clear()
-    {
-        linkedList.Clear();
-        dictionary.Clear();
-    }
-
-    public LinkedListNode<T> GetFirst() => linkedList.First;
-
-    public void DoForAllUsers(Action<T> action)
-    {
-        LinkedListNode<T> current = linkedList.First;
-        while (current != null)
-        {
-            action(current.Value);
-            current = current.Next;
-        }
+        throw new NotImplementedException();
     }
 }

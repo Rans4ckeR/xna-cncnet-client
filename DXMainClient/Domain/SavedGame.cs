@@ -51,8 +51,8 @@ public class SavedGame
     /// <summary>
     /// Get the saved game's name from a .sav file.
     /// </summary>
-    /// <param name="file"></param>
-    /// <returns></returns>
+    /// <param name="file">file.</param>
+    /// <returns>result.</returns>
     private static string GetArchiveName(Stream file)
     {
         CompoundFile cf = new(file);

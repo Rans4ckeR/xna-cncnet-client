@@ -19,14 +19,5 @@ public class ClientGUICreator : GUICreator
         AddControl(typeof(XNAExtraPanel));
     }
 
-    public static ClientGUICreator Instance
-    {
-        get
-        {
-            if (_instance == null)
-                _instance = new ClientGUICreator();
-
-            return _instance;
-        }
-    }
+    public static ClientGUICreator Instance => _instance ??= new();
 }

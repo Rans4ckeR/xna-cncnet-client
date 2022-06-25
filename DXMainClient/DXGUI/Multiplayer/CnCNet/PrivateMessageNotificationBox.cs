@@ -9,29 +9,41 @@ using Rampastring.XNAUI.XNAControls;
 namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 /// <summary>
-/// A box that notifies users of new private messages,
-/// top-right of the game window.
+/// A box that notifies users of new private messages, top-right of the game window.
 /// </summary>
 public class PrivateMessageNotificationBox : XNAPanel
 {
-    private const double DOWN_TIME_WAIT_SECONDS = 4.0;
     private const double DOWN_MOVEMENT_RATE = 2.0;
+    private const double DOWN_TIME_WAIT_SECONDS = 4.0;
     private const double UP_MOVEMENT_RATE = 2.0;
 
+    private readonly TimeSpan downTimeWaitTime;
+    private TimeSpan downTime = TimeSpan.Zero;
+    private XNAPanel gameIconPanel;
+    private bool isDown = false;
+    private XNALabel lblMessage;
     private XNALabel lblSender;
 
+    private double locationY = -100.0;
+
     public PrivateMessageNotificationBox(WindowManager windowManager)
-        : base(windowManager)
+            : base(windowManager)
     {
         downTimeWaitTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS);
     }
 
-    private XNAPanel gameIconPanel;
-    private XNALabel lblMessage;
-    private TimeSpan downTime = TimeSpan.Zero;
-    private TimeSpan downTimeWaitTime;
-    private bool isDown = false;
-    private double locationY = -100.0;
+    public void Hide()
+    {
+        isDown = false;
+        locationY = -Height;
+        ClientRectangle = new Rectangle(
+            X,
+            (int)locationY,
+            Width,
+            Height);
+        Visible = false;
+        Enabled = false;
+    }
 
     public override void Initialize()
     {
@@ -50,7 +62,9 @@ public class PrivateMessageNotificationBox : XNAPanel
         lblHeader.CenterOnParent();
         lblHeader.ClientRectangle = new Rectangle(
             lblHeader.X,
-            6, lblHeader.Width, lblHeader.Height);
+            6,
+            lblHeader.Width,
+            lblHeader.Height);
 
         XNAPanel linePanel = new(WindowManager)
         {
@@ -70,7 +84,8 @@ public class PrivateMessageNotificationBox : XNAPanel
         lblHint.ClientRectangle = new Rectangle(
             lblHint.X,
             linePanel.Y + 3,
-            lblHint.Width, lblHint.Height);
+            lblHint.Width,
+            lblHint.Height);
 
         gameIconPanel = new XNAPanel(WindowManager)
         {
@@ -86,7 +101,9 @@ public class PrivateMessageNotificationBox : XNAPanel
             FontIndex = 1,
             ClientRectangle = new Rectangle(
                 gameIconPanel.Right + 3,
-            gameIconPanel.Y, 0, 0),
+                gameIconPanel.Y,
+                0,
+                0),
             Text = "Rampastring:"
         };
 
@@ -131,16 +148,6 @@ public class PrivateMessageNotificationBox : XNAPanel
         isDown = true;
     }
 
-    public void Hide()
-    {
-        isDown = false;
-        locationY = -Height;
-        ClientRectangle = new Rectangle(X, (int)locationY,
-            Width, Height);
-        Visible = false;
-        Enabled = false;
-    }
-
     public override void Update(GameTime gameTime)
     {
         if (isDown)
@@ -148,8 +155,11 @@ public class PrivateMessageNotificationBox : XNAPanel
             if (locationY < 0)
             {
                 locationY += DOWN_MOVEMENT_RATE;
-                ClientRectangle = new Rectangle(X, (int)locationY,
-                    Width, Height);
+                ClientRectangle = new Rectangle(
+                    X,
+                    (int)locationY,
+                    Width,
+                    Height);
             }
 
             if (WindowManager.HasFocus)

@@ -21,9 +21,12 @@ public class XNAMessageBox : XNAWindow
 {
     private readonly string caption;
 
+    private readonly string description;
+
+    private readonly XNAMessageBoxButtons messageBoxButtons;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="XNAMessageBox"/> class.
-    /// Creates a new message box.
+    /// Initializes a new instance of the <see cref="XNAMessageBox" /> class. Creates a new message box.
     /// </summary>
     /// <param name="windowManager">The window manager.</param>
     /// <param name="caption">The caption of the message box.</param>
@@ -31,13 +34,25 @@ public class XNAMessageBox : XNAWindow
     /// <param name="messageBoxButtons">Defines which buttons are available in the dialog.</param>
     public XNAMessageBox(
         WindowManager windowManager,
-        string caption, string description, XNAMessageBoxButtons messageBoxButtons)
+        string caption,
+        string description,
+        XNAMessageBoxButtons messageBoxButtons)
         : base(windowManager)
     {
         this.caption = caption;
         this.description = description;
         this.messageBoxButtons = messageBoxButtons;
     }
+
+    /// <summary>
+    /// Gets or sets the method that is called when the user clicks Cancel on the message box.
+    /// </summary>
+    public Action<XNAMessageBox> CancelClickedAction { get; set; }
+
+    /// <summary>
+    /// Gets or sets the method that is called when the user clicks No on the message box.
+    /// </summary>
+    public Action<XNAMessageBox> NoClickedAction { get; set; }
 
     /// <summary>
     /// Gets or sets the method that is called when the user clicks OK on the message box.
@@ -49,25 +64,12 @@ public class XNAMessageBox : XNAWindow
     /// </summary>
     public Action<XNAMessageBox> YesClickedAction { get; set; }
 
-    /// <summary>
-    /// Gets or sets the method that is called when the user clicks No on the message box.
-    /// </summary>
-    public Action<XNAMessageBox> NoClickedAction { get; set; }
-
-    /// <summary>
-    /// Gets or sets the method that is called when the user clicks Cancel on the message box.
-    /// </summary>
-    public Action<XNAMessageBox> CancelClickedAction { get; set; }
-
-    private readonly string description;
-    private readonly XNAMessageBoxButtons messageBoxButtons;
-
     #region Static Show methods
 
     /// <summary>
     /// Creates and displays a new message box with the specified caption and description.
     /// </summary>
-    /// <param name="game">The game.</param>
+    /// <param name="windowManager">windowManager.</param>
     /// <param name="caption">The caption/header of the message box.</param>
     /// <param name="description">The description of the message box.</param>
     public static void Show(WindowManager windowManager, string caption, string description)
@@ -154,8 +156,9 @@ public class XNAMessageBox : XNAWindow
         {
             AddYesNoButtons();
         }
-        else // messageBoxButtons == DXMessageBoxButtons.OKCancel
+        else
         {
+            // messageBoxButtons == DXMessageBoxButtons.OKCancel
             AddOKCancelButtons();
         }
 
@@ -167,6 +170,35 @@ public class XNAMessageBox : XNAWindow
     public void Show()
     {
         DarkeningPanel.AddAndInitializeWithControl(WindowManager, this);
+    }
+
+    private static void MsgBox_NoClicked(XNAMessageBox messageBox)
+    {
+        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
+        parent.Hide();
+        parent.Hidden += Parent_Hidden;
+    }
+
+    private static void MsgBox_OKClicked(XNAMessageBox messageBox)
+    {
+        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
+        parent.Hide();
+        parent.Hidden += Parent_Hidden;
+    }
+
+    private static void MsgBox_YesClicked(XNAMessageBox messageBox)
+    {
+        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
+        parent.Hide();
+        parent.Hidden += Parent_Hidden;
+    }
+
+    private static void Parent_Hidden(object sender, EventArgs e)
+    {
+        DarkeningPanel darkeningPanel = (DarkeningPanel)sender;
+
+        darkeningPanel.WindowManager.RemoveControl(darkeningPanel);
+        darkeningPanel.Hidden -= Parent_Hidden;
     }
 
     private void AddOKButton()
@@ -189,48 +221,9 @@ public class XNAMessageBox : XNAWindow
         btnOK.CenterOnParent();
         btnOK.ClientRectangle = new Rectangle(
             btnOK.X,
-            Height - 28, btnOK.Width, btnOK.Height);
-    }
-
-    private void AddYesNoButtons()
-    {
-        XNAButton btnYes = new(WindowManager)
-        {
-            FontIndex = 1,
-            ClientRectangle = new Rectangle(0, 0, 75, 23),
-            IdleTexture = AssetLoader.LoadTexture("75pxbtn.png"),
-            HoverTexture = AssetLoader.LoadTexture("75pxbtn_c.png"),
-            HoverSoundEffect = new EnhancedSoundEffect("button.wav"),
-            Name = "btnYes",
-            Text = "Yes".L10N("UI:ClientGUI:ButtonYes")
-        };
-        btnYes.LeftClick += BtnYes_LeftClick;
-        btnYes.HotKey = Keys.Y;
-
-        AddChild(btnYes);
-
-        btnYes.ClientRectangle = new Rectangle(
-            (Width - ((btnYes.Width + 5) * 2)) / 2,
-            Height - 28, btnYes.Width, btnYes.Height);
-
-        XNAButton btnNo = new(WindowManager)
-        {
-            FontIndex = 1,
-            ClientRectangle = new Rectangle(0, 0, 75, 23),
-            IdleTexture = AssetLoader.LoadTexture("75pxbtn.png"),
-            HoverTexture = AssetLoader.LoadTexture("75pxbtn_c.png"),
-            HoverSoundEffect = new EnhancedSoundEffect("button.wav"),
-            Name = "btnNo",
-            Text = "No".L10N("UI:ClientGUI:ButtonNo")
-        };
-        btnNo.LeftClick += BtnNo_LeftClick;
-        btnNo.HotKey = Keys.N;
-
-        AddChild(btnNo);
-
-        btnNo.ClientRectangle = new Rectangle(
-            btnYes.X + btnYes.Width + 10,
-            Height - 28, btnNo.Width, btnNo.Height);
+            Height - 28,
+            btnOK.Width,
+            btnOK.Height);
     }
 
     private void AddOKCancelButtons()
@@ -252,7 +245,9 @@ public class XNAMessageBox : XNAWindow
 
         btnOK.ClientRectangle = new Rectangle(
             (Width - ((btnOK.Width + 5) * 2)) / 2,
-            Height - 28, btnOK.Width, btnOK.Height);
+            Height - 28,
+            btnOK.Width,
+            btnOK.Height);
 
         XNAButton btnCancel = new(WindowManager)
         {
@@ -271,7 +266,66 @@ public class XNAMessageBox : XNAWindow
 
         btnCancel.ClientRectangle = new Rectangle(
             btnOK.X + btnOK.Width + 10,
-            Height - 28, btnCancel.Width, btnCancel.Height);
+            Height - 28,
+            btnCancel.Width,
+            btnCancel.Height);
+    }
+
+    private void AddYesNoButtons()
+    {
+        XNAButton btnYes = new(WindowManager)
+        {
+            FontIndex = 1,
+            ClientRectangle = new Rectangle(0, 0, 75, 23),
+            IdleTexture = AssetLoader.LoadTexture("75pxbtn.png"),
+            HoverTexture = AssetLoader.LoadTexture("75pxbtn_c.png"),
+            HoverSoundEffect = new EnhancedSoundEffect("button.wav"),
+            Name = "btnYes",
+            Text = "Yes".L10N("UI:ClientGUI:ButtonYes")
+        };
+        btnYes.LeftClick += BtnYes_LeftClick;
+        btnYes.HotKey = Keys.Y;
+
+        AddChild(btnYes);
+
+        btnYes.ClientRectangle = new Rectangle(
+            (Width - ((btnYes.Width + 5) * 2)) / 2,
+            Height - 28,
+            btnYes.Width,
+            btnYes.Height);
+
+        XNAButton btnNo = new(WindowManager)
+        {
+            FontIndex = 1,
+            ClientRectangle = new Rectangle(0, 0, 75, 23),
+            IdleTexture = AssetLoader.LoadTexture("75pxbtn.png"),
+            HoverTexture = AssetLoader.LoadTexture("75pxbtn_c.png"),
+            HoverSoundEffect = new EnhancedSoundEffect("button.wav"),
+            Name = "btnNo",
+            Text = "No".L10N("UI:ClientGUI:ButtonNo")
+        };
+        btnNo.LeftClick += BtnNo_LeftClick;
+        btnNo.HotKey = Keys.N;
+
+        AddChild(btnNo);
+
+        btnNo.ClientRectangle = new Rectangle(
+            btnYes.X + btnYes.Width + 10,
+            Height - 28,
+            btnNo.Width,
+            btnNo.Height);
+    }
+
+    private void BtnCancel_LeftClick(object sender, EventArgs e)
+    {
+        Hide();
+        CancelClickedAction?.Invoke(this);
+    }
+
+    private void BtnNo_LeftClick(object sender, EventArgs e)
+    {
+        Hide();
+        NoClickedAction?.Invoke(this);
     }
 
     private void BtnOK_LeftClick(object sender, EventArgs e)
@@ -286,53 +340,12 @@ public class XNAMessageBox : XNAWindow
         YesClickedAction?.Invoke(this);
     }
 
-    private void BtnNo_LeftClick(object sender, EventArgs e)
-    {
-        Hide();
-        NoClickedAction?.Invoke(this);
-    }
-
-    private void BtnCancel_LeftClick(object sender, EventArgs e)
-    {
-        Hide();
-        CancelClickedAction?.Invoke(this);
-    }
-
     private void Hide()
     {
         if (Parent != null)
             WindowManager.RemoveControl(Parent);
         else
             WindowManager.RemoveControl(this);
-    }
-
-    private static void MsgBox_OKClicked(XNAMessageBox messageBox)
-    {
-        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
-        parent.Hide();
-        parent.Hidden += Parent_Hidden;
-    }
-
-    private static void MsgBox_NoClicked(XNAMessageBox messageBox)
-    {
-        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
-        parent.Hide();
-        parent.Hidden += Parent_Hidden;
-    }
-
-    private static void MsgBox_YesClicked(XNAMessageBox messageBox)
-    {
-        DarkeningPanel parent = (DarkeningPanel)messageBox.Parent;
-        parent.Hide();
-        parent.Hidden += Parent_Hidden;
-    }
-
-    private static void Parent_Hidden(object sender, EventArgs e)
-    {
-        DarkeningPanel darkeningPanel = (DarkeningPanel)sender;
-
-        darkeningPanel.WindowManager.RemoveControl(darkeningPanel);
-        darkeningPanel.Hidden -= Parent_Hidden;
     }
 
     #endregion Static Show methods

@@ -1,4 +1,6 @@
-﻿public enum OSVersion
+﻿namespace ClientCore;
+
+public enum OSVersion
 {
     UNKNOWN,
     WINXP,

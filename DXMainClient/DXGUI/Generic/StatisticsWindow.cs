@@ -16,65 +16,62 @@ namespace DTAClient.DXGUI.Generic;
 
 public class StatisticsWindow : XNAWindow
 {
+    private const int TOTAL_STATS_FIRST_ITEM_Y = 20;
+
     // *****************************
     private const int TOTAL_STATS_LOCATION_X1 = 40;
 
-    private XNAPanel panelGameStatistics;
-
-    public StatisticsWindow(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
-
-    private XNAPanel panelTotalStatistics;
-
-    private XNAClientDropDown cmbGameModeFilter;
-    private XNAClientDropDown cmbGameClassFilter;
+    private const int TOTAL_STATS_LOCATION_X2 = 380;
+    private const int TOTAL_STATS_VALUE_LOCATION_X1 = 240;
+    private const int TOTAL_STATS_VALUE_LOCATION_X2 = 580;
+    private const int TOTAL_STATS_Y_INCREASE = 45;
+    private readonly List<int> listedGameIndexes = new();
 
     private XNAClientCheckBox chkIncludeSpectatedGames;
-
-    private XNAClientTabControl tabControl;
+    private XNAClientDropDown cmbGameClassFilter;
+    private XNAClientDropDown cmbGameModeFilter;
 
     // Controls for game statistics
     private XNAMultiColumnListBox lbGameList;
 
     private XNAMultiColumnListBox lbGameStatistics;
-
-    private Texture2D[] sideTextures;
-    private const int TOTAL_STATS_VALUE_LOCATION_X1 = 240;
-    private const int TOTAL_STATS_LOCATION_X2 = 380;
-    private const int TOTAL_STATS_VALUE_LOCATION_X2 = 580;
-    private const int TOTAL_STATS_Y_INCREASE = 45;
-    private const int TOTAL_STATS_FIRST_ITEM_Y = 20;
-    private readonly List<int> listedGameIndexes = new();
+    private XNALabel lblAverageAILevelValue;
+    private XNALabel lblAverageAllyCountValue;
+    private XNALabel lblAverageEconomyValue;
+    private XNALabel lblAverageEnemyCountValue;
+    private XNALabel lblAverageGameLengthValue;
+    private XNALabel lblFavouriteSideValue;
+    private XNALabel lblGamesFinishedValue;
 
     // Controls for total statistics
     private XNALabel lblGamesStartedValue;
 
-    private XNALabel lblGamesFinishedValue;
-    private XNALabel lblWinsValue;
-    private XNALabel lblLossesValue;
-    private XNALabel lblWinLossRatioValue;
-    private XNALabel lblAverageGameLengthValue;
-    private XNALabel lblTotalTimePlayedValue;
-    private XNALabel lblAverageEnemyCountValue;
-    private XNALabel lblAverageAllyCountValue;
-    private XNALabel lblTotalKillsValue;
-    private XNALabel lblKillsPerGameValue;
-    private XNALabel lblTotalLossesValue;
-    private XNALabel lblLossesPerGameValue;
     private XNALabel lblKillLossRatioValue;
+    private XNALabel lblKillsPerGameValue;
+    private XNALabel lblLossesPerGameValue;
+    private XNALabel lblLossesValue;
+    private XNALabel lblTotalKillsValue;
+    private XNALabel lblTotalLossesValue;
     private XNALabel lblTotalScoreValue;
-    private XNALabel lblAverageEconomyValue;
-    private XNALabel lblFavouriteSideValue;
-    private XNALabel lblAverageAILevelValue;
+    private XNALabel lblTotalTimePlayedValue;
+    private XNALabel lblWinLossRatioValue;
+    private XNALabel lblWinsValue;
+    private List<MultiplayerColor> mpColors;
+    private XNAPanel panelGameStatistics;
+
+    private XNAPanel panelTotalStatistics;
+    private string[] sides;
+    private Texture2D[] sideTextures;
 
     // *****************************
     private StatisticsManager sm;
 
-    private string[] sides;
+    private XNAClientTabControl tabControl;
 
-    private List<MultiplayerColor> mpColors;
+    public StatisticsWindow(WindowManager windowManager)
+        : base(windowManager)
+    {
+    }
 
     public override void Initialize()
     {
@@ -99,8 +96,8 @@ public class StatisticsWindow : XNAWindow
             ClickSound = new EnhancedSoundEffect("button.wav"),
             FontIndex = 1
         };
-        tabControl.AddTab("Game Statistics".L10N("UI:Main:GameStatistic"), UIDesignConstants.BUTTONWIDTH133);
-        tabControl.AddTab("Total Statistics".L10N("UI:Main:TotalStatistic"), UIDesignConstants.BUTTONWIDTH133);
+        tabControl.AddTab("Game Statistics".L10N("UI:Main:GameStatistic"), UIDesignConstants.ButtonWidth133);
+        tabControl.AddTab("Total Statistics".L10N("UI:Main:TotalStatistic"), UIDesignConstants.ButtonWidth133);
         tabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
         XNALabel lblFilter = new(WindowManager)
@@ -137,13 +134,13 @@ public class StatisticsWindow : XNAWindow
 
         XNAClientButton btnReturnToMenu = new(WindowManager);
         btnReturnToMenu.Name = nameof(btnReturnToMenu);
-        btnReturnToMenu.ClientRectangle = new Rectangle(270, 486, UIDesignConstants.BUTTONWIDTH160, UIDesignConstants.BUTTONHEIGHT);
+        btnReturnToMenu.ClientRectangle = new Rectangle(270, 486, UIDesignConstants.ButtonWidth160, UIDesignConstants.ButtonHeight);
         btnReturnToMenu.Text = "Return to Main Menu".L10N("UI:Main:ReturnToMainMenu");
         btnReturnToMenu.LeftClick += BtnReturnToMenu_LeftClick;
 
         XNAClientButton btnClearStatistics = new(WindowManager);
         btnClearStatistics.Name = nameof(btnClearStatistics);
-        btnClearStatistics.ClientRectangle = new Rectangle(12, 486, UIDesignConstants.BUTTONWIDTH160, UIDesignConstants.BUTTONHEIGHT);
+        btnClearStatistics.ClientRectangle = new Rectangle(12, 486, UIDesignConstants.ButtonWidth160, UIDesignConstants.ButtonHeight);
         btnClearStatistics.Text = "Clear Statistics".L10N("UI:Main:ClearStatistics");
         btnClearStatistics.LeftClick += BtnClearStatistics_LeftClick;
         btnClearStatistics.Visible = false;
@@ -450,165 +447,6 @@ public class StatisticsWindow : XNAWindow
         StatisticsManager.Instance.GameAdded += Instance_GameAdded;
     }
 
-    private void Instance_GameAdded(object sender, EventArgs e)
-    {
-        ListGames();
-    }
-
-    private void ChkIncludeSpectatedGames_CheckedChanged(object sender, EventArgs e)
-    {
-        ListGames();
-    }
-
-    private void AddTotalStatisticsLabel(string name, string text, Point location)
-    {
-        XNALabel label = new(WindowManager)
-        {
-            Name = name,
-            Text = text,
-            ClientRectangle = new Rectangle(location.X, location.Y, 0, 0)
-        };
-        panelTotalStatistics.AddChild(label);
-    }
-
-    private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        if (tabControl.SelectedTab == 1)
-        {
-            panelGameStatistics.Visible = false;
-            panelGameStatistics.Enabled = false;
-            panelTotalStatistics.Visible = true;
-            panelTotalStatistics.Enabled = true;
-        }
-        else
-        {
-            panelGameStatistics.Visible = true;
-            panelGameStatistics.Enabled = true;
-            panelTotalStatistics.Visible = false;
-            panelTotalStatistics.Enabled = false;
-        }
-    }
-
-    private void CmbGameClassFilter_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        ListGames();
-    }
-
-    private void CmbGameModeFilter_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        ListGames();
-    }
-
-    private void LbGameList_SelectedIndexChanged(object sender, EventArgs e)
-    {
-        lbGameStatistics.ClearItems();
-
-        if (lbGameList.SelectedIndex == -1)
-            return;
-
-        MatchStatistics ms = sm.GetMatchByIndex(listedGameIndexes[lbGameList.SelectedIndex]);
-
-        List<PlayerStatistics> players = new();
-
-        for (int i = 0; i < ms.GetPlayerCount(); i++)
-        {
-            players.Add(ms.GetPlayer(i));
-        }
-
-        players = players.OrderBy(p => p.Score).Reverse().ToList();
-
-        Color textColor = UISettings.ActiveSettings.AltColor;
-
-        for (int i = 0; i < ms.GetPlayerCount(); i++)
-        {
-            PlayerStatistics ps = players[i];
-
-            //List<string> items = new List<string>();
-            List<XNAListBoxItem> items = new();
-
-            if (ps.Color > -1 && ps.Color < mpColors.Count)
-                textColor = mpColors[ps.Color].XnaColor;
-
-            if (ps.IsAI)
-            {
-                items.Add(new XNAListBoxItem(ProgramConstants.GetAILevelName(ps.AILevel), textColor));
-            }
-            else
-            {
-                items.Add(new XNAListBoxItem(ps.Name, textColor));
-            }
-
-            if (ps.WasSpectator)
-            {
-                // Player was a spectator
-                items.Add(new XNAListBoxItem("-", textColor));
-                items.Add(new XNAListBoxItem("-", textColor));
-                items.Add(new XNAListBoxItem("-", textColor));
-                items.Add(new XNAListBoxItem("-", textColor));
-                items.Add(new XNAListBoxItem("-", textColor));
-                XNAListBoxItem spectatorItem = new()
-                {
-                    Text = "Spectator".L10N("UI:Main:Spectator"),
-                    TextColor = textColor,
-                    Texture = sideTextures[sideTextures.Length - 1]
-                };
-                items.Add(spectatorItem);
-                items.Add(new XNAListBoxItem("-", textColor));
-            }
-            else
-            {
-                if (!ms.SawCompletion)
-                {
-                    // The game wasn't completed - we don't know the stats
-                    items.Add(new XNAListBoxItem("-", textColor));
-                    items.Add(new XNAListBoxItem("-", textColor));
-                    items.Add(new XNAListBoxItem("-", textColor));
-                    items.Add(new XNAListBoxItem("-", textColor));
-                    items.Add(new XNAListBoxItem("-", textColor));
-                }
-                else
-                {
-                    // The game was completed and the player was actually playing
-                    items.Add(new XNAListBoxItem(ps.Kills.ToString(), textColor));
-                    items.Add(new XNAListBoxItem(ps.Losses.ToString(), textColor));
-                    items.Add(new XNAListBoxItem(ps.Economy.ToString(), textColor));
-                    items.Add(new XNAListBoxItem(ps.Score.ToString(), textColor));
-                    items.Add(new XNAListBoxItem(
-                        Conversions.BooleanToString(ps.Won, BooleanStringStyle.YESNO), textColor));
-                }
-
-                if (ps.Side == 0 || ps.Side > sides.Length)
-                {
-                    items.Add(new XNAListBoxItem("Unknown".L10N("UI:Main:UnknownSide"), textColor));
-                }
-                else
-                {
-                    XNAListBoxItem sideItem = new()
-                    {
-                        Text = sides[ps.Side - 1],
-                        TextColor = textColor,
-                        Texture = sideTextures[ps.Side - 1]
-                    };
-                    items.Add(sideItem);
-                }
-
-                items.Add(new XNAListBoxItem(StatisticsWindow.TeamIndexToString(ps.Team), textColor));
-            }
-
-            if (!ps.IsLocalPlayer)
-            {
-                lbGameStatistics.AddItem(items);
-
-                items.ForEach(item => item.Selectable = false);
-            }
-            else
-            {
-                lbGameStatistics.AddItem(items);
-                lbGameStatistics.SelectedIndex = i;
-            }
-        }
-    }
-
     private static string TeamIndexToString(int teamIndex)
     {
         if (teamIndex < 1 || teamIndex >= ProgramConstants.TEAMS.Count)
@@ -619,11 +457,122 @@ public class StatisticsWindow : XNAWindow
 
     #region Statistics reading / game listing code
 
+    private static PlayerStatistics FindLocalPlayer(MatchStatistics ms)
+    {
+        int pCount = ms.GetPlayerCount();
+
+        for (int pId = 0; pId < pCount; pId++)
+        {
+            PlayerStatistics ps = ms.GetPlayer(pId);
+
+            if (!ps.IsAI && ps.IsLocalPlayer)
+                return ps;
+        }
+
+        return null;
+    }
+
+    private static int GetHighestIndex(int[] t)
+    {
+        int highestIndex = -1;
+        int highest = int.MinValue;
+
+        for (int i = 0; i < t.Length; i++)
+        {
+            if (t[i] > highest)
+            {
+                highest = t[i];
+                highestIndex = i;
+            }
+        }
+
+        return highestIndex;
+    }
+
     private static void ReadStatistics()
     {
         StatisticsManager sm = StatisticsManager.Instance;
 
         sm.ReadStatistics(ProgramConstants.GamePath);
+    }
+
+    private void ClearAllStatistics()
+    {
+        StatisticsManager.Instance.ClearDatabase();
+        StatisticsWindow.ReadStatistics();
+        ListGameModes();
+        ListGames();
+    }
+
+    private void ListAllGames()
+    {
+        int gameCount = sm.GetMatchCount();
+
+        for (int i = 0; i < gameCount; i++)
+        {
+            ListGameIndexIfPrerequisitesMet(i);
+        }
+    }
+
+    private void ListCoOpGames()
+    {
+        int gameCount = sm.GetMatchCount();
+
+        for (int i = 0; i < gameCount; i++)
+        {
+            MatchStatistics ms = sm.GetMatchByIndex(i);
+
+            int pCount = ms.GetPlayerCount();
+            int hpCount = 0;
+            int pTeam = -1;
+            bool add = true;
+
+            for (int j = 0; j < pCount; j++)
+            {
+                PlayerStatistics ps = ms.GetPlayer(j);
+
+                if (!ps.IsAI && !ps.WasSpectator)
+                {
+                    hpCount++;
+
+                    if (pTeam > -1 && (ps.Team != pTeam || ps.Team == 0))
+                    {
+                        add = false;
+                        break;
+                    }
+
+                    pTeam = ps.Team;
+                }
+            }
+
+            if (add && hpCount > 1)
+            {
+                ListGameIndexIfPrerequisitesMet(i);
+            }
+        }
+    }
+
+    private void ListGameIndexIfPrerequisitesMet(int gameIndex)
+    {
+        MatchStatistics ms = sm.GetMatchByIndex(gameIndex);
+
+        if (cmbGameModeFilter.SelectedIndex != 0)
+        {
+            string gameMode = cmbGameModeFilter.Items[cmbGameModeFilter.SelectedIndex].Text;
+
+            if (ms.GameMode != gameMode)
+                return;
+        }
+
+        PlayerStatistics ps = ms.Players.Find(p => p.IsLocalPlayer);
+
+        if (ps != null && !chkIncludeSpectatedGames.Checked)
+        {
+            if (ps.WasSpectator)
+                return;
+        }
+
+        listedGameIndexes.Add(gameIndex);
     }
 
     private void ListGameModes()
@@ -707,16 +656,6 @@ public class StatisticsWindow : XNAWindow
         }
     }
 
-    private void ListAllGames()
-    {
-        int gameCount = sm.GetMatchCount();
-
-        for (int i = 0; i < gameCount; i++)
-        {
-            ListGameIndexIfPrerequisitesMet(i);
-        }
-    }
-
     private void ListOnlineGames()
     {
         int gameCount = sm.GetMatchCount();
@@ -763,8 +702,8 @@ public class StatisticsWindow : XNAWindow
 
                 if (!ps.IsAI && !ps.WasSpectator)
                 {
-                    // If we find a single player on a different team than another player,
-                    // we'll count the game as a PvP game
+                    // If we find a single player on a different team than another player, we'll
+                    // count the game as a PvP game
                     if (pTeam > -1 && (ps.Team != pTeam || ps.Team == 0))
                     {
                         ListGameIndexIfPrerequisitesMet(i);
@@ -773,44 +712,6 @@ public class StatisticsWindow : XNAWindow
 
                     pTeam = ps.Team;
                 }
-            }
-        }
-    }
-
-    private void ListCoOpGames()
-    {
-        int gameCount = sm.GetMatchCount();
-
-        for (int i = 0; i < gameCount; i++)
-        {
-            MatchStatistics ms = sm.GetMatchByIndex(i);
-
-            int pCount = ms.GetPlayerCount();
-            int hpCount = 0;
-            int pTeam = -1;
-            bool add = true;
-
-            for (int j = 0; j < pCount; j++)
-            {
-                PlayerStatistics ps = ms.GetPlayer(j);
-
-                if (!ps.IsAI && !ps.WasSpectator)
-                {
-                    hpCount++;
-
-                    if (pTeam > -1 && (ps.Team != pTeam || ps.Team == 0))
-                    {
-                        add = false;
-                        break;
-                    }
-
-                    pTeam = ps.Team;
-                }
-            }
-
-            if (add && hpCount > 1)
-            {
-                ListGameIndexIfPrerequisitesMet(i);
             }
         }
     }
@@ -845,29 +746,6 @@ public class StatisticsWindow : XNAWindow
                 ListGameIndexIfPrerequisitesMet(i);
             }
         }
-    }
-
-    private void ListGameIndexIfPrerequisitesMet(int gameIndex)
-    {
-        MatchStatistics ms = sm.GetMatchByIndex(gameIndex);
-
-        if (cmbGameModeFilter.SelectedIndex != 0)
-        {
-            string gameMode = cmbGameModeFilter.Items[cmbGameModeFilter.SelectedIndex].Text;
-
-            if (ms.GameMode != gameMode)
-                return;
-        }
-
-        PlayerStatistics ps = ms.Players.Find(p => p.IsLocalPlayer);
-
-        if (ps != null && !chkIncludeSpectatedGames.Checked)
-        {
-            if (ps.WasSpectator)
-                return;
-        }
-
-        listedGameIndexes.Add(gameIndex);
     }
 
     /// <summary>
@@ -989,67 +867,188 @@ public class StatisticsWindow : XNAWindow
             : numMediumAIs >= numEasyAIs && numMediumAIs >= numHardAIs ? "Medium".L10N("UI:Main:MediumAI") : "Hard".L10N("UI:Main:HardAI");
     }
 
-    private static PlayerStatistics FindLocalPlayer(MatchStatistics ms)
-    {
-        int pCount = ms.GetPlayerCount();
-
-        for (int pId = 0; pId < pCount; pId++)
-        {
-            PlayerStatistics ps = ms.GetPlayer(pId);
-
-            if (!ps.IsAI && ps.IsLocalPlayer)
-                return ps;
-        }
-
-        return null;
-    }
-
-    private static int GetHighestIndex(int[] t)
-    {
-        int highestIndex = -1;
-        int highest = int.MinValue;
-
-        for (int i = 0; i < t.Length; i++)
-        {
-            if (t[i] > highest)
-            {
-                highest = t[i];
-                highestIndex = i;
-            }
-        }
-
-        return highestIndex;
-    }
-
-    private void ClearAllStatistics()
-    {
-        StatisticsManager.Instance.ClearDatabase();
-        StatisticsWindow.ReadStatistics();
-        ListGameModes();
-        ListGames();
-    }
-
     #endregion Statistics reading / game listing code
 
-    private void BtnReturnToMenu_LeftClick(object sender, EventArgs e)
+    private void AddTotalStatisticsLabel(string name, string text, Point location)
     {
-        // To hide the control, just set Enabled=false
-        // and MainMenuDarkeningPanel will deal with the rest
-        Enabled = false;
+        XNALabel label = new(WindowManager)
+        {
+            Name = name,
+            Text = text,
+            ClientRectangle = new Rectangle(location.X, location.Y, 0, 0)
+        };
+        panelTotalStatistics.AddChild(label);
     }
 
     private void BtnClearStatistics_LeftClick(object sender, EventArgs e)
     {
-        XNAMessageBox msgBox = new(WindowManager, "Clear all statistics".L10N("UI:Main:ClearStatisticsTitle"),
+        XNAMessageBox msgBox = new(
+            WindowManager,
+            "Clear all statistics".L10N("UI:Main:ClearStatisticsTitle"),
             ("All statistics data will be cleared from the database." +
-            Environment.NewLine + Environment.NewLine +
-            "Are you sure you want to continue?").L10N("UI:Main:ClearStatisticsText"), XNAMessageBoxButtons.YesNo);
+                Environment.NewLine + Environment.NewLine +
+                "Are you sure you want to continue?").L10N("UI:Main:ClearStatisticsText"),
+            XNAMessageBoxButtons.YesNo);
         msgBox.Show();
         msgBox.YesClickedAction = ClearStatisticsConfirmation_YesClicked;
+    }
+
+    private void BtnReturnToMenu_LeftClick(object sender, EventArgs e)
+    {
+        // To hide the control, just set Enabled=false and MainMenuDarkeningPanel will deal with the rest
+        Enabled = false;
+    }
+
+    private void ChkIncludeSpectatedGames_CheckedChanged(object sender, EventArgs e)
+    {
+        ListGames();
     }
 
     private void ClearStatisticsConfirmation_YesClicked(XNAMessageBox messageBox)
     {
         ClearAllStatistics();
+    }
+
+    private void CmbGameClassFilter_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        ListGames();
+    }
+
+    private void CmbGameModeFilter_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        ListGames();
+    }
+
+    private void Instance_GameAdded(object sender, EventArgs e)
+    {
+        ListGames();
+    }
+
+    private void LbGameList_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        lbGameStatistics.ClearItems();
+
+        if (lbGameList.SelectedIndex == -1)
+            return;
+
+        MatchStatistics ms = sm.GetMatchByIndex(listedGameIndexes[lbGameList.SelectedIndex]);
+
+        List<PlayerStatistics> players = new();
+
+        for (int i = 0; i < ms.GetPlayerCount(); i++)
+        {
+            players.Add(ms.GetPlayer(i));
+        }
+
+        players = players.OrderBy(p => p.Score).Reverse().ToList();
+
+        Color textColor = UISettings.ActiveSettings.AltColor;
+
+        for (int i = 0; i < ms.GetPlayerCount(); i++)
+        {
+            PlayerStatistics ps = players[i];
+
+            //List<string> items = new List<string>();
+            List<XNAListBoxItem> items = new();
+
+            if (ps.Color > -1 && ps.Color < mpColors.Count)
+                textColor = mpColors[ps.Color].XnaColor;
+
+            if (ps.IsAI)
+            {
+                items.Add(new XNAListBoxItem(ProgramConstants.GetAILevelName(ps.AILevel), textColor));
+            }
+            else
+            {
+                items.Add(new XNAListBoxItem(ps.Name, textColor));
+            }
+
+            if (ps.WasSpectator)
+            {
+                // Player was a spectator
+                items.Add(new XNAListBoxItem("-", textColor));
+                items.Add(new XNAListBoxItem("-", textColor));
+                items.Add(new XNAListBoxItem("-", textColor));
+                items.Add(new XNAListBoxItem("-", textColor));
+                items.Add(new XNAListBoxItem("-", textColor));
+                XNAListBoxItem spectatorItem = new()
+                {
+                    Text = "Spectator".L10N("UI:Main:Spectator"),
+                    TextColor = textColor,
+                    Texture = sideTextures[sideTextures.Length - 1]
+                };
+                items.Add(spectatorItem);
+                items.Add(new XNAListBoxItem("-", textColor));
+            }
+            else
+            {
+                if (!ms.SawCompletion)
+                {
+                    // The game wasn't completed - we don't know the stats
+                    items.Add(new XNAListBoxItem("-", textColor));
+                    items.Add(new XNAListBoxItem("-", textColor));
+                    items.Add(new XNAListBoxItem("-", textColor));
+                    items.Add(new XNAListBoxItem("-", textColor));
+                    items.Add(new XNAListBoxItem("-", textColor));
+                }
+                else
+                {
+                    // The game was completed and the player was actually playing
+                    items.Add(new XNAListBoxItem(ps.Kills.ToString(), textColor));
+                    items.Add(new XNAListBoxItem(ps.Losses.ToString(), textColor));
+                    items.Add(new XNAListBoxItem(ps.Economy.ToString(), textColor));
+                    items.Add(new XNAListBoxItem(ps.Score.ToString(), textColor));
+                    items.Add(new XNAListBoxItem(
+                        Conversions.BooleanToString(ps.Won, BooleanStringStyle.YESNO), textColor));
+                }
+
+                if (ps.Side == 0 || ps.Side > sides.Length)
+                {
+                    items.Add(new XNAListBoxItem("Unknown".L10N("UI:Main:UnknownSide"), textColor));
+                }
+                else
+                {
+                    XNAListBoxItem sideItem = new()
+                    {
+                        Text = sides[ps.Side - 1],
+                        TextColor = textColor,
+                        Texture = sideTextures[ps.Side - 1]
+                    };
+                    items.Add(sideItem);
+                }
+
+                items.Add(new XNAListBoxItem(StatisticsWindow.TeamIndexToString(ps.Team), textColor));
+            }
+
+            if (!ps.IsLocalPlayer)
+            {
+                lbGameStatistics.AddItem(items);
+
+                items.ForEach(item => item.Selectable = false);
+            }
+            else
+            {
+                lbGameStatistics.AddItem(items);
+                lbGameStatistics.SelectedIndex = i;
+            }
+        }
+    }
+
+    private void TabControl_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (tabControl.SelectedTab == 1)
+        {
+            panelGameStatistics.Visible = false;
+            panelGameStatistics.Enabled = false;
+            panelTotalStatistics.Visible = true;
+            panelTotalStatistics.Enabled = true;
+        }
+        else
+        {
+            panelGameStatistics.Visible = true;
+            panelGameStatistics.Enabled = true;
+            panelTotalStatistics.Visible = false;
+            panelTotalStatistics.Enabled = false;
+        }
     }
 }

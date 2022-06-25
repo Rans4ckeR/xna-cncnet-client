@@ -9,23 +9,23 @@ public class IntSetting : INISetting<int>
     {
     }
 
-    public override void Write()
+    public override string ToString()
     {
-        IniFile.SetIntValue(IniSection, IniKey, Get());
+        return GetValue().ToString();
     }
 
-    protected override int Get()
+    public override void Write()
+    {
+        IniFile.SetIntValue(IniSection, IniKey, GetValue());
+    }
+
+    protected override int GetValue()
     {
         return IniFile.GetIntValue(IniSection, IniKey, DefaultValue);
     }
 
-    protected override void Set(int value)
+    protected override void SetValue(int value)
     {
         IniFile.SetIntValue(IniSection, IniKey, value);
-    }
-
-    public override string ToString()
-    {
-        return Get().ToString();
     }
 }

@@ -11,20 +11,21 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 internal class CnCNetLoginWindow : XNAWindow
 {
+    private XNAClientButton btnCancel;
+    private XNAClientButton btnConnect;
+    private XNAClientCheckBox chkAutoConnect;
+    private XNAClientCheckBox chkPersistentMode;
+    private XNAClientCheckBox chkRememberMe;
     private XNALabel lblConnectToCnCNet;
 
-    public CnCNetLoginWindow(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
+    private XNALabel lblPlayerName;
 
     private XNATextBox tbPlayerName;
-    private XNALabel lblPlayerName;
-    private XNAClientCheckBox chkRememberMe;
-    private XNAClientCheckBox chkPersistentMode;
-    private XNAClientCheckBox chkAutoConnect;
-    private XNAClientButton btnConnect;
-    private XNAClientButton btnCancel;
+
+    public CnCNetLoginWindow(WindowManager windowManager)
+                : base(windowManager)
+    {
+    }
 
     public event EventHandler Cancelled;
 
@@ -46,7 +47,8 @@ internal class CnCNetLoginWindow : XNAWindow
         AddChild(lblConnectToCnCNet);
         lblConnectToCnCNet.CenterOnParent();
         lblConnectToCnCNet.ClientRectangle = new Rectangle(
-            lblConnectToCnCNet.X, 12,
+            lblConnectToCnCNet.X,
+            12,
             lblConnectToCnCNet.Width,
             lblConnectToCnCNet.Height);
 
@@ -64,8 +66,11 @@ internal class CnCNetLoginWindow : XNAWindow
             FontIndex = 1,
             Text = "PLAYER NAME:".L10N("UI:Main:PlayerName")
         };
-        lblPlayerName.ClientRectangle = new Rectangle(12, tbPlayerName.Y + 1,
-            lblPlayerName.Width, lblPlayerName.Height);
+        lblPlayerName.ClientRectangle = new Rectangle(
+            12,
+            tbPlayerName.Y + 1,
+            lblPlayerName.Width,
+            lblPlayerName.Height);
 
         chkRememberMe = new XNAClientCheckBox(WindowManager)
         {
@@ -137,31 +142,9 @@ internal class CnCNetLoginWindow : XNAWindow
             BtnConnect_LeftClick(this, EventArgs.Empty);
     }
 
-    private void Instance_SettingsSaved(object sender, EventArgs e)
-    {
-        tbPlayerName.Text = UserINISettings.Instance.PlayerName;
-    }
-
     private void BtnCancel_LeftClick(object sender, EventArgs e)
     {
         Cancelled?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void ChkRememberMe_CheckedChanged(object sender, EventArgs e)
-    {
-        CheckAutoConnectAllowance();
-    }
-
-    private void ChkPersistentMode_CheckedChanged(object sender, EventArgs e)
-    {
-        CheckAutoConnectAllowance();
-    }
-
-    private void CheckAutoConnectAllowance()
-    {
-        chkAutoConnect.AllowChecking = chkPersistentMode.Checked && chkRememberMe.Checked;
-        if (!chkAutoConnect.AllowChecking)
-            chkAutoConnect.Checked = false;
     }
 
     private void BtnConnect_LeftClick(object sender, EventArgs e)
@@ -184,5 +167,27 @@ internal class CnCNetLoginWindow : XNAWindow
         UserINISettings.Instance.SaveSettings();
 
         Connect?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CheckAutoConnectAllowance()
+    {
+        chkAutoConnect.AllowChecking = chkPersistentMode.Checked && chkRememberMe.Checked;
+        if (!chkAutoConnect.AllowChecking)
+            chkAutoConnect.Checked = false;
+    }
+
+    private void ChkPersistentMode_CheckedChanged(object sender, EventArgs e)
+    {
+        CheckAutoConnectAllowance();
+    }
+
+    private void ChkRememberMe_CheckedChanged(object sender, EventArgs e)
+    {
+        CheckAutoConnectAllowance();
+    }
+
+    private void Instance_SettingsSaved(object sender, EventArgs e)
+    {
+        tbPlayerName.Text = UserINISettings.Instance.PlayerName;
     }
 }

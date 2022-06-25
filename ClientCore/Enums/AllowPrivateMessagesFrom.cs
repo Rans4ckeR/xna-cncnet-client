@@ -1,6 +1,6 @@
 ﻿namespace ClientCore.Enums;
 
-public enum AllowPrivateMessagesFromEnum
+public enum AllowPrivateMessagesFrom
 {
     All = 1,
     Friends = 2,

@@ -8,42 +8,41 @@ namespace DTAClient.Domain.Multiplayer;
 
 public class PlayerExtraOptions
 {
-    private const char MESSAGE_SEPARATOR = ';';
-
-    protected static string NOTALLMAPPINGSASSIGNED => MAPPING_ERROR_PREFIX + " " + "You must have all mappings assigned.".L10N("UI:Main:NotAllMappingsAssigned");
-
-    private static string INVALID_OPTIONS_MESSAGE => "Invalid player extra options message".L10N("UI:Main:InvalidPlayerExtraOptionsMessage");
-
-    private static string MAPPING_ERROR_PREFIX => "Auto Allying:".L10N("UI:Main:AutoAllyingPrefix");
-
-    protected static string MULTIPLEMAPPINGSASSIGNEDTOSAMESTART => MAPPING_ERROR_PREFIX + " " + "Multiple mappings assigned to the same start location.".L10N("UI:Main:MultipleMappingsAssigned");
-
-    protected static string ONLYONETEAM => MAPPING_ERROR_PREFIX + " " + "You must have more than one team assigned.".L10N("UI:Main:OnlyOneTeam");
-
     public const string CNCNETMESSAGEKEY = "PEO";
     public const string LANMESSAGEKEY = "PEOPTS";
-
-    public bool IsForceRandomSides { get; set; }
+    private const char MESSAGE_SEPARATOR = ';';
 
     public bool IsForceRandomColors { get; set; }
 
-    public bool IsForceRandomTeams { get; set; }
+    public bool IsForceRandomSides { get; set; }
 
     public bool IsForceRandomStarts { get; set; }
+
+    public bool IsForceRandomTeams { get; set; }
 
     public bool IsUseTeamStartMappings { get; set; }
 
     public List<TeamStartMapping> TeamStartMappings { get; set; }
 
+    protected static string MULTIPLEMAPPINGSASSIGNEDTOSAMESTART => MAPPING_ERROR_PREFIX + " " + "Multiple mappings assigned to the same start location.".L10N("UI:Main:MultipleMappingsAssigned");
+
+    protected static string NOTALLMAPPINGSASSIGNED => MAPPING_ERROR_PREFIX + " " + "You must have all mappings assigned.".L10N("UI:Main:NotAllMappingsAssigned");
+
+    protected static string ONLYONETEAM => MAPPING_ERROR_PREFIX + " " + "You must have more than one team assigned.".L10N("UI:Main:OnlyOneTeam");
+
+    private static string INVALID_OPTIONS_MESSAGE => "Invalid player extra options message".L10N("UI:Main:InvalidPlayerExtraOptionsMessage");
+
+    private static string MAPPING_ERROR_PREFIX => "Auto Allying:".L10N("UI:Main:AutoAllyingPrefix");
+
     public static PlayerExtraOptions FromMessage(string message)
     {
         string[] parts = message.Split(MESSAGE_SEPARATOR);
         if (parts.Length < 2)
-            throw new Exception(INVALID_OPTIONS_MESSAGE);
+            throw new InvalidOperationException(INVALID_OPTIONS_MESSAGE);
 
         char[] boolParts = parts[0].ToCharArray();
         if (boolParts.Length < 5)
-            throw new Exception(INVALID_OPTIONS_MESSAGE);
+            throw new InvalidOperationException(INVALID_OPTIONS_MESSAGE);
 
         return new PlayerExtraOptions
         {
@@ -72,6 +71,16 @@ public class PlayerExtraOptions
         return null;
     }
 
+    public bool IsDefault()
+    {
+        PlayerExtraOptions defaultPLayerExtraOptions = new();
+        return IsForceRandomColors == defaultPLayerExtraOptions.IsForceRandomColors &&
+               IsForceRandomStarts == defaultPLayerExtraOptions.IsForceRandomStarts &&
+               IsForceRandomTeams == defaultPLayerExtraOptions.IsForceRandomTeams &&
+               IsForceRandomSides == defaultPLayerExtraOptions.IsForceRandomSides &&
+               IsUseTeamStartMappings == defaultPLayerExtraOptions.IsUseTeamStartMappings;
+    }
+
     public string ToCncnetMessage() => $"{CNCNETMESSAGEKEY} {ToString()}";
 
     public string ToLanMessage() => $"{LANMESSAGEKEY} {ToString()}";
@@ -88,15 +97,5 @@ public class PlayerExtraOptions
         _ = stringBuilder.Append(TeamStartMapping.ToListString(TeamStartMappings));
 
         return stringBuilder.ToString();
-    }
-
-    public bool IsDefault()
-    {
-        PlayerExtraOptions defaultPLayerExtraOptions = new();
-        return IsForceRandomColors == defaultPLayerExtraOptions.IsForceRandomColors &&
-               IsForceRandomStarts == defaultPLayerExtraOptions.IsForceRandomStarts &&
-               IsForceRandomTeams == defaultPLayerExtraOptions.IsForceRandomTeams &&
-               IsForceRandomSides == defaultPLayerExtraOptions.IsForceRandomSides &&
-               IsUseTeamStartMappings == defaultPLayerExtraOptions.IsUseTeamStartMappings;
     }
 }

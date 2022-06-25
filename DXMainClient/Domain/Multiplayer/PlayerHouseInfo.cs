@@ -6,11 +6,11 @@ namespace DTAClient.Domain.Multiplayer;
 
 public class PlayerHouseInfo
 {
-    public int SideIndex { get; set; }
+    public int ColorIndex { get; set; }
 
     /// <summary>
-    /// Gets a side (or, more correctly, house or country depending on the game)
-    /// index that is used in rules file of the game.
+    /// Gets a side (or, more correctly, house or country depending on the game) index that is used
+    /// in rules file of the game.
     /// </summary>
     public int InternalSideIndex
     {
@@ -26,24 +26,62 @@ public class PlayerHouseInfo
         }
     }
 
-    public int ColorIndex { get; set; }
-
-    public int StartingWaypoint { get; set; }
+    public bool IsSpectator { get; set; }
 
     public int RealStartingWaypoint { get; set; }
 
-    public bool IsSpectator { get; set; }
+    public int SideIndex { get; set; }
+
+    public int StartingWaypoint { get; set; }
 
     /// <summary>
-    /// Applies the player's side into the information
-    /// and randomizes it if necessary.
+    /// Applies the player's color into the information and randomizes it if necessary. If the color
+    /// is randomized, it's removed from the list of available colors.
+    /// </summary>
+    /// <param name="pInfo">The PlayerInfo of the player.</param>
+    /// <param name="freeColors">The list of available (un-used) colors.</param>
+    /// <param name="mpColors">The list of all multiplayer colors.</param>
+    /// <param name="random">Random number generator.</param>
+    public void RandomizeColor(
+        PlayerInfo pInfo,
+        List<int> freeColors,
+        List<MultiplayerColor> mpColors,
+        Random random)
+    {
+        if (pInfo.ColorId == 0)
+        {
+            // The player has selected Random for their color
+            int randomizedColorIndex = random.Next(0, freeColors.Count);
+            int actualColorId = freeColors[randomizedColorIndex];
+
+            ColorIndex = mpColors[actualColorId].GameColorIndex;
+            freeColors.RemoveAt(randomizedColorIndex);
+        }
+        else
+        {
+            ColorIndex = mpColors[pInfo.ColorId - 1].GameColorIndex;
+            _ = freeColors.Remove(pInfo.ColorId - 1);
+        }
+    }
+
+    /// <summary>
+    /// Applies the player's side into the information and randomizes it if necessary.
     /// </summary>
     /// <param name="pInfo">The PlayerInfo of the player.</param>
     /// <param name="sideCount">The number of sides in the game.</param>
     /// <param name="random">Random number generator.</param>
-    /// <param name="disallowedSideArray">A bool array that determines which side indexes are disallowed by game options.</param>
-    public void RandomizeSide(PlayerInfo pInfo, int sideCount, Random random,
-        bool[] disallowedSideArray, List<int[]> randomSelectors, int randomCount)
+    /// <param name="disallowedSideArray">
+    /// A bool array that determines which side indexes are disallowed by game options.
+    /// </param>
+    /// <param name="randomSelectors">random selectors.</param>
+    /// <param name="randomCount">random count.</param>
+    public void RandomizeSide(
+        PlayerInfo pInfo,
+        int sideCount,
+        Random random,
+        bool[] disallowedSideArray,
+        List<int[]> randomSelectors,
+        int randomCount)
     {
         if (pInfo.SideId == 0 || pInfo.SideId == sideCount + randomCount)
         {
@@ -79,43 +117,15 @@ public class PlayerHouseInfo
     }
 
     /// <summary>
-    /// Applies the player's color into the information and randomizes
-    /// it if necessary. If the color is randomized, it's removed
-    /// from the list of available colors.
+    /// Applies the player's starting location into the information and randomizes it if necessary.
+    /// If the starting location is randomized, the starting location is removed from the list of
+    /// available starting locations.
     /// </summary>
     /// <param name="pInfo">The PlayerInfo of the player.</param>
-    /// <param name="freeColors">The list of available (un-used) colors.</param>
-    /// <param name="mpColors">The list of all multiplayer colors.</param>
     /// <param name="random">Random number generator.</param>
-    public void RandomizeColor(PlayerInfo pInfo, List<int> freeColors,
-        List<MultiplayerColor> mpColors, Random random)
-    {
-        if (pInfo.ColorId == 0)
-        {
-            // The player has selected Random for their color
-            int randomizedColorIndex = random.Next(0, freeColors.Count);
-            int actualColorId = freeColors[randomizedColorIndex];
-
-            ColorIndex = mpColors[actualColorId].GameColorIndex;
-            freeColors.RemoveAt(randomizedColorIndex);
-        }
-        else
-        {
-            ColorIndex = mpColors[pInfo.ColorId - 1].GameColorIndex;
-            _ = freeColors.Remove(pInfo.ColorId - 1);
-        }
-    }
-
-    /// <summary>
-    /// Applies the player's starting location into the information and
-    /// randomizes it if necessary. If the starting location is randomized,
-    /// the starting location is removed from the list of available starting locations.
-    /// </summary>
-    /// <param name="pInfo">The PlayerInfo of the player.</param>
     /// <param name="freeStartingLocations">List of free starting locations.</param>
-    /// <param name="random">Random number generator.</param>
     /// <param name="takenStartingLocations">A list of starting locations that are already occupied.</param>
-    /// <param name="overrideGameRandomLocations"></param>
+    /// <param name="overrideGameRandomLocations">overrideGameRandomLocations.</param>
     public void RandomizeStart(
         PlayerInfo pInfo,
         Random random,
@@ -135,9 +145,8 @@ public class PlayerHouseInfo
             // Randomize starting location
             if (!overrideGameRandomLocations)
             {
-                // The game uses its own randomization logic that places
-                // randomized players on the opposite side of the map
-                // Players seem to prefer this behaviour, so use -1 to
+                // The game uses its own randomization logic that places randomized players on the
+                // opposite side of the map Players seem to prefer this behaviour, so use -1 to
                 // leave randomizing the starting location to the game itself
                 RealStartingWaypoint = -1;
                 StartingWaypoint = -1;
@@ -145,8 +154,9 @@ public class PlayerHouseInfo
             }
 
             // Let the client pick starting positions.
-            if (freeStartingLocations.Count == 0) // No free starting locs available
+            if (freeStartingLocations.Count == 0)
             {
+                // No free starting locs available
                 RealStartingWaypoint = -1;
                 StartingWaypoint = -1;
                 return;

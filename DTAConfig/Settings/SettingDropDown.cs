@@ -23,7 +23,8 @@ public class SettingDropDown : SettingDropDownBase
     }
 
     /// <summary>
-    /// Gets or sets a value indicating whether if set, dropdown item's value instead of index is written to the user settings INI.
+    /// Gets or sets a value indicating whether if set, dropdown item's value instead of index is
+    /// written to the user settings INI.
     /// </summary>
     public bool WriteItemValue
     {
@@ -31,8 +32,17 @@ public class SettingDropDown : SettingDropDownBase
         set
         {
             _writeItemValue = value;
-            defaultKeySuffix = _writeItemValue ? "_Value" : "_SelectedIndex";
+            DefaultKeySuffix = _writeItemValue ? "_Value" : "_SelectedIndex";
         }
+    }
+
+    public override void Load()
+    {
+        SelectedIndex = WriteItemValue
+            ? FindItemIndexByValue(UserINISettings.Instance.GetValue(SettingSection, SettingKey, null))
+            : UserINISettings.Instance.GetValue(SettingSection, SettingKey, DefaultValue);
+
+        OriginalState = SelectedIndex;
     }
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
@@ -47,15 +57,6 @@ public class SettingDropDown : SettingDropDownBase
         base.ParseAttributeFromINI(iniFile, key, value);
     }
 
-    public override void Load()
-    {
-        SelectedIndex = WriteItemValue
-            ? FindItemIndexByValue(UserINISettings.Instance.GetValue(SettingSection, SettingKey, null))
-            : UserINISettings.Instance.GetValue(SettingSection, SettingKey, DefaultValue);
-
-        originalState = SelectedIndex;
-    }
-
     public override bool Save()
     {
         if (WriteItemValue)
@@ -63,7 +64,7 @@ public class SettingDropDown : SettingDropDownBase
         else
             UserINISettings.Instance.SetValue(SettingSection, SettingKey, SelectedIndex);
 
-        return RestartRequired && (SelectedIndex != originalState);
+        return RestartRequired && (SelectedIndex != OriginalState);
     }
 
     private int FindItemIndexByValue(string value)

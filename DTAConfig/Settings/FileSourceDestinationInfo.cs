@@ -6,18 +6,6 @@ using Rampastring.Tools;
 
 namespace DTAConfig.Settings;
 
-/// <summary>
-/// Defines the expected behavior of file operations performed with
-/// <see cref="FileSourceDestinationInfo"/>.
-/// </summary>
-public enum FileOperationOptions
-{
-    AlwaysOverwrite,
-    OverwriteOnMismatch,
-    DontOverwrite,
-    KeepChanges
-}
-
 internal sealed class FileSourceDestinationInfo
 {
     private readonly string destinationPath;
@@ -30,21 +18,9 @@ internal sealed class FileSourceDestinationInfo
         FileOperationOptions = options;
     }
 
-    public string SourcePath => ProgramConstants.GamePath + sourcePath;
-
-    public string DestinationPath => ProgramConstants.GamePath + destinationPath;
-
     /// <summary>
-    /// Gets a path where the files edited by user are saved if
-    /// <see cref="FileOperationOptions"/> is set to <see cref="FileOperationOptions.KeepChanges"/>.
-    /// </summary>
-    public string CachedPath => ProgramConstants.ClientUserFilesPath + "SettingsCache/" + sourcePath;
-
-    public FileOperationOptions FileOperationOptions { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="FileSourceDestinationInfo"/> class.
-    /// Constructs a new instance of <see cref="FileSourceDestinationInfo"/> from a given string.
+    /// Initializes a new instance of the <see cref="FileSourceDestinationInfo" /> class. Constructs
+    /// a new instance of <see cref="FileSourceDestinationInfo" /> from a given string.
     /// </summary>
     /// <param name="value">A string to be parsed.</param>
     public FileSourceDestinationInfo(string value)
@@ -53,8 +29,8 @@ internal sealed class FileSourceDestinationInfo
         if (parts.Length < 2)
         {
             throw new ArgumentException(
-                $"{nameof(FileSourceDestinationInfo)}: " +
-                $"Too few parameters specified in parsed value", nameof(value));
+                $"{nameof(FileSourceDestinationInfo)}: Too few parameters specified in parsed value",
+                nameof(value));
         }
 
         FileOperationOptions options = default;
@@ -67,13 +43,29 @@ internal sealed class FileSourceDestinationInfo
     }
 
     /// <summary>
-    /// A method which parses certain key list values from an INI section
-    /// into a list of <see cref="FileSourceDestinationInfo"/> objects.
+    /// Gets a path where the files edited by user are saved if <see cref="FileOperationOptions" />
+    /// is set to <see cref="FileOperationOptions.KeepChanges" />.
+    /// </summary>
+    public string CachedPath => ProgramConstants.ClientUserFilesPath + "SettingsCache/" + sourcePath;
+
+    public string DestinationPath => ProgramConstants.GamePath + destinationPath;
+
+    public FileOperationOptions FileOperationOptions { get; }
+
+    public string SourcePath => ProgramConstants.GamePath + sourcePath;
+
+    /// <summary>
+    /// A method which parses certain key list values from an INI section into a list of
+    /// <see cref="FileSourceDestinationInfo" /> objects.
     /// </summary>
     /// <param name="section">An INI section to parse key values from.</param>
-    /// <param name="iniKeyPrefix">A string to append index to when
-    /// parsing the values from key list.</param>
-    /// <returns>A <see cref="List{FileSourceDestinationInfo}"/> of all correctly defined <see cref="FileSourceDestinationInfo"/>s.</returns>
+    /// <param name="iniKeyPrefix">
+    /// A string to append index to when parsing the values from key list.
+    /// </param>
+    /// <returns>
+    /// A <see cref="List{FileSourceDestinationInfo}" /> of all correctly defined
+    /// <see cref="FileSourceDestinationInfo" /> s.
+    /// </returns>
     public static List<FileSourceDestinationInfo> ParseFSDInfoList(IniSection section!!, string iniKeyPrefix)
     {
         List<FileSourceDestinationInfo> result = new();
@@ -91,8 +83,8 @@ internal sealed class FileSourceDestinationInfo
     }
 
     /// <summary>
-    /// Performs file operations from <see cref="SourcePath"/> to
-    /// <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
+    /// Performs file operations from <see cref="SourcePath" /> to <see cref="DestinationPath" />
+    /// according to <see cref="FileOperationOptions" />.
     /// </summary>
     public void Apply()
     {
@@ -138,8 +130,8 @@ internal sealed class FileSourceDestinationInfo
     }
 
     /// <summary>
-    /// Performs file operations to undo changes made by <see cref="Apply"/>
-    /// to <see cref="DestinationPath"/> according to <see cref="FileOperationOptions"/>.
+    /// Performs file operations to undo changes made by <see cref="Apply" /> to
+    /// <see cref="DestinationPath" /> according to <see cref="FileOperationOptions" />.
     /// </summary>
     public void Revert()
     {

@@ -32,8 +32,9 @@ public class MultiplayerColor
             Name = name,
             XnaColor = new Color(
                 Math.Min(255, int.Parse(data[0])),
-            Math.Min(255, int.Parse(data[1])),
-            Math.Min(255, int.Parse(data[2])), 255),
+                Math.Min(255, int.Parse(data[1])),
+                Math.Min(255, int.Parse(data[2])),
+                255),
             GameColorIndex = int.Parse(data[3])
         };
     }
@@ -41,7 +42,7 @@ public class MultiplayerColor
     /// <summary>
     /// Returns the available multiplayer colors.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>result.</returns>
     public static List<MultiplayerColor> LoadColors()
     {
         if (colorList != null)

@@ -5,11 +5,6 @@
 /// </summary>
 public struct CoopHouseInfo
 {
-    /// <summary>
-    /// The index of the enemy house's side.
-    /// </summary>
-    public int Side;
-
     public CoopHouseInfo(int side, int color, int startingLocation)
     {
         Side = side;
@@ -18,12 +13,17 @@ public struct CoopHouseInfo
     }
 
     /// <summary>
-    /// The index of the enemy house's color.
+    /// Gets or sets the index of the enemy house's color.
     /// </summary>
-    public int Color;
+    public int Color { get; set; }
 
     /// <summary>
-    /// The starting location waypoint of the enemy house.
+    /// Gets or sets the index of the enemy house's side.
     /// </summary>
-    public int StartingLocation;
+    public int Side { get; set; }
+
+    /// <summary>
+    /// Gets or sets the starting location waypoint of the enemy house.
+    /// </summary>
+    public int StartingLocation { get; set; }
 }

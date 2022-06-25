@@ -12,6 +12,7 @@ namespace ClientGUI;
 
 public class INItializableWindow : XNAPanel
 {
+    private bool _initialized = false;
     private bool hasCloseButton = false;
 
     public INItializableWindow(WindowManager windowManager)
@@ -20,11 +21,10 @@ public class INItializableWindow : XNAPanel
     }
 
     protected CCIniFile ConfigIni { get; private set; }
-    private bool _initialized = false;
 
     /// <summary>
-    /// Gets or sets if not null, the client will read an INI file with this name
-    /// instead of the window's name.
+    /// Gets or sets if not null, the client will read an INI file with this name instead of the
+    /// window's name.
     /// </summary>
     protected string IniNameOverride { get; set; }
 
@@ -76,8 +76,8 @@ public class INItializableWindow : XNAPanel
     }
 
     /// <summary>
-    /// Attempts to locate the ini config file for the current control.
-    /// Only return a config path if it exists.
+    /// Attempts to locate the ini config file for the current control. Only return a config path if
+    /// it exists.
     /// </summary>
     /// <returns>The ini config file path.</returns>
     protected string GetConfigPath()
@@ -109,8 +109,85 @@ public class INItializableWindow : XNAPanel
         return File.Exists(configIniPath) ? configIniPath : null;
     }
 
+    protected void ReadINIForControl(XNAControl control)
+    {
+        IniSection section = ConfigIni.GetSection(control.Name);
+        if (section == null)
+            return;
+
+        Parser.Instance.SetPrimaryControl(this);
+
+        foreach (KeyValuePair<string, string> kvp in section.Keys)
+        {
+            if (kvp.Key.StartsWith("$CC"))
+            {
+                XNAControl child = CreateChildControl(control, kvp.Value);
+                ReadINIForControl(child);
+                child.Initialize();
+            }
+            else if (kvp.Key == "$X")
+            {
+                control.X = Parser.Instance.GetExprValue(kvp.Value, control);
+            }
+            else if (kvp.Key == "$Y")
+            {
+                control.Y = Parser.Instance.GetExprValue(kvp.Value, control);
+            }
+            else if (kvp.Key == "$Width")
+            {
+                control.Width = Parser.Instance.GetExprValue(kvp.Value, control);
+            }
+            else if (kvp.Key == "$Height")
+            {
+                control.Height = Parser.Instance.GetExprValue(kvp.Value, control);
+            }
+            else if (kvp.Key == "$TextAnchor" && control is XNALabel label)
+            {
+                // TODO refactor these to be more object-oriented
+                label.TextAnchor = (LabelTextAnchorInfo)Enum.Parse(typeof(LabelTextAnchorInfo), kvp.Value);
+            }
+            else if (kvp.Key == "$AnchorPoint" && control is XNALabel label1)
+            {
+                string[] parts = kvp.Value.Split(',');
+                if (parts.Length != 2)
+                    throw new FormatException("Invalid format for AnchorPoint: " + kvp.Value);
+                label1.AnchorPoint = new Vector2(Parser.Instance.GetExprValue(parts[0], control), Parser.Instance.GetExprValue(parts[1], control));
+            }
+            else if (kvp.Key == "$LeftClickAction")
+            {
+                if (kvp.Value == "Disable")
+                    control.LeftClick += (s, e) => Disable();
+            }
+            else
+            {
+                control.ParseAttributeFromINI(ConfigIni, kvp.Key, kvp.Value);
+            }
+        }
+    }
+
+    private XNAControl CreateChildControl(XNAControl parent, string keyValue)
+    {
+        string[] parts = keyValue.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length != 2)
+            throw new INIConfigException("Invalid child control definition " + keyValue);
+
+        string childName = parts[0];
+        if (string.IsNullOrEmpty(childName))
+            throw new INIConfigException("Empty name in child control definition for " + parent.Name);
+
+        XNAControl childControl = ClientGUICreator.Instance.CreateControl(WindowManager, parts[1]);
+
+        if (Array.Exists(childName.ToCharArray(), c => !char.IsLetterOrDigit(c) && c != '_'))
+            throw new INIConfigException("Names of INItializableWindow child controls must consist of letters, digits and underscores only. Offending name: " + parts[0]);
+
+        childControl.Name = childName;
+        parent.AddChildWithoutInitialize(childControl);
+        return childControl;
+    }
+
     private T FindChild<T>(IEnumerable<XNAControl> list, string controlName)
-        where T : XNAControl
+                where T : XNAControl
     {
         foreach (XNAControl child in list)
         {
@@ -159,65 +236,9 @@ public class INItializableWindow : XNAPanel
             ReadINIRecursive(child);
     }
 
-    protected void ReadINIForControl(XNAControl control)
-    {
-        IniSection section = ConfigIni.GetSection(control.Name);
-        if (section == null)
-            return;
-
-        Parser.Instance.SetPrimaryControl(this);
-
-        foreach (KeyValuePair<string, string> kvp in section.Keys)
-        {
-            if (kvp.Key.StartsWith("$CC"))
-            {
-                XNAControl child = CreateChildControl(control, kvp.Value);
-                ReadINIForControl(child);
-                child.Initialize();
-            }
-            else if (kvp.Key == "$X")
-            {
-                control.X = Parser.Instance.GetExprValue(kvp.Value, control);
-            }
-            else if (kvp.Key == "$Y")
-            {
-                control.Y = Parser.Instance.GetExprValue(kvp.Value, control);
-            }
-            else if (kvp.Key == "$Width")
-            {
-                control.Width = Parser.Instance.GetExprValue(kvp.Value, control);
-            }
-            else if (kvp.Key == "$Height")
-            {
-                control.Height = Parser.Instance.GetExprValue(kvp.Value, control);
-            }
-            else if (kvp.Key == "$TextAnchor" && control is XNALabel)
-            {
-                // TODO refactor these to be more object-oriented
-                ((XNALabel)control).TextAnchor = (LabelTextAnchorInfo)Enum.Parse(typeof(LabelTextAnchorInfo), kvp.Value);
-            }
-            else if (kvp.Key == "$AnchorPoint" && control is XNALabel)
-            {
-                string[] parts = kvp.Value.Split(',');
-                if (parts.Length != 2)
-                    throw new FormatException("Invalid format for AnchorPoint: " + kvp.Value);
-                ((XNALabel)control).AnchorPoint = new Vector2(Parser.Instance.GetExprValue(parts[0], control), Parser.Instance.GetExprValue(parts[1], control));
-            }
-            else if (kvp.Key == "$LeftClickAction")
-            {
-                if (kvp.Value == "Disable")
-                    control.LeftClick += (s, e) => Disable();
-            }
-            else
-            {
-                control.ParseAttributeFromINI(ConfigIni, kvp.Key, kvp.Value);
-            }
-        }
-    }
-
     /// <summary>
-    /// Reads a second set of attributes for a control's child controls.
-    /// Enables linking controls to controls that are defined after them.
+    /// Reads a second set of attributes for a control's child controls. Enables linking controls to
+    /// controls that are defined after them.
     /// </summary>
     private void ReadLateAttributesForControl(XNAControl control)
     {
@@ -228,8 +249,8 @@ public class INItializableWindow : XNAPanel
         List<XNAControl> children = Children.ToList();
         foreach (XNAControl child in children)
         {
-            // This logic should also be enabled for other types in the future,
-            // but it requires changes in XNAUI
+            // This logic should also be enabled for other types in the future, but it requires
+            // changes in XNAUI
             if (child is not XNATextBox)
                 continue;
 
@@ -253,26 +274,5 @@ public class INItializableWindow : XNAPanel
                     ((XNATextBox)child).PreviousControl = otherChild;
             }
         }
-    }
-
-    private XNAControl CreateChildControl(XNAControl parent, string keyValue)
-    {
-        string[] parts = keyValue.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
-
-        if (parts.Length != 2)
-            throw new INIConfigException("Invalid child control definition " + keyValue);
-
-        string childName = parts[0];
-        if (string.IsNullOrEmpty(childName))
-            throw new INIConfigException("Empty name in child control definition for " + parent.Name);
-
-        XNAControl childControl = ClientGUICreator.Instance.CreateControl(WindowManager, parts[1]);
-
-        if (Array.Exists(childName.ToCharArray(), c => !char.IsLetterOrDigit(c) && c != '_'))
-            throw new INIConfigException("Names of INItializableWindow child controls must consist of letters, digits and underscores only. Offending name: " + parts[0]);
-
-        childControl.Name = childName;
-        parent.AddChildWithoutInitialize(childControl);
-        return childControl;
     }
 }

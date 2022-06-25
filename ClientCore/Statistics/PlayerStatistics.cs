@@ -9,8 +9,15 @@ public class PlayerStatistics
     {
     }
 
-    public PlayerStatistics(string name, bool isLocal, bool isAi, bool isSpectator,
-        int side, int team, int color, int aiLevel)
+    public PlayerStatistics(
+        string name,
+        bool isLocal,
+        bool isAi,
+        bool isSpectator,
+        int side,
+        int team,
+        int color,
+        int aiLevel)
     {
         Name = name;
         IsLocalPlayer = isLocal;

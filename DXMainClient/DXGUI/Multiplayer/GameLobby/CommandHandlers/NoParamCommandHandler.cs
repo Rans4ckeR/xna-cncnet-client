@@ -9,7 +9,9 @@ public class NoParamCommandHandler : CommandHandlerBase
 {
     private readonly Action<string> commandHandler;
 
-    public NoParamCommandHandler(string commandName, Action<string> commandHandler)
+    public NoParamCommandHandler(
+        string commandName,
+        Action<string> commandHandler)
         : base(commandName)
     {
         this.commandHandler = commandHandler;

@@ -5,7 +5,17 @@ namespace ClientCore.Statistics;
 
 public abstract class GenericStatisticsManager
 {
-    protected List<MatchStatistics> statistics = new();
+    protected List<MatchStatistics> Statistics { get; set; } = new();
+
+    public MatchStatistics GetMatchByIndex(int index)
+    {
+        return Statistics[index];
+    }
+
+    public int GetMatchCount()
+    {
+        return Statistics.Count;
+    }
 
     public abstract void ReadStatistics(string gamePath);
 
@@ -22,15 +32,5 @@ public abstract class GenericStatisticsManager
 
         string s = new(versionBuffer);
         return s;
-    }
-
-    public int GetMatchCount()
-    {
-        return statistics.Count;
-    }
-
-    public MatchStatistics GetMatchByIndex(int index)
-    {
-        return statistics[index];
     }
 }

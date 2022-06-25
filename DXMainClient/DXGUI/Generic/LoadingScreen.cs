@@ -20,21 +20,25 @@ namespace DTAClient.DXGUI.Generic;
 
 public class LoadingScreen : XNAWindow
 {
-    private static readonly object Locker = new();
-
-    public LoadingScreen(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
-
     private MapLoader mapLoader;
+
+    private Task mapLoadTask = null;
 
     private PrivateMessagingPanel privateMessagingPanel;
 
+    private Task updaterInitTask = null;
+
     private bool visibleSpriteCursor = false;
 
-    private Task updaterInitTask = null;
-    private Task mapLoadTask = null;
+    public LoadingScreen(WindowManager windowManager)
+                            : base(windowManager)
+    {
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        base.Draw(gameTime);
+    }
 
     public override void Initialize()
     {
@@ -76,27 +80,9 @@ public class LoadingScreen : XNAWindow
         }
     }
 
-    private void InitUpdater()
-    {
-        Updater.OnLocalFileVersionsChecked += LogGameClientVersion;
-        Updater.CheckLocalFileVersions();
-    }
-
-    private void LogGameClientVersion()
-    {
-        Logger.Log($"Game Client Version: {ClientConfiguration.Instance.LocalGame} {Updater.GameVersion}");
-        Updater.OnLocalFileVersionsChecked -= LogGameClientVersion;
-    }
-
-    private void LoadMaps()
-    {
-        mapLoader = new MapLoader();
-        mapLoader.LoadMaps();
-    }
-
     private void Finish()
     {
-        ProgramConstants.GAME_VERSION = ClientConfiguration.Instance.ModMode ?
+        ProgramConstants.GameVersion = ClientConfiguration.Instance.ModMode ?
             "N/A" : Updater.GameVersion;
 
         DiscordHandler discordHandler = null;
@@ -112,7 +98,7 @@ public class LoadingScreen : XNAWindow
         ClientGUICreator.Instance.AddControl(typeof(PlayerExtraOptionsPanel));
 
         GameCollection gameCollection = new();
-        gameCollection.Initialize(GraphicsDevice);
+        gameCollection.Initialize();
 
         LANLobby lanLobby = new(WindowManager, gameCollection, mapLoader.GameModes, mapLoader, discordHandler);
 
@@ -127,26 +113,57 @@ public class LoadingScreen : XNAWindow
 
         PrivateMessagingWindow pmWindow = new(
             WindowManager,
-            cncnetManager, gameCollection, cncnetUserData, privateMessageHandler);
+            cncnetManager,
+            gameCollection,
+            cncnetUserData,
+            privateMessageHandler);
         privateMessagingPanel = new PrivateMessagingPanel(WindowManager);
 
         CnCNetGameLobby cncnetGameLobby = new(
             WindowManager,
-            "MultiplayerGameLobby", topBar, cncnetManager, tunnelHandler, gameCollection, cncnetUserData, mapLoader, discordHandler, pmWindow);
+            "MultiplayerGameLobby",
+            topBar,
+            cncnetManager,
+            tunnelHandler,
+            gameCollection,
+            cncnetUserData,
+            mapLoader,
+            discordHandler,
+            pmWindow);
         CnCNetGameLoadingLobby cncnetGameLoadingLobby = new(
             WindowManager,
-            topBar, cncnetManager, tunnelHandler, mapLoader.GameModes, gameCollection, discordHandler);
-        CnCNetLobby cncnetLobby = new(WindowManager, cncnetManager,
-            cncnetGameLobby, cncnetGameLoadingLobby, topBar, pmWindow, tunnelHandler,
-            gameCollection, cncnetUserData, optionsWindow);
+            topBar,
+            cncnetManager,
+            tunnelHandler,
+            mapLoader.GameModes,
+            gameCollection,
+            discordHandler);
+        CnCNetLobby cncnetLobby = new(
+            WindowManager,
+            cncnetManager,
+            cncnetGameLobby,
+            cncnetGameLoadingLobby,
+            topBar,
+            pmWindow,
+            tunnelHandler,
+            gameCollection,
+            cncnetUserData,
+            optionsWindow);
         GameInProgressWindow gipw = new(WindowManager);
 
         SkirmishLobby skirmishLobby = new(WindowManager, topBar, mapLoader, discordHandler);
 
         topBar.SetSecondarySwitch(cncnetLobby);
 
-        MainMenu mainMenu = new(WindowManager, skirmishLobby, lanLobby,
-            topBar, optionsWindow, cncnetLobby, cncnetManager, discordHandler);
+        MainMenu mainMenu = new(
+            WindowManager,
+            skirmishLobby,
+            lanLobby,
+            topBar,
+            optionsWindow,
+            cncnetLobby,
+            cncnetManager,
+            discordHandler);
         WindowManager.AddAndInitializeControl(mainMenu);
 
         DarkeningPanel.AddAndInitializeWithControl(WindowManager, skirmishLobby);
@@ -197,8 +214,21 @@ public class LoadingScreen : XNAWindow
         Cursor.Visible = visibleSpriteCursor;
     }
 
-    public override void Draw(GameTime gameTime)
+    private void InitUpdater()
     {
-        base.Draw(gameTime);
+        Updater.OnLocalFileVersionsChecked += LogGameClientVersion;
+        Updater.CheckLocalFileVersions();
+    }
+
+    private void LoadMaps()
+    {
+        mapLoader = new MapLoader();
+        mapLoader.LoadMaps();
+    }
+
+    private void LogGameClientVersion()
+    {
+        Logger.Log($"Game Client Version: {ClientConfiguration.Instance.LocalGame} {Updater.GameVersion}");
+        Updater.OnLocalFileVersionsChecked -= LogGameClientVersion;
     }
 }

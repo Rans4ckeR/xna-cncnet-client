@@ -8,21 +8,21 @@ namespace DTAClient.Domain.Multiplayer;
 public class CoopMapInfo
 {
     [JsonProperty]
-    public List<CoopHouseInfo> EnemyHouses = new();
+    public List<CoopHouseInfo> AllyHouses { get; set; } = new();
 
     [JsonProperty]
-    public List<CoopHouseInfo> AllyHouses = new();
+    public List<int> DisallowedPlayerColors { get; set; } = new();
 
     [JsonProperty]
-    public List<int> DisallowedPlayerSides = new();
+    public List<int> DisallowedPlayerSides { get; set; } = new();
 
     [JsonProperty]
-    public List<int> DisallowedPlayerColors = new();
+    public List<CoopHouseInfo> EnemyHouses { get; set; } = new();
 
     public void SetHouseInfos(IniSection iniSection)
     {
-        EnemyHouses = CoopMapInfo.GetGenericHouseInfo(iniSection, "EnemyHouse");
-        AllyHouses = CoopMapInfo.GetGenericHouseInfo(iniSection, "AllyHouse");
+        EnemyHouses = GetGenericHouseInfo(iniSection, "EnemyHouse");
+        AllyHouses = GetGenericHouseInfo(iniSection, "AllyHouse");
     }
 
     private static List<CoopHouseInfo> GetGenericHouseInfo(IniSection iniSection, string keyName)

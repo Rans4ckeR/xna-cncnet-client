@@ -52,11 +52,6 @@ public class ClientConfiguration
 
     public string MainMenuMusicName => dTACnCNetClient_ini.GetStringValue(GENERAL, "MainMenuTheme", "mainmenu");
 
-    public void RefreshSettings()
-    {
-        dTACnCNetClient_ini = new IniFile(ProgramConstants.GetResourcePath() + CLIENT_SETTINGS);
-    }
-
     public float DefaultAlphaRate => dTACnCNetClient_ini.GetSingleValue(GENERAL, "AlphaRate", 0.005f);
 
     public float CheckBoxAlphaRate => dTACnCNetClient_ini.GetSingleValue(GENERAL, "CheckBoxAlphaRate", 0.05f);
@@ -109,7 +104,7 @@ public class ClientConfiguration
 
     public int ToolTipFontIndex => dTACnCNetClient_ini.GetIntValue(GENERAL, "ToolTipFontIndex", 0);
 
-    public IniSection GetParserConstants() => dTACnCNetClient_ini.GetSection("ParserConstants");
+    public IniSection ParserConstants => dTACnCNetClient_ini.GetSection("ParserConstants");
 
     public int ToolTipOffsetX => dTACnCNetClient_ini.GetIntValue(GENERAL, "ToolTipOffsetX", 0);
 
@@ -215,27 +210,6 @@ public class ClientConfiguration
 
     public string SettingsIniName => clientDefinitionsIni.GetStringValue(SETTINGS, "SettingsFile", "Settings.ini");
 
-    public string[] GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(), ",").Split(',');
-
-    /// <summary>
-    /// Returns the directory path for a theme, or null if the specified
-    /// theme name doesn't exist.
-    /// </summary>
-    /// <param name="themeName">The name of the theme.</param>
-    /// <returns>The path to the theme's directory.</returns>
-    public string GetThemePath(string themeName)
-    {
-        IniSection themeSection = clientDefinitionsIni.GetSection("Themes");
-        foreach (System.Collections.Generic.KeyValuePair<string, string> key in themeSection.Keys)
-        {
-            string[] parts = key.Value.Split(',');
-            if (parts[0] == themeName)
-                return parts[1];
-        }
-
-        return null;
-    }
-
     public string TranslationIniName => clientDefinitionsIni.GetStringValue(SETTINGS, "TranslationFile", "Resources/Translation.ini");
 
     public bool GenerateTranslationStub => clientDefinitionsIni.GetBooleanValue(SETTINGS, "GenerateTranslationStub", false);
@@ -260,12 +234,7 @@ public class ClientConfiguration
 
     public string GameLauncherExecutableName => clientDefinitionsIni.GetStringValue(SETTINGS, "GameLauncherExecutableName", string.Empty);
 
-    public string GetGameExecutableName()
-    {
-        string[] exeNames = clientDefinitionsIni.GetStringValue(SETTINGS, "GameExecutableNames", "Game.exe").Split(',');
-
-        return exeNames[0];
-    }
+    public string GameExecutableName => clientDefinitionsIni.GetStringValue(SETTINGS, "GameExecutableNames", "Game.exe").Split(',')[0];
 
     public bool SaveSkirmishGameOptions => clientDefinitionsIni.GetBooleanValue(SETTINGS, "SaveSkirmishGameOptions", false);
 
@@ -341,16 +310,30 @@ public class ClientConfiguration
 
         return OSVersion.UNKNOWN;
     }
-}
 
-/// <summary>
-/// An exception that is thrown when a client configuration file contains invalid or
-/// unexpected settings / data or required settings / data are missing.
-/// </summary>
-public class ClientConfigurationException : Exception
-{
-    public ClientConfigurationException(string message)
-        : base(message)
+    public void RefreshSettings()
     {
+        dTACnCNetClient_ini = new IniFile(ProgramConstants.GetResourcePath() + CLIENT_SETTINGS);
+    }
+
+    public string[] GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(), ",").Split(',');
+
+    /// <summary>
+    /// Returns the directory path for a theme, or null if the specified
+    /// theme name doesn't exist.
+    /// </summary>
+    /// <param name="themeName">The name of the theme.</param>
+    /// <returns>The path to the theme's directory.</returns>
+    public string GetThemePath(string themeName)
+    {
+        IniSection themeSection = clientDefinitionsIni.GetSection("Themes");
+        foreach (System.Collections.Generic.KeyValuePair<string, string> key in themeSection.Keys)
+        {
+            string[] parts = key.Value.Split(',');
+            if (parts[0] == themeName)
+                return parts[1];
+        }
+
+        return null;
     }
 }

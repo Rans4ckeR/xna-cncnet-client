@@ -6,15 +6,17 @@ public class IntNotificationHandler : CommandHandlerBase
 {
     private readonly Action<string, int, Action<int>> action;
 
-    public IntNotificationHandler(string commandName, Action<string, int, Action<int>> action,
+    private readonly Action<int> innerAction;
+
+    public IntNotificationHandler(
+        string commandName,
+        Action<string, int, Action<int>> action,
         Action<int> innerAction)
         : base(commandName)
     {
         this.action = action;
         this.innerAction = innerAction;
     }
-
-    private readonly Action<int> innerAction;
 
     public override bool Handle(string sender, string message)
     {

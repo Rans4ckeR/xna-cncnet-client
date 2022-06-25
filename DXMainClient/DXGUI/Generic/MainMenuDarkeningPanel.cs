@@ -8,8 +8,7 @@ using Rampastring.XNAUI.XNAControls;
 namespace DTAClient.DXGUI.Generic;
 
 /// <summary>
-/// TODO Replace this class with DarkeningPanels.
-/// Handles transitions between the main menu and its sub-menus.
+/// TODO Replace this class with DarkeningPanels. Handles transitions between the main menu and its sub-menus.
 /// </summary>
 public class MainMenuDarkeningPanel : XNAPanel
 {
@@ -23,13 +22,36 @@ public class MainMenuDarkeningPanel : XNAPanel
         DrawMode = ControlDrawMode.UNIQUE_RENDER_TARGET;
     }
 
-    public CampaignSelector CampaignSelector;
-    public GameLoadingWindow GameLoadingWindow;
-    public StatisticsWindow StatisticsWindow;
-    public UpdateQueryWindow UpdateQueryWindow;
-    public ManualUpdateQueryWindow ManualUpdateQueryWindow;
-    public UpdateWindow UpdateWindow;
-    public ExtrasWindow ExtrasWindow;
+    public CampaignSelector CampaignSelector { get; set; }
+
+    public ExtrasWindow ExtrasWindow { get; set; }
+
+    public GameLoadingWindow GameLoadingWindow { get; set; }
+
+    public ManualUpdateQueryWindow ManualUpdateQueryWindow { get; set; }
+
+    public StatisticsWindow StatisticsWindow { get; set; }
+
+    public UpdateQueryWindow UpdateQueryWindow { get; set; }
+
+    public UpdateWindow UpdateWindow { get; set; }
+
+    public override void Draw(GameTime gameTime)
+    {
+        DrawTexture(BackgroundTexture, Point.Zero, Color.White);
+        base.Draw(gameTime);
+    }
+
+    public void Hide()
+    {
+        AlphaRate = -DarkeningPanel.ALPHARATE;
+
+        foreach (XNAControl child in Children)
+        {
+            child.Enabled = false;
+            child.Visible = false;
+        }
+    }
 
     public override void Initialize()
     {
@@ -91,24 +113,6 @@ public class MainMenuDarkeningPanel : XNAPanel
         }
     }
 
-    private void Child_EnabledChanged(object sender, EventArgs e)
-    {
-        XNAWindow child = (XNAWindow)sender;
-        if (!child.Enabled)
-            Hide();
-    }
-
-    public void Hide()
-    {
-        AlphaRate = -DarkeningPanel.ALPHARATE;
-
-        foreach (XNAControl child in Children)
-        {
-            child.Enabled = false;
-            child.Visible = false;
-        }
-    }
-
     public override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
@@ -125,9 +129,10 @@ public class MainMenuDarkeningPanel : XNAPanel
         }
     }
 
-    public override void Draw(GameTime gameTime)
+    private void Child_EnabledChanged(object sender, EventArgs e)
     {
-        DrawTexture(BackgroundTexture, Point.Zero, Color.White);
-        base.Draw(gameTime);
+        XNAWindow child = (XNAWindow)sender;
+        if (!child.Enabled)
+            Hide();
     }
 }

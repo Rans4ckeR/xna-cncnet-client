@@ -7,12 +7,13 @@ using Rampastring.XNAUI.XNAControls;
 namespace ClientGUI;
 
 /// <summary>
-/// A drop-down control that has a preferred drop-down item with an optional string label displayed next to its text.
+/// A drop-down control that has a preferred drop-down item with an optional string label displayed
+/// next to its text.
 /// </summary>
 public class XNAClientPreferredItemDropDown : XNAClientDropDown
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="XNAClientPreferredItemDropDown"/> class.
+    /// Initializes a new instance of the <see cref="XNAClientPreferredItemDropDown" /> class.
     /// Creates a new preferred item drop-down control.
     /// </summary>
     /// <param name="windowManager">The WindowManager associated with this control.</param>
@@ -22,30 +23,19 @@ public class XNAClientPreferredItemDropDown : XNAClientDropDown
     }
 
     /// <summary>
+    /// Gets or sets index of the preferred drop-down item.
+    /// </summary>
+    public List<int> PreferredItemIndexes { get; set; } = new List<int>();
+
+    /// <summary>
     /// Gets or sets string label displayed next to the preferred drop-down item text.
     /// </summary>
     public string PreferredItemLabel { get; set; }
 
     /// <summary>
-    /// Gets or sets index of the preferred drop-down item.
-    /// </summary>
-    public List<int> PreferredItemIndexes { get; set; } = new List<int>();
-
-    public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
-    {
-        switch (key)
-        {
-            case "PreferredItemLabel":
-                PreferredItemLabel = value;
-                return;
-        }
-
-        base.ParseAttributeFromINI(iniFile, key, value);
-    }
-
-    /// <summary>
     /// Draws the drop-down.
     /// </summary>
+    /// <param name="gameTime">game time.</param>
     public override void Draw(GameTime gameTime)
     {
         if (PreferredItemIndexes.Count > 0)
@@ -69,5 +59,17 @@ public class XNAClientPreferredItemDropDown : XNAClientDropDown
         {
             base.Draw(gameTime);
         }
+    }
+
+    public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
+    {
+        switch (key)
+        {
+            case "PreferredItemLabel":
+                PreferredItemLabel = value;
+                return;
+        }
+
+        base.ParseAttributeFromINI(iniFile, key, value);
     }
 }

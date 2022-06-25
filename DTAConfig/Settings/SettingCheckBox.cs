@@ -16,8 +16,15 @@ public class SettingCheckBox : SettingCheckBoxBase
     {
     }
 
-    public SettingCheckBox(WindowManager windowManager, bool defaultValue, string settingSection, string settingKey,
-        bool writeSettingValue = false, string enabledValue = "", string disabledValue = "", bool restartRequired = false)
+    public SettingCheckBox(
+        WindowManager windowManager,
+        bool defaultValue,
+        string settingSection,
+        string settingKey,
+        bool writeSettingValue = false,
+        string enabledValue = "",
+        string disabledValue = "",
+        bool restartRequired = false)
         : base(windowManager, defaultValue, settingSection, settingKey, restartRequired)
     {
         WriteSettingValue = writeSettingValue;
@@ -34,7 +41,7 @@ public class SettingCheckBox : SettingCheckBoxBase
         set
         {
             _writeSettingValue = value;
-            defaultKeySuffix = _writeSettingValue ? "_Value" : "_Checked";
+            DefaultKeySuffix = _writeSettingValue ? "_Value" : "_Checked";
         }
     }
 
@@ -72,16 +79,11 @@ public class SettingCheckBox : SettingCheckBoxBase
     {
         string value = UserINISettings.Instance.GetValue(SettingSection, SettingKey, string.Empty);
 
-        if (WriteSettingValue)
-        {
-            Checked = value == EnabledSettingValue ? true : value == DisabledSettingValue ? false : DefaultValue;
-        }
-        else
-        {
-            Checked = Conversions.BooleanFromString(value, DefaultValue);
-        }
+        Checked = WriteSettingValue
+            ? value == EnabledSettingValue || (value != DisabledSettingValue && DefaultValue)
+            : Conversions.BooleanFromString(value, DefaultValue);
 
-        originalState = Checked;
+        OriginalState = Checked;
     }
 
     public override bool Save()
@@ -91,6 +93,6 @@ public class SettingCheckBox : SettingCheckBoxBase
         else
             UserINISettings.Instance.SetValue(SettingSection, SettingKey, Checked);
 
-        return RestartRequired && (Checked != originalState);
+        return RestartRequired && (Checked != OriginalState);
     }
 }

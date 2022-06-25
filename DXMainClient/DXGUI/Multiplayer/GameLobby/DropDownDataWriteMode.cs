@@ -22,7 +22,7 @@ public enum DropDownDataWriteMode
     /// The dropdown value displayed in the UI will
     /// be written into the INI.
     /// </summary>
-    STRING,
+    StringValue,
 
     /// <summary>
     /// The dropdown value is filename of a mapcode INI file, which will be applied to the map.

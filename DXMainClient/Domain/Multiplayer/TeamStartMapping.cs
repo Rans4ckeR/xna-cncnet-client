@@ -9,45 +9,37 @@ public class TeamStartMapping
 {
     public const string NOTEAM = "x";
 
-    private const char LIST_SEPARATOR = ',';
     public const string RANDOMTEAM = "-";
     public static readonly List<string> TEAMS = new List<string>() { NOTEAM, RANDOMTEAM }.Concat(ProgramConstants.TEAMS).ToList();
+    private const char LIST_SEPARATOR = ',';
 
-    [JsonProperty("t")]
-    public string Team { get; set; }
+    [JsonIgnore]
+    public bool IsBlock => Team == NOTEAM;
+
+    [JsonIgnore]
+    public bool IsValid => TeamIndex != -1;
 
     [JsonProperty("s")]
     public int Start { get; set; }
 
     [JsonIgnore]
-    public bool IsValid => TeamIndex != -1;
+    public int StartingWaypoint => Start - 1;
 
-    [JsonIgnore]
-    public int TeamIndex => TEAMS.IndexOf(Team);
+    [JsonProperty("t")]
+    public string Team { get; set; }
 
     [JsonIgnore]
     public int TeamId => ProgramConstants.TEAMS.IndexOf(Team) + 1;
 
     [JsonIgnore]
-    public int StartingWaypoint => Start - 1;
-
-    [JsonIgnore]
-    public bool IsBlock => Team == NOTEAM;
+    public int TeamIndex => TEAMS.IndexOf(Team);
 
     /// <summary>
-    /// Write these out in a delimited list.
+    /// This parses a list of <see cref="TeamStartMapping" /> classes that were written out as a
+    /// list for either message purposes or a map INI.
     /// </summary>
-    /// <param name="teamStartMappings"></param>
-    /// <returns></returns>
-    public static string ToListString(List<TeamStartMapping> teamStartMappings)
-        => string.Join(LIST_SEPARATOR.ToString(), teamStartMappings.Select(mapping => mapping.Team));
-
-    /// <summary>
-    /// This parses a list of <see cref="TeamStartMapping"/> classes that were written out as a list
-    /// for either message purposes or a map INI.
-    /// </summary>
-    /// <param name="str"></param>
-    /// <returns></returns>
+    /// <param name="str">string.</param>
+    /// <returns>result.</returns>
     public static List<TeamStartMapping> FromListString(string str)
     {
         if (string.IsNullOrWhiteSpace(str))
@@ -61,4 +53,12 @@ public class TeamStartMapping
             Start = index + 1
         }).ToList();
     }
+
+    /// <summary>
+    /// Write these out in a delimited list.
+    /// </summary>
+    /// <param name="teamStartMappings">teamStartMappings.</param>
+    /// <returns>result.</returns>
+    public static string ToListString(List<TeamStartMapping> teamStartMappings)
+        => string.Join(LIST_SEPARATOR.ToString(), teamStartMappings.Select(mapping => mapping.Team));
 }

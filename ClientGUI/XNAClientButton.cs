@@ -6,16 +6,16 @@ namespace ClientGUI;
 
 public class XNAClientButton : XNAButton
 {
+    private ToolTip _toolTip;
+
+    private string _toolTipText;
+
     public XNAClientButton(WindowManager windowManager)
-        : base(windowManager)
+                : base(windowManager)
     {
         FontIndex = 1;
-        Height = UIDesignConstants.BUTTONHEIGHT;
+        Height = UIDesignConstants.ButtonHeight;
     }
-
-    private string _toolTipText { get; set; }
-
-    private ToolTip _toolTip { get; set; }
 
     public override void Initialize()
     {

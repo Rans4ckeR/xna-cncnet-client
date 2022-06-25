@@ -15,10 +15,8 @@ namespace DTAClient.DXGUI.Generic;
 
 public class CampaignSelector : XNAWindow
 {
-    private const int DEFAULT_WIDTH = 650;
     private const int DEFAULT_HEIGHT = 600;
-
-    private static readonly string[] DifficultyNames = new string[] { "Easy", "Medium", "Hard" };
+    private const int DEFAULT_WIDTH = 650;
 
     private static readonly string[] DifficultyIniPaths = new string[]
     {
@@ -27,15 +25,8 @@ public class CampaignSelector : XNAWindow
         "INI/Map Code/Difficulty Hard.ini"
     };
 
+    private static readonly string[] DifficultyNames = new string[] { "Easy", "Medium", "Hard" };
     private readonly DiscordHandler discordHandler;
-
-    public CampaignSelector(WindowManager windowManager, DiscordHandler discordHandler)
-        : base(windowManager)
-    {
-        this.discordHandler = discordHandler;
-    }
-
-    private readonly List<Mission> missions = new();
 
     private readonly string[] filesToCheck = new string[]
     {
@@ -50,14 +41,30 @@ public class CampaignSelector : XNAWindow
         "INI/Map Code/Difficulty Easy.ini"
     };
 
-    private XNAListBox lbCampaignList;
+    private readonly List<Mission> missions = new();
+
     private XNAClientButton btnLaunch;
-    private XNATextBlock tbMissionDescription;
-    private XNATrackbar trbDifficultySelector;
 
     private CheaterWindow cheaterWindow;
 
+    private XNAListBox lbCampaignList;
+
     private Mission missionToLaunch;
+
+    private XNATextBlock tbMissionDescription;
+
+    private XNATrackbar trbDifficultySelector;
+
+    public CampaignSelector(WindowManager windowManager, DiscordHandler discordHandler)
+                                        : base(windowManager)
+    {
+        this.discordHandler = discordHandler;
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        base.Draw(gameTime);
+    }
 
     public override void Initialize()
     {
@@ -82,7 +89,9 @@ public class CampaignSelector : XNAWindow
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             ClientRectangle = new Rectangle(
                 12,
-            lblSelectCampaign.Bottom + 6, 300, 516)
+                lblSelectCampaign.Bottom + 6,
+                300,
+                516)
         };
         lbCampaignList.SelectedIndexChanged += LbCampaignList_SelectedIndexChanged;
 
@@ -91,8 +100,10 @@ public class CampaignSelector : XNAWindow
             Name = "lblMissionDescriptionHeader",
             FontIndex = 1,
             ClientRectangle = new Rectangle(
-            lbCampaignList.Right + 12,
-            lblSelectCampaign.Y, 0, 0),
+                lbCampaignList.Right + 12,
+                lblSelectCampaign.Y,
+                0,
+                0),
             Text = "MISSION DESCRIPTION:".L10N("UI:Main:MissionDescription")
         };
 
@@ -100,16 +111,18 @@ public class CampaignSelector : XNAWindow
         {
             Name = "tbMissionDescription",
             ClientRectangle = new Rectangle(
-            lblMissionDescriptionHeader.X,
-            lblMissionDescriptionHeader.Bottom + 6,
-            Width - 24 - lbCampaignList.Right, 430),
+                lblMissionDescriptionHeader.X,
+                lblMissionDescriptionHeader.Bottom + 6,
+                Width - 24 - lbCampaignList.Right,
+                430),
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             Alpha = 1.0f
         };
 
         tbMissionDescription.BackgroundTexture = AssetLoader.CreateTexture(
             AssetLoader.GetColorFromString(ClientConfiguration.Instance.AltUIBackgroundColor),
-            tbMissionDescription.Width, tbMissionDescription.Height);
+            tbMissionDescription.Width,
+            tbMissionDescription.Height);
 
         XNALabel lblDifficultyLevel = new(WindowManager)
         {
@@ -120,14 +133,18 @@ public class CampaignSelector : XNAWindow
         Vector2 textSize = Renderer.GetTextDimensions(lblDifficultyLevel.Text, lblDifficultyLevel.FontIndex);
         lblDifficultyLevel.ClientRectangle = new Rectangle(
             tbMissionDescription.X + ((tbMissionDescription.Width - (int)textSize.X) / 2),
-            tbMissionDescription.Bottom + 12, (int)textSize.X, (int)textSize.Y);
+            tbMissionDescription.Bottom + 12,
+            (int)textSize.X,
+            (int)textSize.Y);
 
         trbDifficultySelector = new XNATrackbar(WindowManager)
         {
             Name = "trbDifficultySelector",
             ClientRectangle = new Rectangle(
-            tbMissionDescription.X, lblDifficultyLevel.Bottom + 6,
-            tbMissionDescription.Width, 30),
+                tbMissionDescription.X,
+                lblDifficultyLevel.Bottom + 6,
+                tbMissionDescription.Width,
+                30),
             MinValue = 0,
             MaxValue = 2,
             BackgroundTexture = AssetLoader.CreateTexture(
@@ -143,7 +160,9 @@ public class CampaignSelector : XNAWindow
             Text = "EASY".L10N("UI:Main:DifficultyEasy"),
             ClientRectangle = new Rectangle(
                 trbDifficultySelector.X,
-            trbDifficultySelector.Bottom + 6, 1, 1)
+                trbDifficultySelector.Bottom + 6,
+                1,
+                1)
         };
 
         XNALabel lblNormal = new(WindowManager)
@@ -155,7 +174,9 @@ public class CampaignSelector : XNAWindow
         textSize = Renderer.GetTextDimensions(lblNormal.Text, lblNormal.FontIndex);
         lblNormal.ClientRectangle = new Rectangle(
             tbMissionDescription.X + ((tbMissionDescription.Width - (int)textSize.X) / 2),
-            lblEasy.Y, (int)textSize.X, (int)textSize.Y);
+            lblEasy.Y,
+            (int)textSize.X,
+            (int)textSize.Y);
 
         XNALabel lblHard = new(WindowManager)
         {
@@ -165,12 +186,14 @@ public class CampaignSelector : XNAWindow
         };
         lblHard.ClientRectangle = new Rectangle(
             tbMissionDescription.Right - lblHard.Width,
-            lblEasy.Y, 1, 1);
+            lblEasy.Y,
+            1,
+            1);
 
         btnLaunch = new XNAClientButton(WindowManager)
         {
             Name = "btnLaunch",
-            ClientRectangle = new Rectangle(12, Height - 35, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(12, Height - 35, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             Text = "Launch".L10N("UI:Main:ButtonLaunch"),
             AllowClick = false
         };
@@ -181,7 +204,9 @@ public class CampaignSelector : XNAWindow
             Name = "btnCancel",
             ClientRectangle = new Rectangle(
                 Width - 145,
-            btnLaunch.Y, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+                btnLaunch.Y,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
             Text = "Cancel".L10N("UI:Main:ButtonCancel")
         };
         btnCancel.LeftClick += BtnCancel_LeftClick;
@@ -219,11 +244,6 @@ public class CampaignSelector : XNAWindow
         cheaterWindow.Disable();
     }
 
-    public override void Draw(GameTime gameTime)
-    {
-        base.Draw(gameTime);
-    }
-
     protected virtual void GameProcessExited()
     {
         GameProcessLogic.GameProcessExited -= GameProcessExited_Callback;
@@ -232,33 +252,15 @@ public class CampaignSelector : XNAWindow
         discordHandler?.UpdatePresence();
     }
 
-    private void LbCampaignList_SelectedIndexChanged(object sender, EventArgs e)
+    private bool AreFilesModified()
     {
-        if (lbCampaignList.SelectedIndex == -1)
+        foreach (string filePath in filesToCheck)
         {
-            tbMissionDescription.Text = string.Empty;
-            btnLaunch.AllowClick = false;
-            return;
+            if (!Updater.IsFileNonexistantOrOriginal(filePath))
+                return true;
         }
 
-        Mission mission = missions[lbCampaignList.SelectedIndex];
-
-        if (string.IsNullOrEmpty(mission.Scenario))
-        {
-            tbMissionDescription.Text = string.Empty;
-            btnLaunch.AllowClick = false;
-            return;
-        }
-
-        tbMissionDescription.Text = mission.GUIDescription;
-
-        if (!mission.Enabled)
-        {
-            btnLaunch.AllowClick = false;
-            return;
-        }
-
-        btnLaunch.AllowClick = true;
+        return false;
     }
 
     private void BtnCancel_LeftClick(object sender, EventArgs e)
@@ -284,31 +286,26 @@ public class CampaignSelector : XNAWindow
         LaunchMission(mission);
     }
 
-    private bool AreFilesModified()
-    {
-        foreach (string filePath in filesToCheck)
-        {
-            if (!Updater.IsFileNonexistantOrOriginal(filePath))
-                return true;
-        }
-
-        return false;
-    }
-
     /// <summary>
-    /// Called when the user wants to proceed to the mission despite having
-    /// being called a cheater.
+    /// Called when the user wants to proceed to the mission despite having being called a cheater.
     /// </summary>
     private void CheaterWindow_YesClicked(object sender, EventArgs e)
     {
         LaunchMission(missionToLaunch);
     }
 
+    private void GameProcessExited_Callback()
+    {
+        WindowManager.AddCallback(new Action(GameProcessExited), null);
+    }
+
+    private int GetComputerDifficulty() =>
+        Math.Abs(trbDifficultySelector.Value - 2);
+
     /// <summary>
     /// Starts a singleplayer mission.
     /// </summary>
-    /// <param name="scenario">The internal name of the scenario.</param>
-    /// <param name="requiresAddon">True if the mission is for Firestorm / Enhanced Mode.</param>
+    /// <param name="mission">mission.</param>
     private void LaunchMission(Mission mission)
     {
         bool copyMapsToSpawnmapINI = ClientConfiguration.Instance.CopyMissionsToSpawnmapINI;
@@ -365,12 +362,33 @@ public class CampaignSelector : XNAWindow
         GameProcessLogic.StartGameProcess();
     }
 
-    private int GetComputerDifficulty() =>
-        Math.Abs(trbDifficultySelector.Value - 2);
-
-    private void GameProcessExited_Callback()
+    private void LbCampaignList_SelectedIndexChanged(object sender, EventArgs e)
     {
-        WindowManager.AddCallback(new Action(GameProcessExited), null);
+        if (lbCampaignList.SelectedIndex == -1)
+        {
+            tbMissionDescription.Text = string.Empty;
+            btnLaunch.AllowClick = false;
+            return;
+        }
+
+        Mission mission = missions[lbCampaignList.SelectedIndex];
+
+        if (string.IsNullOrEmpty(mission.Scenario))
+        {
+            tbMissionDescription.Text = string.Empty;
+            btnLaunch.AllowClick = false;
+            return;
+        }
+
+        tbMissionDescription.Text = mission.GUIDescription;
+
+        if (!mission.Enabled)
+        {
+            btnLaunch.AllowClick = false;
+            return;
+        }
+
+        btnLaunch.AllowClick = true;
     }
 
     /// <summary>

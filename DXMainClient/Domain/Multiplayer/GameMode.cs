@@ -10,14 +10,15 @@ namespace DTAClient.Domain.Multiplayer;
 /// </summary>
 public class GameMode
 {
-    /// <summary>
-    /// List of side indices players cannot select in this game mode.
-    /// </summary>
-    public List<int> DisallowedPlayerSides = new();
-
-    public List<Map> Maps = new();
-
     private const string BASE_INI_PATH = "INI/Map Code/";
+
+    private const string SPAWN_INI_OPTIONS_SECTION = "ForcedSpawnIniOptions";
+
+    private readonly List<KeyValuePair<string, string>> forcedSpawnIniOptions = new();
+
+    private string forcedOptionsSection;
+
+    private string mapCodeININame;
 
     public GameMode(string name)
     {
@@ -25,9 +26,42 @@ public class GameMode
         Initialize();
     }
 
-    private const string SPAWN_INI_OPTIONS_SECTION = "ForcedSpawnIniOptions";
+    public int CoopDifficultyLevel { get; set; }
 
-    private string mapCodeININame;
+    /// <summary>
+    /// Gets or sets list of side indices players cannot select in this game mode.
+    /// </summary>
+    public List<int> DisallowedPlayerSides { get; set; } = new();
+
+    public List<KeyValuePair<string, bool>> ForcedCheckBoxValues { get; set; } = new();
+
+    public List<KeyValuePair<string, int>> ForcedDropDownValues { get; set; } = new();
+
+    /// <summary>
+    /// Gets a value indicating whether if set, players are forced to different teams on this game mode.
+    /// </summary>
+    public bool ForceNoTeams { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether if set, players are forced to random starting locations on
+    /// this game mode.
+    /// </summary>
+    public bool ForceRandomStartLocations { get; private set; }
+
+    /// <summary>
+    /// Gets a value indicating whether if set, this game mode cannot be played with AI players.
+    /// </summary>
+    public bool HumanPlayersOnly { get; private set; }
+
+    public List<Map> Maps { get; set; } = new();
+
+    // </summary> Override for minimum amount of players needed to play any map in this game mode. </summary>
+    public int MinPlayersOverride { get; private set; } = -1;
+
+    /// <summary>
+    /// Gets a value indicating whether if set, this game mode cannot be played on Skirmish.
+    /// </summary>
+    public bool MultiplayerOnly { get; private set; }
 
     /// <summary>
     /// Gets or sets the internal (INI) name of the game mode.
@@ -39,39 +73,18 @@ public class GameMode
     /// </summary>
     public string UIName { get; private set; }
 
-    /// <summary>
-    /// Gets a value indicating whether if set, this game mode cannot be played on Skirmish.
-    /// </summary>
-    public bool MultiplayerOnly { get; private set; }
+    public void ApplySpawnIniCode(IniFile spawnIni)
+    {
+        foreach (KeyValuePair<string, string> key in forcedSpawnIniOptions)
+            spawnIni.SetStringValue("Settings", key.Key, key.Value);
+    }
 
-    /// <summary>
-    /// Gets a value indicating whether if set, this game mode cannot be played with AI players.
-    /// </summary>
-    public bool HumanPlayersOnly { get; private set; }
+    public override int GetHashCode() => Name != null ? Name.GetHashCode() : 0;
 
-    /// <summary>
-    /// Gets a value indicating whether if set, players are forced to random starting locations on this game mode.
-    /// </summary>
-    public bool ForceRandomStartLocations { get; private set; }
-
-    /// <summary>
-    /// Gets a value indicating whether if set, players are forced to different teams on this game mode.
-    /// </summary>
-    public bool ForceNoTeams { get; private set; }
-
-    // </summary>
-    // Override for minimum amount of players needed to play any map in this game mode.
-    // </summary>
-    public int MinPlayersOverride { get; private set; } = -1;
-
-    private string forcedOptionsSection;
-
-    public List<KeyValuePair<string, bool>> ForcedCheckBoxValues = new();
-    public List<KeyValuePair<string, int>> ForcedDropDownValues = new();
-
-    private readonly List<KeyValuePair<string, string>> forcedSpawnIniOptions = new();
-
-    public int CoopDifficultyLevel { get; set; }
+    public IniFile GetMapRulesIniFile()
+    {
+        return new IniFile(ProgramConstants.GamePath + BASE_INI_PATH + mapCodeININame);
+    }
 
     public void Initialize()
     {
@@ -99,11 +112,7 @@ public class GameMode
         ParseSpawnIniOptions(forcedOptionsIni);
     }
 
-    public void ApplySpawnIniCode(IniFile spawnIni)
-    {
-        foreach (KeyValuePair<string, string> key in forcedSpawnIniOptions)
-            spawnIni.SetStringValue("Settings", key.Key, key.Value);
-    }
+    protected bool Equals(GameMode other) => string.Equals(Name, other?.Name, StringComparison.OrdinalIgnoreCase);
 
     private void ParseForcedOptions(IniFile forcedOptionsIni)
     {
@@ -146,13 +155,4 @@ public class GameMode
                 forcedOptionsIni.GetStringValue(section, key, string.Empty)));
         }
     }
-
-    public IniFile GetMapRulesIniFile()
-    {
-        return new IniFile(ProgramConstants.GamePath + BASE_INI_PATH + mapCodeININame);
-    }
-
-    public override int GetHashCode() => Name != null ? Name.GetHashCode() : 0;
-
-    protected bool Equals(GameMode other) => string.Equals(Name, other?.Name, StringComparison.OrdinalIgnoreCase);
 }

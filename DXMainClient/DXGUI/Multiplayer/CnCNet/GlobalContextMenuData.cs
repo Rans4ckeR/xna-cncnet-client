@@ -27,11 +27,11 @@ public class GlobalContextMenuData
     /// <summary>
     /// Gets or sets the invite properties are used for the Invite option in the menu.
     /// </summary>
-    public string inviteChannelName { get; set; }
+    public string InviteChannelName { get; set; }
 
-    public string inviteGameName { get; set; }
+    public string InviteGameName { get; set; }
 
-    public string inviteChannelPassword { get; set; }
+    public string InviteChannelPassword { get; set; }
 
     /// <summary>
     /// Gets or sets a value indicating whether prevent the Join option from showing in the menu.

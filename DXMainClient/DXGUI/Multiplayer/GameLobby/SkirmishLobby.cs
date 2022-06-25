@@ -29,6 +29,11 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
 
     public event EventHandler Exited;
 
+    public string GetSwitchName()
+    {
+        return "Skirmish Lobby".L10N("UI:Main:SkirmishLobby");
+    }
+
     public override void Initialize()
     {
         base.Initialize();
@@ -38,13 +43,13 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         //InitPlayerOptionDropdowns(128, 98, 90, 48, 55, new Point(6, 24));
         InitPlayerOptionDropdowns();
 
-        btnLeaveGame.Text = "Main Menu".L10N("UI:Main:MainMenu");
+        BtnLeaveGame.Text = "Main Menu".L10N("UI:Main:MainMenu");
 
         //MapPreviewBox.EnableContextMenu = true;
-        ddPlayerSides[0].AddItem("Spectator".L10N("UI:Main:SpectatorSide"), AssetLoader.LoadTexture("spectatoricon.png"));
+        DdPlayerSides[0].AddItem("Spectator".L10N("UI:Main:SpectatorSide"), AssetLoader.LoadTexture("spectatoricon.png"));
 
-        mapPreviewBox.LocalStartingLocationSelected += MapPreviewBox_LocalStartingLocationSelected;
-        mapPreviewBox.StartingLocationApplied += MapPreviewBox_StartingLocationApplied;
+        MapPreviewBox.LocalStartingLocationSelected += MapPreviewBox_LocalStartingLocationSelected;
+        MapPreviewBox.StartingLocationApplied += MapPreviewBox_StartingLocationApplied;
 
         WindowManager.CenterControlOnScreen(this);
 
@@ -55,9 +60,9 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         CopyPlayerDataToUI();
 
         ProgramConstants.PlayerNameChanged += ProgramConstants_PlayerNameChanged;
-        ddPlayerSides[0].SelectedIndexChanged += PlayerSideChanged;
+        DdPlayerSides[0].SelectedIndexChanged += PlayerSideChanged;
 
-        playerExtraOptionsPanel?.SetIsHost(true);
+        PlayerExtraOptionsPanel?.SetIsHost(true);
     }
 
     public void Open()
@@ -66,14 +71,14 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         Enable();
     }
 
-    protected override void ToggleFavoriteMap()
+    public void SwitchOff()
     {
-        base.ToggleFavoriteMap();
+        Disable();
+    }
 
-        if (GameModeMap.IsFavorite)
-            return;
-
-        RefreshForFavoriteMapRemoved();
+    public void SwitchOn()
+    {
+        Enable();
     }
 
     protected override void AddNotice(string message, Color color)
@@ -81,13 +86,9 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         XNAMessageBox.Show(WindowManager, "Message".L10N("UI:Main:MessageTitle"), message);
     }
 
-    protected override void OnEnabledChanged(object sender, EventArgs args)
+    protected override bool AllowPlayerOptionsChange()
     {
-        base.OnEnabledChanged(sender, args);
-        if (Enabled)
-            UpdateDiscordPresence(true);
-        else
-            ResetDiscordPresence();
+        return true;
     }
 
     protected override void BtnLaunchGameLeftClick(object sender, EventArgs e)
@@ -104,27 +105,80 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         XNAMessageBox.Show(WindowManager, "Cannot launch game".L10N("UI:Main:LaunchGameErrorTitle"), error);
     }
 
-    private void ProgramConstants_PlayerNameChanged(object sender, EventArgs e)
+    protected override void BtnLeaveGameLeftClick(object sender, EventArgs e)
     {
-        players[0].Name = ProgramConstants.PLAYERNAME;
-        CopyPlayerDataToUI();
+        Enabled = false;
+        Visible = false;
+
+        Exited?.Invoke(this, EventArgs.Empty);
+
+        topBar.RemovePrimarySwitchable(this);
+        ResetDiscordPresence();
     }
 
-    private void MapPreviewBox_StartingLocationApplied(object sender, EventArgs e)
+    protected override void GameProcessExited()
     {
-        CopyPlayerDataToUI();
+        base.GameProcessExited();
+
+        DdGameModeMapFilterSelectedIndexChanged(null, EventArgs.Empty); // Refresh ranks
+
+        RandomSeed = new Random().Next();
     }
 
-    private void MapPreviewBox_LocalStartingLocationSelected(object sender, LocalStartingLocationEventArgs e)
+    protected override int GetDefaultMapRankIndex(GameModeMap gameModeMap)
     {
-        players[0].StartingLocation = e.StartingLocationIndex + 1;
-        CopyPlayerDataToUI();
+        return StatisticsManager.Instance.GetSkirmishRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
+    }
+
+    protected override void OnEnabledChanged(object sender, EventArgs args)
+    {
+        base.OnEnabledChanged(sender, args);
+        if (Enabled)
+            UpdateDiscordPresence(true);
+        else
+            ResetDiscordPresence();
+    }
+
+    protected override void ToggleFavoriteMap()
+    {
+        base.ToggleFavoriteMap();
+
+        if (GameModeMap.IsFavorite)
+            return;
+
+        RefreshForFavoriteMapRemoved();
+    }
+
+    protected override void UpdateDiscordPresence(bool resetTimer = false)
+    {
+        if (DiscordHandler == null || Map == null || GameMode == null || !Initialized)
+            return;
+
+        int playerIndex = Players.FindIndex(p => p.Name == ProgramConstants.PLAYERNAME);
+        if (playerIndex is >= MAXPLAYERCOUNT or < 0)
+            return;
+
+        XNAClientDropDown sideDropDown = DdPlayerSides[playerIndex];
+        if (sideDropDown.SelectedItem == null)
+            return;
+
+        string side = sideDropDown.SelectedItem.Text;
+        string currentState = ProgramConstants.IsInGame ? "In Game" : "Setting Up";
+
+        DiscordHandler.UpdatePresence(
+            Map.Name, GameMode.Name, currentState, side, resetTimer);
+    }
+
+    protected override void UpdateMapPreviewBoxEnabledStatus()
+    {
+        MapPreviewBox.EnableContextMenu = !((Map != null && Map.ForceRandomStartLocations) || (GameMode != null && GameMode.ForceRandomStartLocations) || GetPlayerExtraOptions().IsForceRandomStarts);
+        MapPreviewBox.EnableStartLocationSelection = MapPreviewBox.EnableContextMenu;
     }
 
     private string CheckGameValidity()
     {
-        int totalPlayerCount = players.Count(p => p.SideId < ddPlayerSides[0].Items.Count - 1)
-            + aIPlayers.Count;
+        int totalPlayerCount = Players.Count(p => p.SideId < DdPlayerSides[0].Items.Count - 1)
+            + AIPlayers.Count;
 
         if (GameMode.MultiplayerOnly)
         {
@@ -137,7 +191,8 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         {
             return string.Format(
                 "{0} cannot be played with less than {1} players.".L10N("UI:Main:GameModeInsufficientPlayers"),
-                     GameMode.UIName, GameMode.MinPlayersOverride);
+                GameMode.UIName,
+                GameMode.MinPlayersOverride);
         }
 
         if (Map.MultiplayerOnly)
@@ -161,7 +216,7 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
                     Map.MaxPlayers);
             }
 
-            IEnumerable<PlayerInfo> concatList = players.Concat(aIPlayers);
+            IEnumerable<PlayerInfo> concatList = Players.Concat(AIPlayers);
 
             foreach (PlayerInfo pInfo in concatList)
             {
@@ -175,7 +230,7 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
             }
         }
 
-        if (Map.IsCoop && players[0].SideId == ddPlayerSides[0].Items.Count - 1)
+        if (Map.IsCoop && Players[0].SideId == DdPlayerSides[0].Items.Count - 1)
         {
             return "Co-op missions cannot be spectated. You'll have to show a bit more effort to cheat here.".L10N("UI:Main:CoOpMissionSpectatorPrompt");
         }
@@ -187,123 +242,53 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         return null;
     }
 
-    protected override void BtnLeaveGameLeftClick(object sender, EventArgs e)
-    {
-        Enabled = false;
-        Visible = false;
-
-        Exited?.Invoke(this, EventArgs.Empty);
-
-        topBar.RemovePrimarySwitchable(this);
-        ResetDiscordPresence();
-    }
-
-    protected override void UpdateDiscordPresence(bool resetTimer = false)
-    {
-        if (discordHandler == null || Map == null || GameMode == null || !Initialized)
-            return;
-
-        int playerIndex = players.FindIndex(p => p.Name == ProgramConstants.PLAYERNAME);
-        if (playerIndex is >= MAXPLAYERCOUNT or < 0)
-            return;
-
-        XNAClientDropDown sideDropDown = ddPlayerSides[playerIndex];
-        if (sideDropDown.SelectedItem == null)
-            return;
-
-        string side = sideDropDown.SelectedItem.Text;
-        string currentState = ProgramConstants.IsInGame ? "In Game" : "Setting Up";
-
-        discordHandler.UpdatePresence(
-            Map.Name, GameMode.Name, currentState, side, resetTimer);
-    }
-
-    private void PlayerSideChanged(object sender, EventArgs e)
-    {
-        UpdateDiscordPresence();
-    }
-
-    protected override bool AllowPlayerOptionsChange()
-    {
-        return true;
-    }
-
-    protected override int GetDefaultMapRankIndex(GameModeMap gameModeMap)
-    {
-        return StatisticsManager.Instance.GetSkirmishRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
-    }
-
-    protected override void GameProcessExited()
-    {
-        base.GameProcessExited();
-
-        DdGameModeMapFilterSelectedIndexChanged(null, EventArgs.Empty); // Refresh ranks
-
-        RandomSeed = new Random().Next();
-    }
-
-    public void SwitchOn()
-    {
-        Enable();
-    }
-
-    public void SwitchOff()
-    {
-        Disable();
-    }
-
-    public string GetSwitchName()
-    {
-        return "Skirmish Lobby".L10N("UI:Main:SkirmishLobby");
-    }
-
-    protected override void UpdateMapPreviewBoxEnabledStatus()
-    {
-        mapPreviewBox.EnableContextMenu = !((Map != null && Map.ForceRandomStartLocations) || (GameMode != null && GameMode.ForceRandomStartLocations) || GetPlayerExtraOptions().IsForceRandomStarts);
-        mapPreviewBox.EnableStartLocationSelection = mapPreviewBox.EnableContextMenu;
-    }
-
     /// <summary>
-    /// Saves skirmish settings to an INI file on the file system.
+    /// Checks that a player's color, team and starting location don't exceed allowed bounds.
     /// </summary>
-    private void SaveSettings()
+    /// <param name="pInfo">The PlayerInfo.</param>
+    private void CheckLoadedPlayerVariableBounds(PlayerInfo pInfo, bool isAIPlayer = false)
     {
-        try
+        int sideCount = SideCount + RandomSelectorCount;
+        if (isAIPlayer)
+            sideCount--;
+
+        if (pInfo.SideId < 0 || pInfo.SideId > sideCount)
         {
-            // Delete the file so we don't keep potential extra AI players that already exist in the file
-            File.Delete(ProgramConstants.GamePath + SETTINGS_PATH);
-
-            IniFile skirmishSettingsIni = new(ProgramConstants.GamePath + SETTINGS_PATH);
-
-            skirmishSettingsIni.SetStringValue("Player", "Info", players[0].ToString());
-
-            for (int i = 0; i < aIPlayers.Count; i++)
-            {
-                skirmishSettingsIni.SetStringValue("AIPlayers", i.ToString(), aIPlayers[i].ToString());
-            }
-
-            skirmishSettingsIni.SetStringValue("Settings", "Map", Map.SHA1);
-            skirmishSettingsIni.SetStringValue("Settings", "GameModeMapFilter", ddGameModeMapFilter.SelectedItem?.Text);
-
-            if (ClientConfiguration.Instance.SaveSkirmishGameOptions)
-            {
-                foreach (GameLobbyDropDown dd in DropDowns)
-                {
-                    skirmishSettingsIni.SetStringValue("GameOptions", dd.Name, dd.UserSelectedIndex + string.Empty);
-                }
-
-                foreach (GameLobbyCheckBox cb in CheckBoxes)
-                {
-                    skirmishSettingsIni.SetStringValue("GameOptions", cb.Name, cb.Checked.ToString());
-                }
-            }
-
-            skirmishSettingsIni.WriteIniFile();
+            pInfo.SideId = 0;
         }
-        catch (Exception ex)
+
+        if (pInfo.ColorId < 0 || pInfo.ColorId > MPColors.Count)
         {
-            Logger.Log("Saving skirmish settings failed! Reason: " + ex.Message);
+            pInfo.ColorId = 0;
         }
+
+        if (pInfo.TeamId < 0 || pInfo.TeamId >= DdPlayerTeams[0].Items.Count ||
+            (!Map.IsCoop && (Map.ForceNoTeams || GameMode.ForceNoTeams)))
+        {
+            pInfo.TeamId = 0;
+        }
+
+        if (pInfo.StartingLocation < 0 || pInfo.StartingLocation > MAXPLAYERCOUNT ||
+            (!Map.IsCoop && (Map.ForceRandomStartLocations || GameMode.ForceRandomStartLocations)))
+        {
+            pInfo.StartingLocation = 0;
+        }
+    }
+
+    private void InitDefaultSettings()
+    {
+        Players.Clear();
+        AIPlayers.Clear();
+
+        Players.Add(new PlayerInfo(ProgramConstants.PLAYERNAME, 0, 0, 0, 0));
+        PlayerInfo aiPlayer = new(ProgramConstants.AIPLAYERNAMES[0], 0, 0, 0, 0)
+        {
+            IsAI = true,
+            AILevel = 2
+        };
+        AIPlayers.Add(aiPlayer);
+
+        LoadDefaultGameModeMap();
     }
 
     /// <summary>
@@ -323,7 +308,7 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         if (string.IsNullOrEmpty(gameModeMapFilterName))
             gameModeMapFilterName = skirmishSettingsIni.GetStringValue("Settings", "GameMode", string.Empty); // legacy
 
-        if (ddGameModeMapFilter.Items.Find(i => i.Text == gameModeMapFilterName)?.Tag is not GameModeMapFilter gameModeMapFilter || !gameModeMapFilter.Any())
+        if (DdGameModeMapFilter.Items.Find(i => i.Text == gameModeMapFilterName)?.Tag is not GameModeMapFilter gameModeMapFilter || !gameModeMapFilter.Any())
             gameModeMapFilter = GetDefaultGameModeMapFilter();
 
         GameModeMap gameModeMap = gameModeMapFilter.GetGameModeMaps().First();
@@ -332,7 +317,7 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         {
             GameModeMap = gameModeMap;
 
-            ddGameModeMapFilter.SelectedIndex = ddGameModeMapFilter.Items.FindIndex(i => i.Tag == gameModeMapFilter);
+            DdGameModeMapFilter.SelectedIndex = DdGameModeMapFilter.Items.FindIndex(i => i.Tag == gameModeMapFilter);
 
             string mapSHA1 = skirmishSettingsIni.GetStringValue("Settings", "Map", string.Empty);
 
@@ -340,10 +325,10 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
 
             if (gameModeMapIndex > -1)
             {
-                lbGameModeMapList.SelectedIndex = gameModeMapIndex;
+                LbGameModeMapList.SelectedIndex = gameModeMapIndex;
 
-                while (gameModeMapIndex > lbGameModeMapList.LastIndex)
-                    lbGameModeMapList.TopIndex++;
+                while (gameModeMapIndex > LbGameModeMapList.LastIndex)
+                    LbGameModeMapList.TopIndex++;
             }
         }
         else
@@ -363,7 +348,7 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         CheckLoadedPlayerVariableBounds(player);
 
         player.Name = ProgramConstants.PLAYERNAME;
-        players.Add(player);
+        Players.Add(player);
 
         List<string> keys = skirmishSettingsIni.GetSectionKeys("AIPlayers");
 
@@ -392,16 +377,16 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
                 return;
             }
 
-            if (aIPlayers.Count < MAXPLAYERCOUNT - 1)
-                aIPlayers.Add(aiPlayer);
+            if (AIPlayers.Count < MAXPLAYERCOUNT - 1)
+                AIPlayers.Add(aiPlayer);
         }
 
         if (ClientConfiguration.Instance.SaveSkirmishGameOptions)
         {
             foreach (GameLobbyDropDown dd in DropDowns)
             {
-                // Maybe we should build an union of the game mode and map
-                // forced options, we'd have less repetitive code that way
+                // Maybe we should build an union of the game mode and map forced options, we'd have
+                // less repetitive code that way
                 if (GameMode != null)
                 {
                     int gameModeMatchIndex = GameMode.ForcedDropDownValues.FindIndex(p => p.Key.Equals(dd.Name, StringComparison.Ordinal));
@@ -455,53 +440,68 @@ public class SkirmishLobby : GameLobbyBase, ISwitchable
         }
     }
 
-    /// <summary>
-    /// Checks that a player's color, team and starting location
-    /// don't exceed allowed bounds.
-    /// </summary>
-    /// <param name="pInfo">The PlayerInfo.</param>
-    private void CheckLoadedPlayerVariableBounds(PlayerInfo pInfo, bool isAIPlayer = false)
+    private void MapPreviewBox_LocalStartingLocationSelected(object sender, LocalStartingLocationEventArgs e)
     {
-        int sideCount = SideCount + RandomSelectorCount;
-        if (isAIPlayer)
-            sideCount--;
-
-        if (pInfo.SideId < 0 || pInfo.SideId > sideCount)
-        {
-            pInfo.SideId = 0;
-        }
-
-        if (pInfo.ColorId < 0 || pInfo.ColorId > mPColors.Count)
-        {
-            pInfo.ColorId = 0;
-        }
-
-        if (pInfo.TeamId < 0 || pInfo.TeamId >= ddPlayerTeams[0].Items.Count ||
-            !Map.IsCoop && (Map.ForceNoTeams || GameMode.ForceNoTeams))
-        {
-            pInfo.TeamId = 0;
-        }
-
-        if (pInfo.StartingLocation < 0 || pInfo.StartingLocation > MAXPLAYERCOUNT ||
-            !Map.IsCoop && (Map.ForceRandomStartLocations || GameMode.ForceRandomStartLocations))
-        {
-            pInfo.StartingLocation = 0;
-        }
+        Players[0].StartingLocation = e.StartingLocationIndex + 1;
+        CopyPlayerDataToUI();
     }
 
-    private void InitDefaultSettings()
+    private void MapPreviewBox_StartingLocationApplied(object sender, EventArgs e)
     {
-        players.Clear();
-        aIPlayers.Clear();
+        CopyPlayerDataToUI();
+    }
 
-        players.Add(new PlayerInfo(ProgramConstants.PLAYERNAME, 0, 0, 0, 0));
-        PlayerInfo aiPlayer = new(ProgramConstants.AIPLAYERNAMES[0], 0, 0, 0, 0)
+    private void PlayerSideChanged(object sender, EventArgs e)
+    {
+        UpdateDiscordPresence();
+    }
+
+    private void ProgramConstants_PlayerNameChanged(object sender, EventArgs e)
+    {
+        Players[0].Name = ProgramConstants.PLAYERNAME;
+        CopyPlayerDataToUI();
+    }
+
+    /// <summary>
+    /// Saves skirmish settings to an INI file on the file system.
+    /// </summary>
+    private void SaveSettings()
+    {
+        try
         {
-            IsAI = true,
-            AILevel = 2
-        };
-        aIPlayers.Add(aiPlayer);
+            // Delete the file so we don't keep potential extra AI players that already exist in the file
+            File.Delete(ProgramConstants.GamePath + SETTINGS_PATH);
 
-        LoadDefaultGameModeMap();
+            IniFile skirmishSettingsIni = new(ProgramConstants.GamePath + SETTINGS_PATH);
+
+            skirmishSettingsIni.SetStringValue("Player", "Info", Players[0].ToString());
+
+            for (int i = 0; i < AIPlayers.Count; i++)
+            {
+                skirmishSettingsIni.SetStringValue("AIPlayers", i.ToString(), AIPlayers[i].ToString());
+            }
+
+            skirmishSettingsIni.SetStringValue("Settings", "Map", Map.SHA1);
+            skirmishSettingsIni.SetStringValue("Settings", "GameModeMapFilter", DdGameModeMapFilter.SelectedItem?.Text);
+
+            if (ClientConfiguration.Instance.SaveSkirmishGameOptions)
+            {
+                foreach (GameLobbyDropDown dd in DropDowns)
+                {
+                    skirmishSettingsIni.SetStringValue("GameOptions", dd.Name, dd.UserSelectedIndex + string.Empty);
+                }
+
+                foreach (GameLobbyCheckBox cb in CheckBoxes)
+                {
+                    skirmishSettingsIni.SetStringValue("GameOptions", cb.Name, cb.Checked.ToString());
+                }
+            }
+
+            skirmishSettingsIni.WriteIniFile();
+        }
+        catch (Exception ex)
+        {
+            Logger.Log("Saving skirmish settings failed! Reason: " + ex.Message);
+        }
     }
 }

@@ -14,7 +14,17 @@ namespace DTAClient.Domain.Multiplayer.LAN;
 
 public class LANPlayerInfo : PlayerInfo
 {
+    private const double DROP_TIMEOUT = 20.0;
+    private const int LAN_PING_TIMEOUT = 1000;
     private const int PORT = 1234;
+
+    private const double SEND_PING_TIMEOUT = 10.0;
+
+    private readonly Encoding encoding;
+
+    private NetworkStream networkStream;
+
+    private string overMessage = string.Empty;
 
     public LANPlayerInfo(Encoding encoding)
     {
@@ -22,25 +32,11 @@ public class LANPlayerInfo : PlayerInfo
         Port = PORT;
     }
 
-    public event EventHandler<NetworkMessageEventArgs> MessageReceived;
-
     public event EventHandler ConnectionLost;
 
+    public event EventHandler<NetworkMessageEventArgs> MessageReceived;
+
     public event EventHandler PlayerPinged;
-
-    private const double SEND_PING_TIMEOUT = 10.0;
-    private const double DROP_TIMEOUT = 20.0;
-    private const int LAN_PING_TIMEOUT = 1000;
-
-    private NetworkStream networkStream;
-
-    public TimeSpan TimeSinceLastReceivedMessage { get; set; }
-
-    public TimeSpan TimeSinceLastSentMessage { get; set; }
-
-    public TcpClient TcpClient { get; private set; }
-    private readonly Encoding encoding;
-    private string overMessage = string.Empty;
 
     public override string IPAddress
     {
@@ -60,37 +56,11 @@ public class LANPlayerInfo : PlayerInfo
         }
     }
 
-    public void SetClient(TcpClient client)
-    {
-        if (TcpClient != null)
-            throw new InvalidOperationException("TcpClient has already been set for this LANPlayerInfo!");
+    public TcpClient TcpClient { get; private set; }
 
-        TcpClient = client;
-        TcpClient.SendTimeout = 1000;
-        networkStream = client.GetStream();
-    }
+    public TimeSpan TimeSinceLastReceivedMessage { get; set; }
 
-    /// <summary>
-    /// Updates logic timers for the player.
-    /// </summary>
-    /// <param name="gameTime">Provides a snapshot of timing values.</param>
-    /// <returns>True if the player is still considered connected, otherwise false.</returns>
-    public bool Update(GameTime gameTime)
-    {
-        TimeSinceLastReceivedMessage += gameTime.ElapsedGameTime;
-        TimeSinceLastSentMessage += gameTime.ElapsedGameTime;
-
-        if (TimeSinceLastSentMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT)
-            || TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT))
-        {
-            SendMessage("PING");
-        }
-
-        if (TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(DROP_TIMEOUT))
-            return false;
-
-        return true;
-    }
+    public TimeSpan TimeSinceLastSentMessage { get; set; }
 
     /// <summary>
     /// Sends a message to the player over the network.
@@ -115,9 +85,14 @@ public class LANPlayerInfo : PlayerInfo
         TimeSinceLastSentMessage = TimeSpan.Zero;
     }
 
-    public override string ToString()
+    public void SetClient(TcpClient client)
     {
-        return Name + " (" + IPAddress + ")";
+        if (TcpClient != null)
+            throw new InvalidOperationException("TcpClient has already been set for this LANPlayerInfo!");
+
+        TcpClient = client;
+        TcpClient.SendTimeout = 1000;
+        networkStream = client.GetStream();
     }
 
     /// <summary>
@@ -127,6 +102,33 @@ public class LANPlayerInfo : PlayerInfo
     {
         Thread thread = new(ReceiveMessages);
         thread.Start();
+    }
+
+    public override string ToString()
+    {
+        return Name + " (" + IPAddress + ")";
+    }
+
+    /// <summary>
+    /// Updates logic timers for the player.
+    /// </summary>
+    /// <param name="gameTime">Provides a snapshot of timing values.</param>
+    /// <returns>True if the player is still considered connected, otherwise false.</returns>
+    public bool Update(GameTime gameTime)
+    {
+        TimeSinceLastReceivedMessage += gameTime.ElapsedGameTime;
+        TimeSinceLastSentMessage += gameTime.ElapsedGameTime;
+
+        if (TimeSinceLastSentMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT)
+            || TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT))
+        {
+            SendMessage("PING");
+        }
+
+        if (TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(DROP_TIMEOUT))
+            return false;
+
+        return true;
     }
 
     public void UpdatePing(WindowManager wm)
@@ -147,8 +149,7 @@ public class LANPlayerInfo : PlayerInfo
     }
 
     /// <summary>
-    /// Receives messages sent by the client,
-    /// and hands them over to another class via an event.
+    /// Receives messages sent by the client, and hands them over to another class via an event.
     /// </summary>
     private void ReceiveMessages()
     {

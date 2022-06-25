@@ -7,20 +7,19 @@ using Rampastring.XNAUI.XNAControls;
 namespace ClientGUI;
 
 /// <summary>
-/// A text box that stores entered messages and allows viewing them
-/// with the arrow keys.
+/// A text box that stores entered messages and allows viewing them with the arrow keys.
 /// </summary>
 public class XNAChatTextBox : XNASuggestionTextBox
 {
     private readonly LinkedList<string> enteredMessages = new();
 
+    private LinkedListNode<string> currentNode;
+
     public XNAChatTextBox(WindowManager windowManager)
-        : base(windowManager)
+            : base(windowManager)
     {
         EnterPressed += XNAChatTextBox_EnterPressed;
     }
-
-    private LinkedListNode<string> currentNode;
 
     protected override bool HandleKeyPress(Keys key)
     {

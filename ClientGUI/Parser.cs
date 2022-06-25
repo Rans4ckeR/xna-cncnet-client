@@ -36,6 +36,8 @@ internal class Parser
 
     private static Dictionary<string, int> globalConstants;
 
+    private XNAControl parsingControl;
+    private XNAControl primaryControl;
     private int tokenPlace;
 
     public Parser(WindowManager windowManager)
@@ -49,7 +51,7 @@ internal class Parser
             { "RESOLUTION_HEIGHT", windowManager.RenderResolutionY }
         };
 
-        IniSection parserConstantsSection = ClientConfiguration.Instance.GetParserConstants();
+        IniSection parserConstantsSection = ClientConfiguration.Instance.ParserConstants;
         if (parserConstantsSection != null)
         {
             foreach (KeyValuePair<string, string> kvp in parserConstantsSection.Keys)
@@ -62,24 +64,31 @@ internal class Parser
     public static Parser Instance { get; private set; }
 
     public string Input { get; private set; }
-    private XNAControl primaryControl;
-    private XNAControl parsingControl;
+
+    public int GetExprValue(string input, XNAControl parsingControl)
+    {
+        this.parsingControl = parsingControl;
+        Input = input;
+        tokenPlace = 0;
+        return GetExprValue();
+    }
 
     public void SetPrimaryControl(XNAControl primaryControl)
     {
         this.primaryControl = primaryControl;
     }
 
-    private XNAControl GetControl(string controlName)
+    private static int GetConstant(string constantName)
     {
-        if (controlName == primaryControl.Name)
-            return primaryControl;
+        return globalConstants[constantName];
+    }
 
-        XNAControl control = Find(primaryControl.Children, controlName);
-        if (control == null)
-            throw new KeyNotFoundException($"Control '{controlName}' not found while parsing input '{Input}'");
+    private void ConsumeChar(char token)
+    {
+        if (Input[tokenPlace] != token)
+            throw new INIConfigException($"Parse error: expected '{token}' in expression {Input}. Instead encountered '{Input[tokenPlace]}'.");
 
-        return control;
+        tokenPlace++;
     }
 
     private XNAControl Find(IEnumerable<XNAControl> list, string controlName)
@@ -97,17 +106,22 @@ internal class Parser
         return null;
     }
 
-    private static int GetConstant(string constantName)
+    private int GetConstantValue()
     {
-        return globalConstants[constantName];
+        string constantName = GetIdentifier();
+        return Parser.GetConstant(constantName);
     }
 
-    public int GetExprValue(string input, XNAControl parsingControl)
+    private XNAControl GetControl(string controlName)
     {
-        this.parsingControl = parsingControl;
-        Input = input;
-        tokenPlace = 0;
-        return GetExprValue();
+        if (controlName == primaryControl.Name)
+            return primaryControl;
+
+        XNAControl control = Find(primaryControl.Children, controlName);
+        if (control == null)
+            throw new KeyNotFoundException($"Control '{controlName}' not found while parsing input '{Input}'");
+
+        return control;
     }
 
     private int GetExprValue()
@@ -168,82 +182,6 @@ internal class Parser
         }
     }
 
-    private int GetNumericalValue()
-    {
-        SkipWhitespace();
-
-        if (IsEndOfInput())
-            return 0;
-
-        char c = Input[tokenPlace];
-
-        if (char.IsDigit(c))
-        {
-            return GetInt();
-        }
-        else if (char.IsUpper(c))
-        {
-            return GetConstantValue();
-        }
-        else if (char.IsLower(c))
-        {
-            return GetFunctionValue();
-        }
-        else if (c == '(')
-        {
-            tokenPlace++;
-            return GetExprValue();
-        }
-        else
-        {
-            throw new INIConfigException("Unexpected character " + c + " when parsing input: " + Input);
-        }
-    }
-
-    private void SkipWhitespace()
-    {
-        while (true)
-        {
-            if (IsEndOfInput())
-                return;
-
-            char c = Input[tokenPlace];
-            if (c is ' ' or '\r' or '\n')
-                tokenPlace++;
-            else
-                break;
-        }
-    }
-
-    private string GetIdentifier()
-    {
-        string identifierName = string.Empty;
-
-        while (true)
-        {
-            if (IsEndOfInput())
-                break;
-
-            char c = Input[tokenPlace];
-            if (char.IsWhiteSpace(c))
-                break;
-
-            if (!char.IsLetterOrDigit(c) && c != '_' && c != '$')
-                break;
-
-            identifierName += c.ToString();
-            tokenPlace++;
-        }
-
-        return identifierName;
-    }
-
-    private int GetConstantValue()
-    {
-        string constantName = GetIdentifier();
-        return Parser.GetConstant(constantName);
-    }
-
     private int GetFunctionValue()
     {
         string functionName = GetIdentifier();
@@ -294,12 +232,27 @@ internal class Parser
         }
     }
 
-    private void ConsumeChar(char token)
+    private string GetIdentifier()
     {
-        if (Input[tokenPlace] != token)
-            throw new INIConfigException($"Parse error: expected '{token}' in expression {Input}. Instead encountered '{Input[tokenPlace]}'.");
+        string identifierName = string.Empty;
 
-        tokenPlace++;
+        while (true)
+        {
+            if (IsEndOfInput())
+                break;
+
+            char c = Input[tokenPlace];
+            if (char.IsWhiteSpace(c))
+                break;
+
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '$')
+                break;
+
+            identifierName += c.ToString();
+            tokenPlace++;
+        }
+
+        return identifierName;
     }
 
     private int GetInt()
@@ -319,5 +272,52 @@ internal class Parser
         }
     }
 
+    private int GetNumericalValue()
+    {
+        SkipWhitespace();
+
+        if (IsEndOfInput())
+            return 0;
+
+        char c = Input[tokenPlace];
+
+        if (char.IsDigit(c))
+        {
+            return GetInt();
+        }
+        else if (char.IsUpper(c))
+        {
+            return GetConstantValue();
+        }
+        else if (char.IsLower(c))
+        {
+            return GetFunctionValue();
+        }
+        else if (c == '(')
+        {
+            tokenPlace++;
+            return GetExprValue();
+        }
+        else
+        {
+            throw new INIConfigException("Unexpected character " + c + " when parsing input: " + Input);
+        }
+    }
+
     private bool IsEndOfInput() => tokenPlace >= Input.Length;
+
+    private void SkipWhitespace()
+    {
+        while (true)
+        {
+            if (IsEndOfInput())
+                return;
+
+            char c = Input[tokenPlace];
+            if (c is ' ' or '\r' or '\n')
+                tokenPlace++;
+            else
+                break;
+        }
+    }
 }

@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ClientCore.Properties;
-using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 
@@ -11,16 +11,123 @@ namespace ClientCore.CnCNet5;
 /// <summary>
 /// A class for storing the collection of supported CnCNet games.
 /// </summary>
-public class GameCollection
+public class GameCollection : ICollection<CnCNetGame>
 {
+    public int Count => ((ICollection<CnCNetGame>)GameList).Count;
+
     public List<CnCNetGame> GameList { get; private set; }
 
-    public void Initialize(GraphicsDevice gd)
+    public bool IsReadOnly => ((ICollection<CnCNetGame>)GameList).IsReadOnly;
+
+    public void Add(CnCNetGame item)
+    {
+        ((ICollection<CnCNetGame>)GameList).Add(item);
+    }
+
+    public void Clear()
+    {
+        ((ICollection<CnCNetGame>)GameList).Clear();
+    }
+
+    public bool Contains(CnCNetGame item)
+    {
+        return ((ICollection<CnCNetGame>)GameList).Contains(item);
+    }
+
+    public void CopyTo(CnCNetGame[] array, int arrayIndex)
+    {
+        ((ICollection<CnCNetGame>)GameList).CopyTo(array, arrayIndex);
+    }
+
+    public IEnumerator<CnCNetGame> GetEnumerator()
+    {
+        return ((IEnumerable<CnCNetGame>)GameList).GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return ((IEnumerable)GameList).GetEnumerator();
+    }
+
+    /// <summary>
+    /// Returns the full UI name of a game based on its index in the game list.
+    /// </summary>
+    /// <param name="gameIndex">The index of the CnCNet supported game.</param>
+    /// <returns>The UI name of the game.</returns>
+    public string GetFullGameNameFromIndex(int gameIndex)
+    {
+        return GameList[gameIndex].UIName;
+    }
+
+    public string GetGameBroadcastingChannelNameFromIdentifier(string gameIdentifier)
+    {
+        CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
+        if (game == null)
+            return null;
+        return game.GameBroadcastChannel;
+    }
+
+    public string GetGameChatChannelNameFromIdentifier(string gameIdentifier)
+    {
+        CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
+        if (game == null)
+            return null;
+        return game.ChatChannel;
+    }
+
+    /// <summary>
+    /// Returns the internal name of a game based on its index in the game list.
+    /// </summary>
+    /// <param name="gameIndex">The index of the CnCNet supported game.</param>
+    /// <returns>The internal name (suffix) of the game.</returns>
+    public string GetGameIdentifierFromIndex(int gameIndex)
+    {
+        return GameList[gameIndex].InternalName;
+    }
+
+    /// <summary>
+    /// Gets the index of a CnCNet supported game based on its internal name.
+    /// </summary>
+    /// <param name="gameName">The internal name (suffix) of the game.</param>
+    /// <returns>The index of the specified CnCNet game. -1 if the game is unknown or not supported.</returns>
+    public int GetGameIndexFromInternalName(string gameName)
+    {
+        for (int gId = 0; gId < GameList.Count; gId++)
+        {
+            CnCNetGame game = GameList[gId];
+
+            if (gameName.ToLowerInvariant() == game.InternalName)
+                return gId;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Seeks the supported game list for a specific game's internal name and if found, returns the
+    /// game's full name. Otherwise returns the internal name specified in the param.
+    /// </summary>
+    /// <param name="gameName">The internal name of the game to seek for.</param>
+    /// <returns>
+    /// The full name of a supported game based on its internal name. Returns the given parameter if
+    /// the name isn't found in the supported game list.
+    /// </returns>
+    public string GetGameNameFromInternalName(string gameName)
+    {
+        CnCNetGame game = GameList.Find(g => g.InternalName == gameName.ToLowerInvariant());
+
+        if (game == null)
+            return gameName;
+
+        return game.UIName;
+    }
+
+    public void Initialize()
     {
         GameList = new List<CnCNetGame>();
 
         // Default supported games.
-        CnCNetGame[] defaultGames = new CnCNetGame[]
+        CnCNetGame[] defaultGames = new[]
         {
             new CnCNetGame()
             {
@@ -101,7 +208,7 @@ public class GameCollection
         };
 
         // CnCNet chat + unsupported games.
-        CnCNetGame[] otherGames = new CnCNetGame[]
+        CnCNetGame[] otherGames = new[]
         {
             new CnCNetGame()
             {
@@ -141,7 +248,7 @@ public class GameCollection
         };
 
         GameList.AddRange(defaultGames);
-        GameList.AddRange(GetCustomGames(defaultGames.Concat(otherGames).ToList()));
+        GameList.AddRange(GameCollection.GetCustomGames(defaultGames.Concat(otherGames).ToList()));
         GameList.AddRange(otherGames);
 
         if (GetGameIndexFromInternalName(ClientConfiguration.Instance.LocalGame) == -1)
@@ -151,25 +258,12 @@ public class GameCollection
         }
     }
 
-    /// <summary>
-    /// Gets the index of a CnCNet supported game based on its internal name.
-    /// </summary>
-    /// <param name="gameName">The internal name (suffix) of the game.</param>
-    /// <returns>The index of the specified CnCNet game. -1 if the game is unknown or not supported.</returns>
-    public int GetGameIndexFromInternalName(string gameName)
+    public bool Remove(CnCNetGame item)
     {
-        for (int gId = 0; gId < GameList.Count; gId++)
-        {
-            CnCNetGame game = GameList[gId];
-
-            if (gameName.ToLowerInvariant() == game.InternalName)
-                return gId;
-        }
-
-        return -1;
+        return ((ICollection<CnCNetGame>)GameList).Remove(item);
     }
 
-    private List<CnCNetGame> GetCustomGames(List<CnCNetGame> existingGames)
+    private static List<CnCNetGame> GetCustomGames(List<CnCNetGame> existingGames)
     {
         IniFile iniFile = new(ProgramConstants.GetBaseResourcePath() + "GameCollectionConfig.ini");
 
@@ -186,34 +280,33 @@ public class GameCollection
             if (!iniFile.SectionExists(kvp.Value))
                 continue;
 
-            string iD = iniFile.GetStringValue(kvp.Value, "InternalName", string.Empty).ToLower();
+            string id = iniFile.GetStringValue(kvp.Value, "InternalName", string.Empty).ToLower();
 
-            if (string.IsNullOrEmpty(iD))
+            if (string.IsNullOrEmpty(id))
                 throw new GameCollectionConfigurationException("InternalName for game " + kvp.Value + " is not defined or set to an empty value.");
 
-            if (iD.Length > ProgramConstants.GAMEIDMAXLENGTH)
+            if (id.Length > ProgramConstants.GAMEIDMAXLENGTH)
             {
                 throw new GameCollectionConfigurationException("InternalGame for game " + kvp.Value + " is set to a value that exceeds length limit of " +
                     ProgramConstants.GAMEIDMAXLENGTH + " characters.");
             }
 
-            if (existingGames.Find(g => g.InternalName == iD) != null || customGameIDs.Contains(iD))
-                throw new GameCollectionConfigurationException("Game with InternalName " + iD.ToUpper() + " already exists in the game collection.");
+            if (existingGames.Find(g => g.InternalName == id) != null || customGameIDs.Contains(id))
+                throw new GameCollectionConfigurationException("Game with InternalName " + id.ToUpper() + " already exists in the game collection.");
 
-            string iconFilename = iniFile.GetStringValue(kvp.Value, "IconFilename", iD + "icon.png");
+            string iconFilename = iniFile.GetStringValue(kvp.Value, "IconFilename", id + "icon.png");
             customGames.Add(new CnCNetGame
             {
-                InternalName = iD,
-                UIName = iniFile.GetStringValue(kvp.Value, "UIName", iD.ToUpper()),
-                ChatChannel = GameCollection.GetIRCChannelNameFromIniFile(iniFile, kvp.Value, "ChatChannel"),
-                GameBroadcastChannel = GameCollection.GetIRCChannelNameFromIniFile(iniFile, kvp.Value, "GameBroadcastChannel"),
+                InternalName = id,
+                UIName = iniFile.GetStringValue(kvp.Value, "UIName", id.ToUpper()),
+                ChatChannel = GetIRCChannelNameFromIniFile(iniFile, kvp.Value, "ChatChannel"),
+                GameBroadcastChannel = GetIRCChannelNameFromIniFile(iniFile, kvp.Value, "GameBroadcastChannel"),
                 ClientExecutableName = iniFile.GetStringValue(kvp.Value, "ClientExecutableName", string.Empty),
-                RegistryInstallPath = iniFile.GetStringValue(kvp.Value, "RegistryInstallPath", "HKCU\\Software\\"
-                + iD.ToUpper()),
+                RegistryInstallPath = iniFile.GetStringValue(kvp.Value, "RegistryInstallPath", $"HKCU\\Software\\{id.ToUpper()}"),
                 Texture = AssetLoader.AssetExists(iconFilename) ? AssetLoader.LoadTexture(iconFilename) :
                 AssetLoader.TextureFromImage(Resources.unknownicon)
             });
-            _ = customGameIDs.Add(iD);
+            _ = customGameIDs.Add(id);
         }
 
         return customGames;
@@ -233,70 +326,5 @@ public class GameCollection
             return "#" + channel;
 
         return channel;
-    }
-
-    /// <summary>
-    /// Seeks the supported game list for a specific game's internal name and if found,
-    /// returns the game's full name. Otherwise returns the internal name specified in the param.
-    /// </summary>
-    /// <param name="gameName">The internal name of the game to seek for.</param>
-    /// <returns>The full name of a supported game based on its internal name.
-    /// Returns the given parameter if the name isn't found in the supported game list.</returns>
-    public string GetGameNameFromInternalName(string gameName)
-    {
-        CnCNetGame game = GameList.Find(g => g.InternalName == gameName.ToLowerInvariant());
-
-        if (game == null)
-            return gameName;
-
-        return game.UIName;
-    }
-
-    /// <summary>
-    /// Returns the full UI name of a game based on its index in the game list.
-    /// </summary>
-    /// <param name="gameIndex">The index of the CnCNet supported game.</param>
-    /// <returns>The UI name of the game.</returns>
-    public string GetFullGameNameFromIndex(int gameIndex)
-    {
-        return GameList[gameIndex].UIName;
-    }
-
-    /// <summary>
-    /// Returns the internal name of a game based on its index in the game list.
-    /// </summary>
-    /// <param name="gameIndex">The index of the CnCNet supported game.</param>
-    /// <returns>The internal name (suffix) of the game.</returns>
-    public string GetGameIdentifierFromIndex(int gameIndex)
-    {
-        return GameList[gameIndex].InternalName;
-    }
-
-    public string GetGameBroadcastingChannelNameFromIdentifier(string gameIdentifier)
-    {
-        CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
-        if (game == null)
-            return null;
-        return game.GameBroadcastChannel;
-    }
-
-    public string GetGameChatChannelNameFromIdentifier(string gameIdentifier)
-    {
-        CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
-        if (game == null)
-            return null;
-        return game.ChatChannel;
-    }
-}
-
-/// <summary>
-/// An exception that is thrown when configuration for a game to add to game collection
-/// contains invalid or unexpected settings / data or required settings / data are missing.
-/// </summary>
-internal class GameCollectionConfigurationException : Exception
-{
-    public GameCollectionConfigurationException(string message)
-        : base(message)
-    {
     }
 }

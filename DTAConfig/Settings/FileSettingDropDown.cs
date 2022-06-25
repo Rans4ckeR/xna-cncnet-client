@@ -18,8 +18,14 @@ public class FileSettingDropDown : SettingDropDownBase, IFileSetting
     {
     }
 
-    public FileSettingDropDown(WindowManager windowManager, int defaultValue, string settingSection, string settingKey,
-        bool checkAvailability = false, bool resetUnavailableValue = false, bool restartRequired = false)
+    public FileSettingDropDown(
+        WindowManager windowManager,
+        int defaultValue,
+        string settingSection,
+        string settingKey,
+        bool checkAvailability = false,
+        bool resetUnavailableValue = false,
+        bool restartRequired = false)
         : base(windowManager, defaultValue, settingSection, settingKey, restartRequired)
     {
         CheckAvailability = checkAvailability;
@@ -98,7 +104,7 @@ public class FileSettingDropDown : SettingDropDownBase, IFileSetting
     public override void Load()
     {
         SelectedIndex = UserINISettings.Instance.GetValue(SettingSection, SettingKey, DefaultValue);
-        originalState = SelectedIndex;
+        OriginalState = SelectedIndex;
     }
 
     public override bool Save()
@@ -113,14 +119,15 @@ public class FileSettingDropDown : SettingDropDownBase, IFileSetting
 
             itemFilesList[SelectedIndex].ForEach(f => f.Apply());
         }
-        else // selected item is unavailable, don't do anything
+        else
         {
+            // selected item is unavailable, don't do anything
             Logger.Log($"{nameof(FileSettingDropDown)}: " +
                 $"The selected item ({Items[SelectedIndex].Text}) is unavailable in {Name}");
             return false;
         }
 
         UserINISettings.Instance.SetValue(SettingSection, SettingKey, SelectedIndex);
-        return RestartRequired && (SelectedIndex != originalState);
+        return RestartRequired && (SelectedIndex != OriginalState);
     }
 }

@@ -25,7 +25,7 @@ public class ExtrasWindow : XNAWindow
         XNAClientButton btnExStatistics = new(WindowManager)
         {
             Name = "btnExStatistics",
-            ClientRectangle = new Rectangle(76, 17, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(76, 17, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             Text = "Statistics".L10N("UI:Main:Statistics")
         };
         btnExStatistics.LeftClick += BtnExStatistics_LeftClick;
@@ -33,7 +33,7 @@ public class ExtrasWindow : XNAWindow
         XNAClientButton btnExMapEditor = new(WindowManager)
         {
             Name = "btnExMapEditor",
-            ClientRectangle = new Rectangle(76, 59, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(76, 59, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             Text = "Map Editor".L10N("UI:Main:MapEditor")
         };
         btnExMapEditor.LeftClick += BtnExMapEditor_LeftClick;
@@ -41,7 +41,7 @@ public class ExtrasWindow : XNAWindow
         XNAClientButton btnExCredits = new(WindowManager)
         {
             Name = "btnExCredits",
-            ClientRectangle = new Rectangle(76, 101, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(76, 101, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             Text = "Credits".L10N("UI:Main:Credits")
         };
         btnExCredits.LeftClick += BtnExCredits_LeftClick;
@@ -49,7 +49,7 @@ public class ExtrasWindow : XNAWindow
         XNAClientButton btnExCancel = new(WindowManager)
         {
             Name = "btnExCancel",
-            ClientRectangle = new Rectangle(76, 160, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(76, 160, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             Text = "Cancel".L10N("UI:Main:ButtonCancel")
         };
         btnExCancel.LeftClick += BtnExCancel_LeftClick;
@@ -78,9 +78,9 @@ public class ExtrasWindow : XNAWindow
 
     private void BtnExCredits_LeftClick(object sender, EventArgs e)
     {
-        using Process _ = Process.Start(new ProcessStartInfo
+        using Process proc = Process.Start(new ProcessStartInfo
         {
-            FileName = MainClientConstants.CREDITS_URL,
+            FileName = MainClientConstants.CreditsUrl,
             UseShellExecute = true
         });
     }

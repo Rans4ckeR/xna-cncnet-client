@@ -11,21 +11,21 @@ public class DoubleSetting : INISetting<double>
 
     public override void Write()
     {
-        IniFile.SetDoubleValue(IniSection, IniKey, Get());
-    }
-
-    protected override double Get()
-    {
-        return IniFile.GetDoubleValue(IniSection, IniKey, DefaultValue);
-    }
-
-    protected override void Set(double value)
-    {
-        IniFile.SetDoubleValue(IniSection, IniKey, value);
+        IniFile.SetDoubleValue(IniSection, IniKey, GetValue());
     }
 
     public override string ToString()
     {
-        return Get().ToString();
+        return GetValue().ToString();
+    }
+
+    protected override double GetValue()
+    {
+        return IniFile.GetDoubleValue(IniSection, IniKey, DefaultValue);
+    }
+
+    protected override void SetValue(double value)
+    {
+        IniFile.SetDoubleValue(IniSection, IniKey, value);
     }
 }

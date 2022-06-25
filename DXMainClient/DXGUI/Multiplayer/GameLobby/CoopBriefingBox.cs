@@ -9,9 +9,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby;
 /// </summary>
 internal class CoopBriefingBox : XNAPanel
 {
-    private const int MARGIN = 12;
     private const float ALPHA_RATE = 0.4f;
-
+    private const int MARGIN = 12;
+    private readonly int fontIndex = 3;
+    private bool isVisible = true;
     private string text = string.Empty;
 
     public CoopBriefingBox(WindowManager windowManager)
@@ -19,9 +20,17 @@ internal class CoopBriefingBox : XNAPanel
     {
     }
 
-    private readonly int fontIndex = 3;
-
-    private bool isVisible = true;
+    public override void Draw(GameTime gameTime)
+    {
+        //base.Draw(gameTime);
+        FillControlArea(new Color(0, 0, 0, 224));
+        DrawRectangle(new Rectangle(0, 0, Width, Height), BorderColor);
+        DrawStringWithShadow(
+            text,
+            fontIndex,
+            new Vector2(MARGIN, MARGIN),
+            UISettings.ActiveSettings.AltColor);
+    }
 
     public override void Initialize()
     {
@@ -40,22 +49,25 @@ internal class CoopBriefingBox : XNAPanel
         CenterOnParent();
     }
 
-    public void SetFadeVisibility(bool visible)
-    {
-        isVisible = visible;
-    }
-
     public void SetAlpha(float alpha)
     {
         Alpha = alpha;
+    }
+
+    public void SetFadeVisibility(bool visible)
+    {
+        isVisible = visible;
     }
 
     public void SetText(string text)
     {
         this.text = Renderer.FixText(text, fontIndex, Width - (MARGIN * 2)).Text;
         int textHeight = (int)Renderer.GetTextDimensions(this.text, fontIndex).Y;
-        ClientRectangle = new Rectangle(X, 0,
-            Width, textHeight + (MARGIN * 2));
+        ClientRectangle = new Rectangle(
+            X,
+            0,
+            Width,
+            textHeight + (MARGIN * 2));
         CenterOnParent();
     }
 
@@ -64,15 +76,5 @@ internal class CoopBriefingBox : XNAPanel
         AlphaRate = isVisible ? ALPHA_RATE : -ALPHA_RATE;
 
         base.Update(gameTime);
-    }
-
-    public override void Draw(GameTime gameTime)
-    {
-        //base.Draw(gameTime);
-        FillControlArea(new Color(0, 0, 0, 224));
-        DrawRectangle(new Rectangle(0, 0, Width, Height), BorderColor);
-        DrawStringWithShadow(text, fontIndex,
-            new Vector2(MARGIN, MARGIN),
-            UISettings.ActiveSettings.AltColor);
     }
 }

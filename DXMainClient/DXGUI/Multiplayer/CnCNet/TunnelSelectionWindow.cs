@@ -14,19 +14,21 @@ internal class TunnelSelectionWindow : XNAWindow
 {
     private readonly TunnelHandler tunnelHandler;
 
+    private XNAClientButton btnApply;
+
+    private XNALabel lblDescription;
+
+    private TunnelListBox lbTunnelList;
+
+    private string originalTunnelAddress;
+
     public TunnelSelectionWindow(WindowManager windowManager, TunnelHandler tunnelHandler)
-        : base(windowManager)
+                        : base(windowManager)
     {
         this.tunnelHandler = tunnelHandler;
     }
 
     public event EventHandler<TunnelEventArgs> TunnelSelected;
-
-    private TunnelListBox lbTunnelList;
-    private XNALabel lblDescription;
-    private XNAClientButton btnApply;
-
-    private string originalTunnelAddress;
 
     public override void Initialize()
     {
@@ -41,46 +43,45 @@ internal class TunnelSelectionWindow : XNAWindow
         lblDescription = new XNALabel(WindowManager);
         lblDescription.Name = nameof(lblDescription);
         lblDescription.Text = "Line 1" + Environment.NewLine + "Line 2";
-        lblDescription.X = UIDesignConstants.EMPTYSPACESIDES + UIDesignConstants.CONTROLHORIZONTALMARGIN;
-        lblDescription.Y = UIDesignConstants.EMPTYSPACETOP + UIDesignConstants.CONTROLVERTICALMARGIN;
+        lblDescription.X = UIDesignConstants.EmptySpaceSides + UIDesignConstants.ControlHorizontalMargin;
+        lblDescription.Y = UIDesignConstants.EmptySpaceTop + UIDesignConstants.ControlVerticalMargin;
         AddChild(lblDescription);
 
         lbTunnelList = new TunnelListBox(WindowManager, tunnelHandler);
         lbTunnelList.Name = nameof(lbTunnelList);
-        lbTunnelList.Y = lblDescription.Bottom + UIDesignConstants.CONTROLVERTICALMARGIN;
-        lbTunnelList.X = UIDesignConstants.EMPTYSPACESIDES + UIDesignConstants.CONTROLHORIZONTALMARGIN;
+        lbTunnelList.Y = lblDescription.Bottom + UIDesignConstants.ControlVerticalMargin;
+        lbTunnelList.X = UIDesignConstants.EmptySpaceSides + UIDesignConstants.ControlHorizontalMargin;
         AddChild(lbTunnelList);
         lbTunnelList.SelectedIndexChanged += LbTunnelList_SelectedIndexChanged;
 
         btnApply = new XNAClientButton(WindowManager);
         btnApply.Name = nameof(btnApply);
-        btnApply.Width = UIDesignConstants.BUTTONWIDTH92;
-        btnApply.Height = UIDesignConstants.BUTTONHEIGHT;
+        btnApply.Width = UIDesignConstants.ButtonWidth92;
+        btnApply.Height = UIDesignConstants.ButtonHeight;
         btnApply.Text = "Apply".L10N("UI:Main:ButtonApply");
-        btnApply.X = UIDesignConstants.EMPTYSPACESIDES + UIDesignConstants.CONTROLHORIZONTALMARGIN;
-        btnApply.Y = lbTunnelList.Bottom + (UIDesignConstants.CONTROLVERTICALMARGIN * 3);
+        btnApply.X = UIDesignConstants.EmptySpaceSides + UIDesignConstants.ControlHorizontalMargin;
+        btnApply.Y = lbTunnelList.Bottom + (UIDesignConstants.ControlVerticalMargin * 3);
         AddChild(btnApply);
         btnApply.LeftClick += BtnApply_LeftClick;
 
         XNAClientButton btnCancel = new(WindowManager);
         btnCancel.Name = nameof(btnCancel);
-        btnCancel.Width = UIDesignConstants.BUTTONWIDTH92;
-        btnCancel.Height = UIDesignConstants.BUTTONHEIGHT;
+        btnCancel.Width = UIDesignConstants.ButtonWidth92;
+        btnCancel.Height = UIDesignConstants.ButtonHeight;
         btnCancel.Text = "Cancel".L10N("UI:Main:ButtonCancel");
         btnCancel.Y = btnApply.Y;
         AddChild(btnCancel);
         btnCancel.LeftClick += BtnCancel_LeftClick;
 
-        Width = lbTunnelList.Right + UIDesignConstants.CONTROLHORIZONTALMARGIN + UIDesignConstants.EMPTYSPACESIDES;
-        Height = btnApply.Bottom + UIDesignConstants.CONTROLVERTICALMARGIN + UIDesignConstants.EMPTYSPACEBOTTOM;
-        btnCancel.X = Width - btnCancel.Width - UIDesignConstants.EMPTYSPACESIDES - UIDesignConstants.CONTROLHORIZONTALMARGIN;
+        Width = lbTunnelList.Right + UIDesignConstants.ControlHorizontalMargin + UIDesignConstants.EmptySpaceSides;
+        Height = btnApply.Bottom + UIDesignConstants.ControlVerticalMargin + UIDesignConstants.EmptySpaceBottom;
+        btnCancel.X = Width - btnCancel.Width - UIDesignConstants.EmptySpaceSides - UIDesignConstants.ControlHorizontalMargin;
 
         base.Initialize();
     }
 
     /// <summary>
-    /// Sets the window's description and selects the tunnel server
-    /// with the given address.
+    /// Sets the window's description and selects the tunnel server with the given address.
     /// </summary>
     /// <param name="description">The window description.</param>
     /// <param name="tunnelAddress">The address of the tunnel server to select.</param>
@@ -121,14 +122,4 @@ internal class TunnelSelectionWindow : XNAWindow
 
     private void LbTunnelList_SelectedIndexChanged(object sender, EventArgs e) =>
         btnApply.AllowClick = !lbTunnelList.IsTunnelSelected(originalTunnelAddress) && lbTunnelList.IsValidIndexSelected();
-}
-
-internal class TunnelEventArgs : EventArgs
-{
-    public TunnelEventArgs(CnCNetTunnel tunnel)
-    {
-        Tunnel = tunnel;
-    }
-
-    public CnCNetTunnel Tunnel { get; }
 }

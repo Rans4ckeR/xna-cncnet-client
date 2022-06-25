@@ -6,17 +6,19 @@ public static class MainClientConstants
 {
     public const string CNCNETTUNNELLISTURL = "http://cncnet.org/master-list";
 
-    public static string GAME_NAME_LONG = "CnCNet Client";
-    public static string GAME_NAME_SHORT = "CnCNet";
+    public static string CreditsUrl { get; set; } = "http://rampastring.cncnet.org/TS/Credits.txt";
 
-    public static string CREDITS_URL = "http://rampastring.cncnet.org/TS/Credits.txt";
+    public static string GameNameLong { get; set; } = "CnCNet Client";
 
-    public static string SUPPORT_URL_SHORT = "www.cncnet.org";
+    public static string GameNameShort { get; set; } = "CnCNet";
 
-    public static int MAP_CELL_SIZE_X = 48;
-    public static int MAP_CELL_SIZE_Y = 24;
+    public static int MapCellSizeX { get; set; } = 48;
 
-    public static OSVersion OSId = OSVersion.UNKNOWN;
+    public static int MapCellSizeY { get; set; } = 24;
+
+    public static OSVersion OSId { get; set; } = OSVersion.UNKNOWN;
+
+    public static string SupportUrlShort { get; set; } = "www.cncnet.org";
 
     public static void Initialize()
     {
@@ -24,20 +26,20 @@ public static class MainClientConstants
 
         OSId = ClientConfiguration.GetOperatingSystemVersion();
 
-        GAME_NAME_SHORT = clientConfiguration.LocalGame;
-        GAME_NAME_LONG = clientConfiguration.LongGameName;
+        GameNameShort = clientConfiguration.LocalGame;
+        GameNameLong = clientConfiguration.LongGameName;
 
-        SUPPORT_URL_SHORT = clientConfiguration.ShortSupportURL;
+        SupportUrlShort = clientConfiguration.ShortSupportURL;
 
-        CREDITS_URL = clientConfiguration.CreditsURL;
+        CreditsUrl = clientConfiguration.CreditsURL;
 
-        MAP_CELL_SIZE_X = clientConfiguration.MapCellSizeX;
-        MAP_CELL_SIZE_Y = clientConfiguration.MapCellSizeY;
+        MapCellSizeX = clientConfiguration.MapCellSizeX;
+        MapCellSizeY = clientConfiguration.MapCellSizeY;
 
-        if (string.IsNullOrEmpty(GAME_NAME_SHORT))
+        if (string.IsNullOrEmpty(GameNameShort))
             throw new ClientConfigurationException("LocalGame is set to an empty value.");
 
-        if (GAME_NAME_SHORT.Length > ProgramConstants.GAMEIDMAXLENGTH)
+        if (GameNameShort.Length > ProgramConstants.GAMEIDMAXLENGTH)
         {
             throw new ClientConfigurationException("LocalGame is set to a value that exceeds length limit of " +
                 ProgramConstants.GAMEIDMAXLENGTH + " characters.");

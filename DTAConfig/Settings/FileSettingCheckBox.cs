@@ -12,15 +12,27 @@ namespace DTAConfig.Settings;
 /// </summary>
 public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
 {
+    private List<FileSourceDestinationInfo> disabledFiles = new();
     private List<FileSourceDestinationInfo> enabledFiles = new();
 
+    private bool reversed = false;
+
+    // Backwards compatibility with old FileSettingCheckBox implementation.
+    private bool useLegacyImplementation = false;
+
     public FileSettingCheckBox(WindowManager windowManager)
-        : base(windowManager)
+                : base(windowManager)
     {
     }
 
-    public FileSettingCheckBox(WindowManager windowManager, bool defaultValue, string settingSection, string settingKey,
-        bool checkAvailability = false, bool resetUnavailableValue = false, bool restartRequired = false)
+    public FileSettingCheckBox(
+        WindowManager windowManager,
+        bool defaultValue,
+        string settingSection,
+        string settingKey,
+        bool checkAvailability = false,
+        bool resetUnavailableValue = false,
+        bool restartRequired = false)
         : base(windowManager, defaultValue, settingSection, settingKey, restartRequired)
     {
         CheckAvailability = checkAvailability;
@@ -30,15 +42,16 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
     public bool CheckAvailability { get; set; }
 
     public bool ResetUnavailableValue { get; set; }
-    private List<FileSourceDestinationInfo> disabledFiles = new();
 
-    // Backwards compatibility with old FileSettingCheckBox implementation.
-    private bool useLegacyImplementation = false;
+    private bool DisabledFilesComplete => disabledFiles.All(f => File.Exists(f.SourcePath));
 
     private bool EnabledFilesComplete => enabledFiles.All(f => File.Exists(f.SourcePath));
 
-    private bool DisabledFilesComplete => disabledFiles.All(f => File.Exists(f.SourcePath));
-    private bool reversed = false;
+    public void AddDisabledFile(string source, string destination, FileOperationOptions options)
+        => disabledFiles.Add(new FileSourceDestinationInfo(source, destination, options));
+
+    public void AddEnabledFile(string source, string destination, FileOperationOptions options)
+        => enabledFiles.Add(new FileSourceDestinationInfo(source, destination, options));
 
     public override void GetAttributes(IniFile iniFile)
     {
@@ -61,6 +74,15 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
             enabledFiles = FileSourceDestinationInfo.ParseFSDInfoList(section, "EnabledFile");
             disabledFiles = FileSourceDestinationInfo.ParseFSDInfoList(section, "DisabledFile");
         }
+    }
+
+    public override void Load()
+    {
+        Checked = useLegacyImplementation
+            ? reversed != File.Exists(enabledFiles[0].DestinationPath)
+            : UserINISettings.Instance.GetValue(SettingSection, SettingKey, DefaultValue);
+
+        OriginalState = Checked;
     }
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
@@ -106,21 +128,6 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
         return Checked != currentValue;
     }
 
-    public void AddEnabledFile(string source, string destination, FileOperationOptions options)
-        => enabledFiles.Add(new FileSourceDestinationInfo(source, destination, options));
-
-    public void AddDisabledFile(string source, string destination, FileOperationOptions options)
-        => disabledFiles.Add(new FileSourceDestinationInfo(source, destination, options));
-
-    public override void Load()
-    {
-        Checked = useLegacyImplementation
-            ? reversed != File.Exists(enabledFiles[0].DestinationPath)
-            : UserINISettings.Instance.GetValue(SettingSection, SettingKey, DefaultValue);
-
-        originalState = Checked;
-    }
-
     public override bool Save()
     {
         if (useLegacyImplementation)
@@ -130,7 +137,7 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
             else
                 enabledFiles.ForEach(f => f.Revert());
 
-            return RestartRequired && (Checked != originalState);
+            return RestartRequired && (Checked != OriginalState);
         }
 
         bool canBeChecked = !CheckAvailability || EnabledFilesComplete;
@@ -146,14 +153,15 @@ public class FileSettingCheckBox : SettingCheckBoxBase, IFileSetting
             enabledFiles.ForEach(f => f.Revert());
             disabledFiles.ForEach(f => f.Apply());
         }
-        else // selected state is unavailable, don't do anything
+        else
         {
+            // selected state is unavailable, don't do anything
             Logger.Log($"{nameof(FileSettingCheckBox)}: " +
                 $"The selected state ({Checked}) is unavailable in {Name}");
             return false;
         }
 
         UserINISettings.Instance.SetValue(SettingSection, SettingKey, Checked);
-        return RestartRequired && (Checked != originalState);
+        return RestartRequired && (Checked != OriginalState);
     }
 }

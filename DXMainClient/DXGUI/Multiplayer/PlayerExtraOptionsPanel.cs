@@ -12,42 +12,72 @@ namespace DTAClient.DXGUI.Multiplayer;
 
 public class PlayerExtraOptionsPanel : XNAWindow
 {
-    public EventHandler OptionsChanged;
+    private const int DefaultTeamStartMappingX = UIDesignConstants.EmptySpaceSides;
+
+    private const int DefaultX = 24;
 
     private const int MaxStartCount = 8;
-    private const int DefaultX = 24;
-    private const int DefaultTeamStartMappingX = UIDesignConstants.EMPTYSPACESIDES;
-    private const int TeamMappingPanelWidth = 50;
+
     private const int TeamMappingPanelHeight = 22;
+
+    private const int TeamMappingPanelWidth = 50;
+
     private readonly string customPresetName = "Custom".L10N("UI:Main:CustomPresetName");
 
-    private XNAClientCheckBox chkBoxForceRandomSides;
-    private XNAClientCheckBox chkBoxForceRandomTeams;
-    private XNAClientCheckBox chkBoxForceRandomColors;
-    private XNAClientCheckBox chkBoxForceRandomStarts;
-    private XNAClientCheckBox chkBoxUseTeamStartMappings;
-    private XNAClientDropDown ddTeamStartMappingPreset;
-    private TeamStartMappingsPanel teamStartMappingsPanel;
     private bool _isHost;
-    private bool ignoreMappingChanges;
-    public EventHandler OnClose;
 
     private Map _map;
+
+    private XNAClientCheckBox chkBoxForceRandomColors;
+
+    private XNAClientCheckBox chkBoxForceRandomSides;
+
+    private XNAClientCheckBox chkBoxForceRandomStarts;
+
+    private XNAClientCheckBox chkBoxForceRandomTeams;
+
+    private XNAClientCheckBox chkBoxUseTeamStartMappings;
+
+    private XNAClientDropDown ddTeamStartMappingPreset;
+
+    private bool ignoreMappingChanges;
+
+    private TeamStartMappingsPanel teamStartMappingsPanel;
 
     public PlayerExtraOptionsPanel(WindowManager windowManager)
         : base(windowManager)
     {
     }
 
-    public bool IsForcedRandomSides() => chkBoxForceRandomSides.Checked;
+    public EventHandler OnClose { get; set; }
 
-    public bool IsForcedRandomTeams() => chkBoxForceRandomTeams.Checked;
+    public EventHandler OptionsChanged { get; set; }
 
-    public bool IsForcedRandomColors() => chkBoxForceRandomColors.Checked;
+    public void EnableControls(bool enable)
+    {
+        chkBoxForceRandomSides.InputEnabled = enable;
+        chkBoxForceRandomColors.InputEnabled = enable;
+        chkBoxForceRandomStarts.InputEnabled = enable;
+        chkBoxForceRandomTeams.InputEnabled = enable;
+        chkBoxUseTeamStartMappings.InputEnabled = enable;
 
-    public bool IsForcedRandomStarts() => chkBoxForceRandomStarts.Checked;
+        teamStartMappingsPanel.EnableControls(enable && chkBoxUseTeamStartMappings.Checked);
+    }
 
-    public bool IsUseTeamStartMappings() => chkBoxUseTeamStartMappings.Checked;
+    public PlayerExtraOptions GetPlayerExtraOptions()
+        => new()
+        {
+            IsForceRandomSides = IsForcedRandomSides(),
+            IsForceRandomColors = IsForcedRandomColors(),
+            IsForceRandomStarts = IsForcedRandomStarts(),
+            IsForceRandomTeams = IsForcedRandomTeams(),
+            IsUseTeamStartMappings = IsUseTeamStartMappings(),
+            TeamStartMappings = GetTeamStartMappings()
+        };
+
+    public List<TeamStartMapping> GetTeamStartMappings()
+        => chkBoxUseTeamStartMappings.Checked ?
+            teamStartMappingsPanel.GetTeamStartMappings() : new List<TeamStartMapping>();
 
     public override void Initialize()
     {
@@ -139,43 +169,39 @@ public class PlayerExtraOptionsPanel : XNAWindow
         RefreshTeamStartMappingsPanel();
     }
 
+    public bool IsForcedRandomColors() => chkBoxForceRandomColors.Checked;
+
+    public bool IsForcedRandomSides() => chkBoxForceRandomSides.Checked;
+
+    public bool IsForcedRandomStarts() => chkBoxForceRandomStarts.Checked;
+
+    public bool IsForcedRandomTeams() => chkBoxForceRandomTeams.Checked;
+
+    public bool IsUseTeamStartMappings() => chkBoxUseTeamStartMappings.Checked;
+
+    public void SetIsHost(bool isHost)
+    {
+        _isHost = isHost;
+        RefreshPresetDropdown();
+        EnableControls(_isHost);
+    }
+
+    public void SetPlayerExtraOptions(PlayerExtraOptions playerExtraOptions)
+    {
+        chkBoxForceRandomSides.Checked = playerExtraOptions.IsForceRandomSides;
+        chkBoxForceRandomColors.Checked = playerExtraOptions.IsForceRandomColors;
+        chkBoxForceRandomTeams.Checked = playerExtraOptions.IsForceRandomTeams;
+        chkBoxForceRandomStarts.Checked = playerExtraOptions.IsForceRandomStarts;
+        chkBoxUseTeamStartMappings.Checked = playerExtraOptions.IsUseTeamStartMappings;
+        teamStartMappingsPanel.SetTeamStartMappings(playerExtraOptions.TeamStartMappings);
+    }
+
     public void UpdateForMap(Map map)
     {
         if (_map == map)
             return;
 
         _map = map;
-
-        RefreshTeamStartMappingPanels();
-    }
-
-    private void Options_Changed(object sender, EventArgs e) => OptionsChanged?.Invoke(sender, e);
-
-    private void Mapping_Changed(object sender, EventArgs e)
-    {
-        Options_Changed(sender, e);
-        if (ignoreMappingChanges)
-            return;
-
-        ddTeamStartMappingPreset.SelectedIndex = 0;
-    }
-
-    private void ChkBoxUseTeamStartMappings_Changed(object sender, EventArgs e)
-    {
-        RefreshTeamStartMappingsPanel();
-        chkBoxForceRandomTeams.Checked = chkBoxForceRandomTeams.Checked || chkBoxUseTeamStartMappings.Checked;
-        chkBoxForceRandomTeams.AllowChecking = !chkBoxUseTeamStartMappings.Checked;
-
-        // chkBoxForceRandomStarts.Checked = chkBoxForceRandomStarts.Checked || chkBoxUseTeamStartMappings.Checked;
-        // chkBoxForceRandomStarts.AllowChecking = !chkBoxUseTeamStartMappings.Checked;
-        RefreshPresetDropdown();
-
-        Options_Changed(sender, e);
-    }
-
-    private void RefreshTeamStartMappingsPanel()
-    {
-        teamStartMappingsPanel.EnableControls(_isHost && chkBoxUseTeamStartMappings.Checked);
 
         RefreshTeamStartMappingPanels();
     }
@@ -195,6 +221,49 @@ public class PlayerExtraOptionsPanel : XNAWindow
         teamStartMappingsPanel.MappingChanged += Mapping_Changed;
     }
 
+    private void BtnHelp_LeftClick(object sender, EventArgs args)
+    {
+        string desc = ("Auto allying allows the host to assign starting locations to teams, not players.\n" +
+                "When players are assigned to spawn locations, they will be auto assigned to teams based on these mappings.\n" +
+                "This is best used with random teams and random starts. However, only random teams is required.\n" +
+                "Manually specified starts will take precedence.\n\n").L10N("UI:Main:AutoAllyingText1") +
+                $"{TeamStartMapping.NOTEAM} : " + "Block this location from being assigned to a player.".L10N("UI:Main:AutoAllyingTextNoTeam") + "\n" +
+                $"{TeamStartMapping.RANDOMTEAM} : " + "Allow a player here, but don't assign a team.".L10N("UI:Main:AutoAllyingTextRandomTeam");
+        XNAMessageBox.Show(
+            WindowManager,
+            "Auto Allying".L10N("UI:Main:AutoAllyingTitle"),
+            desc);
+    }
+
+    private void ChkBoxUseTeamStartMappings_Changed(object sender, EventArgs e)
+    {
+        RefreshTeamStartMappingsPanel();
+        chkBoxForceRandomTeams.Checked = chkBoxForceRandomTeams.Checked || chkBoxUseTeamStartMappings.Checked;
+        chkBoxForceRandomTeams.AllowChecking = !chkBoxUseTeamStartMappings.Checked;
+
+        // chkBoxForceRandomStarts.Checked = chkBoxForceRandomStarts.Checked ||
+        // chkBoxUseTeamStartMappings.Checked; chkBoxForceRandomStarts.AllowChecking = !chkBoxUseTeamStartMappings.Checked;
+        RefreshPresetDropdown();
+
+        Options_Changed(sender, e);
+    }
+
+    private void ClearTeamStartMappingSelections()
+        => teamStartMappingsPanel.GetTeamStartMappingPanels().ForEach(panel => panel.ClearSelections());
+
+    private void DdTeamMappingPreset_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        XNADropDownItem selectedItem = ddTeamStartMappingPreset.SelectedItem;
+        if (selectedItem?.Text == customPresetName)
+            return;
+
+        List<TeamStartMapping> teamStartMappings = selectedItem?.Tag as List<TeamStartMapping>;
+
+        ignoreMappingChanges = true;
+        teamStartMappingsPanel.SetTeamStartMappings(teamStartMappings);
+        ignoreMappingChanges = false;
+    }
+
     private Rectangle GetTeamMappingPanelRectangle(int index)
     {
         const int maxColumnCount = 2;
@@ -207,8 +276,18 @@ public class PlayerExtraOptionsPanel : XNAWindow
         return new Rectangle(lastControl?.X ?? mappingPanelDefaultX, lastControl?.Bottom + 4 ?? mappingPanelDefaultY, TeamMappingPanelWidth, TeamMappingPanelHeight);
     }
 
-    private void ClearTeamStartMappingSelections()
-        => teamStartMappingsPanel.GetTeamStartMappingPanels().ForEach(panel => panel.ClearSelections());
+    private void Mapping_Changed(object sender, EventArgs e)
+    {
+        Options_Changed(sender, e);
+        if (ignoreMappingChanges)
+            return;
+
+        ddTeamStartMappingPreset.SelectedIndex = 0;
+    }
+
+    private void Options_Changed(object sender, EventArgs e) => OptionsChanged?.Invoke(sender, e);
+
+    private void RefreshPresetDropdown() => ddTeamStartMappingPreset.AllowDropDown = _isHost && chkBoxUseTeamStartMappings.Checked;
 
     private void RefreshTeamStartMappingPanels()
     {
@@ -247,72 +326,10 @@ public class PlayerExtraOptionsPanel : XNAWindow
         ddTeamStartMappingPreset.SelectedIndex = 1;
     }
 
-    private void DdTeamMappingPreset_SelectedIndexChanged(object sender, EventArgs e)
+    private void RefreshTeamStartMappingsPanel()
     {
-        XNADropDownItem selectedItem = ddTeamStartMappingPreset.SelectedItem;
-        if (selectedItem?.Text == customPresetName)
-            return;
+        teamStartMappingsPanel.EnableControls(_isHost && chkBoxUseTeamStartMappings.Checked);
 
-        List<TeamStartMapping> teamStartMappings = selectedItem?.Tag as List<TeamStartMapping>;
-
-        ignoreMappingChanges = true;
-        teamStartMappingsPanel.SetTeamStartMappings(teamStartMappings);
-        ignoreMappingChanges = false;
-    }
-
-    private void RefreshPresetDropdown() => ddTeamStartMappingPreset.AllowDropDown = _isHost && chkBoxUseTeamStartMappings.Checked;
-
-    private void BtnHelp_LeftClick(object sender, EventArgs args)
-    {
-        XNAMessageBox.Show(WindowManager, "Auto Allying".L10N("UI:Main:AutoAllyingTitle"),
-            ("Auto allying allows the host to assign starting locations to teams, not players.\n" +
-            "When players are assigned to spawn locations, they will be auto assigned to teams based on these mappings.\n" +
-            "This is best used with random teams and random starts. However, only random teams is required.\n" +
-            "Manually specified starts will take precedence.\n\n").L10N("UI:Main:AutoAllyingText1") +
-            $"{TeamStartMapping.NOTEAM} : " + "Block this location from being assigned to a player.".L10N("UI:Main:AutoAllyingTextNoTeam") + "\n" +
-            $"{TeamStartMapping.RANDOMTEAM} : " + "Allow a player here, but don't assign a team.".L10N("UI:Main:AutoAllyingTextRandomTeam"));
-    }
-
-    public List<TeamStartMapping> GetTeamStartMappings()
-        => chkBoxUseTeamStartMappings.Checked ?
-            teamStartMappingsPanel.GetTeamStartMappings() : new List<TeamStartMapping>();
-
-    public void EnableControls(bool enable)
-    {
-        chkBoxForceRandomSides.InputEnabled = enable;
-        chkBoxForceRandomColors.InputEnabled = enable;
-        chkBoxForceRandomStarts.InputEnabled = enable;
-        chkBoxForceRandomTeams.InputEnabled = enable;
-        chkBoxUseTeamStartMappings.InputEnabled = enable;
-
-        teamStartMappingsPanel.EnableControls(enable && chkBoxUseTeamStartMappings.Checked);
-    }
-
-    public PlayerExtraOptions GetPlayerExtraOptions()
-        => new()
-        {
-            IsForceRandomSides = IsForcedRandomSides(),
-            IsForceRandomColors = IsForcedRandomColors(),
-            IsForceRandomStarts = IsForcedRandomStarts(),
-            IsForceRandomTeams = IsForcedRandomTeams(),
-            IsUseTeamStartMappings = IsUseTeamStartMappings(),
-            TeamStartMappings = GetTeamStartMappings()
-        };
-
-    public void SetPlayerExtraOptions(PlayerExtraOptions playerExtraOptions)
-    {
-        chkBoxForceRandomSides.Checked = playerExtraOptions.IsForceRandomSides;
-        chkBoxForceRandomColors.Checked = playerExtraOptions.IsForceRandomColors;
-        chkBoxForceRandomTeams.Checked = playerExtraOptions.IsForceRandomTeams;
-        chkBoxForceRandomStarts.Checked = playerExtraOptions.IsForceRandomStarts;
-        chkBoxUseTeamStartMappings.Checked = playerExtraOptions.IsUseTeamStartMappings;
-        teamStartMappingsPanel.SetTeamStartMappings(playerExtraOptions.TeamStartMappings);
-    }
-
-    public void SetIsHost(bool isHost)
-    {
-        _isHost = isHost;
-        RefreshPresetDropdown();
-        EnableControls(_isHost);
+        RefreshTeamStartMappingPanels();
     }
 }

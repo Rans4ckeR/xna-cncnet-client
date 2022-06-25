@@ -13,6 +13,8 @@ namespace DTAClient.DXGUI.Generic;
 /// </summary>
 public class ManualUpdateQueryWindow : XNAWindow
 {
+    private string descriptionText;
+    private string downloadUrl;
     private XNALabel lblDescription;
 
     public ManualUpdateQueryWindow(WindowManager windowManager)
@@ -20,12 +22,7 @@ public class ManualUpdateQueryWindow : XNAWindow
     {
     }
 
-    public delegate void ClosedEventHandler(object sender, EventArgs e);
-
-    public event ClosedEventHandler Closed;
-
-    private string downloadUrl;
-    private string descriptionText;
+    public event EventHandler Closed;
 
     public override void Initialize()
     {
@@ -74,9 +71,9 @@ public class ManualUpdateQueryWindow : XNAWindow
         lblDescription.Text = string.Format(descriptionText, version);
     }
 
-    private void BtnDownload_LeftClick(object sender, EventArgs e)
-        => Process.Start(downloadUrl);
-
     private void BtnClose_LeftClick(object sender, EventArgs e)
         => Closed?.Invoke(this, e);
+
+    private void BtnDownload_LeftClick(object sender, EventArgs e)
+            => Process.Start(downloadUrl);
 }

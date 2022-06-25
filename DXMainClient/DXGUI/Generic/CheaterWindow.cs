@@ -46,8 +46,9 @@ public class CheaterWindow : XNAWindow
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED,
             ClientRectangle = new Rectangle(
                 lblDescription.X,
-            lblDescription.Bottom + 12, Width - 24,
-            Height - (lblDescription.Bottom + 59)),
+                lblDescription.Bottom + 12,
+                Width - 24,
+                Height - (lblDescription.Bottom + 59)),
             BackgroundTexture = AssetLoader.LoadTextureUncached("cheater.png")
         };
 
@@ -56,7 +57,9 @@ public class CheaterWindow : XNAWindow
             Name = "btnCancel",
             ClientRectangle = new Rectangle(
                 Width - 104,
-            Height - 35, UIDesignConstants.BUTTONWIDTH92, UIDesignConstants.BUTTONHEIGHT),
+                Height - 35,
+                UIDesignConstants.ButtonWidth92,
+                UIDesignConstants.ButtonHeight),
             Text = "Cancel".L10N("UI:Main:ButtonCancel")
         };
         btnCancel.LeftClick += BtnCancel_LeftClick;
@@ -64,8 +67,11 @@ public class CheaterWindow : XNAWindow
         XNAClientButton btnYes = new(WindowManager)
         {
             Name = "btnYes",
-            ClientRectangle = new Rectangle(12, btnCancel.Y,
-            btnCancel.Width, btnCancel.Height),
+            ClientRectangle = new Rectangle(
+                12,
+                btnCancel.Y,
+                btnCancel.Width,
+                btnCancel.Height),
             Text = "Yes".L10N("UI:Main:ButtonYes")
         };
         btnYes.LeftClick += BtnYes_LeftClick;
@@ -77,8 +83,11 @@ public class CheaterWindow : XNAWindow
         AddChild(btnYes);
 
         lblCheater.CenterOnParent();
-        lblCheater.ClientRectangle = new Rectangle(lblCheater.X, 12,
-            lblCheater.Width, lblCheater.Height);
+        lblCheater.ClientRectangle = new Rectangle(
+            lblCheater.X,
+            12,
+            lblCheater.Width,
+            lblCheater.Height);
 
         base.Initialize();
     }

@@ -27,6 +27,24 @@ public class DarkeningPanel : XNAPanel
         dp.AddChild(control);
     }
 
+    public override void AddChild(XNAControl child)
+    {
+        base.AddChild(child);
+
+        child.VisibleChanged += Child_VisibleChanged;
+    }
+
+    public void Hide()
+    {
+        AlphaRate = -ALPHARATE;
+
+        foreach (XNAControl child in Children)
+        {
+            child.Enabled = false;
+            child.Visible = false;
+        }
+    }
+
     public override void Initialize()
     {
         Name = "DarkeningPanel";
@@ -43,17 +61,12 @@ public class DarkeningPanel : XNAPanel
     public void SetPositionAndSize()
     {
         ClientRectangle = Parent != null
-            ? new Rectangle(-Parent.X, -Parent.Y,
+            ? new Rectangle(
+                -Parent.X,
+                -Parent.Y,
                 WindowManager.RenderResolutionX,
                 WindowManager.RenderResolutionY)
             : new Rectangle(0, 0, WindowManager.RenderResolutionX, WindowManager.RenderResolutionY);
-    }
-
-    public override void AddChild(XNAControl child)
-    {
-        base.AddChild(child);
-
-        child.VisibleChanged += Child_VisibleChanged;
     }
 
     public void Show()
@@ -70,27 +83,6 @@ public class DarkeningPanel : XNAPanel
         }
     }
 
-    private void Child_VisibleChanged(object sender, EventArgs e)
-    {
-        XNAControl xnaControl = (XNAControl)sender;
-
-        if (xnaControl.Visible)
-            Show();
-        else
-            Hide();
-    }
-
-    public void Hide()
-    {
-        AlphaRate = -ALPHARATE;
-
-        foreach (XNAControl child in Children)
-        {
-            child.Enabled = false;
-            child.Visible = false;
-        }
-    }
-
     public override void Update(GameTime gameTime)
     {
         base.Update(gameTime);
@@ -101,5 +93,15 @@ public class DarkeningPanel : XNAPanel
             Visible = false;
             Hidden?.Invoke(this, EventArgs.Empty);
         }
+    }
+
+    private void Child_VisibleChanged(object sender, EventArgs e)
+    {
+        XNAControl xnaControl = (XNAControl)sender;
+
+        if (xnaControl.Visible)
+            Show();
+        else
+            Hide();
     }
 }

@@ -26,8 +26,11 @@ public class XNAExtraPanel : XNAPanel
 
             if (new Point(Width, Height) == Point.Zero)
             {
-                ClientRectangle = new Rectangle(X, Y,
-                    BackgroundTexture.Width, BackgroundTexture.Height);
+                ClientRectangle = new Rectangle(
+                    X,
+                    Y,
+                    BackgroundTexture.Width,
+                    BackgroundTexture.Height);
             }
 
             return;

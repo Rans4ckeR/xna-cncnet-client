@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using ClientCore.CnCNet5;
 
 namespace DTAClient.Domain.Multiplayer;
@@ -33,10 +34,7 @@ public abstract class GenericHostedGame : IEquatable<GenericHostedGame>
 
     public int MaxPlayers { get; set; } = 8;
 
-    public abstract int Ping
-    {
-        get;
-    }
+    public abstract int Ping { get; }
 
     public DateTime LastRefreshTime { get; set; }
 
@@ -46,5 +44,10 @@ public abstract class GenericHostedGame : IEquatable<GenericHostedGame>
     public override bool Equals(object obj)
     {
         return Equals(obj as GenericHostedGame);
+    }
+
+    public override int GetHashCode()
+    {
+        return -287598231 + EqualityComparer<string>.Default.GetHashCode(RoomName.ToLowerInvariant());
     }
 }

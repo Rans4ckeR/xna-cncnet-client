@@ -12,8 +12,8 @@ namespace DTAClient.Domain.Multiplayer.CnCNet;
 /// </summary>
 public class CnCNetTunnel
 {
-    private const int REQUEST_TIMEOUT = 10000; // In milliseconds
     private const int PING_TIMEOUT = 1000;
+    private const int REQUEST_TIMEOUT = 10000; // In milliseconds
 
     public CnCNetTunnel()
     {
@@ -21,9 +21,36 @@ public class CnCNetTunnel
 
     public string Address { get; private set; }
 
+    public int Clients { get; private set; }
+
+    public string Country { get; private set; }
+
+    public string CountryCode { get; private set; }
+
+    public double Distance { get; private set; }
+
+    public double Latitude { get; private set; }
+
+    public double Longitude { get; private set; }
+
+    public int MaxClients { get; private set; }
+
+    public string Name { get; private set; }
+
+    public bool Official { get; private set; }
+
+    public int PingInMs { get; set; } = -1;
+
+    public int Port { get; private set; }
+
+    public bool Recommended { get; private set; }
+
+    public bool RequiresPassword { get; private set; }
+
+    public int Version { get; private set; }
+
     /// <summary>
-    /// Parses a formatted string that contains the tunnel server's
-    /// information into a CnCNetTunnel instance.
+    /// Parses a formatted string that contains the tunnel server's information into a CnCNetTunnel instance.
     /// </summary>
     /// <param name="str">The string that contains the tunnel server's information.</param>
     /// <returns>A CnCNetTunnel instance parsed from the given string.</returns>
@@ -72,37 +99,10 @@ public class CnCNetTunnel
         }
     }
 
-    public int Port { get; private set; }
-
-    public string Country { get; private set; }
-
-    public string CountryCode { get; private set; }
-
-    public string Name { get; private set; }
-
-    public bool RequiresPassword { get; private set; }
-
-    public int Clients { get; private set; }
-
-    public int MaxClients { get; private set; }
-
-    public bool Official { get; private set; }
-
-    public bool Recommended { get; private set; }
-
-    public double Latitude { get; private set; }
-
-    public double Longitude { get; private set; }
-
-    public int Version { get; private set; }
-
-    public double Distance { get; private set; }
-
-    public int PingInMs { get; set; } = -1;
-
     /// <summary>
     /// Gets a list of player ports to use from a specific tunnel server.
     /// </summary>
+    /// <param name="playerCount">player count.</param>
     /// <returns>A list of player ports to use.</returns>
     public List<int> GetPlayerPortInfo(int playerCount)
     {
@@ -122,10 +122,10 @@ public class CnCNetTunnel
             string[] portIDs = data.Split(',');
             List<int> playerPorts = new();
 
-            foreach (string _port in portIDs)
+            foreach (string port in portIDs)
             {
-                playerPorts.Add(Convert.ToInt32(_port));
-                Logger.Log($"Added port {_port}");
+                playerPorts.Add(Convert.ToInt32(port));
+                Logger.Log($"Added port {port}");
             }
 
             return playerPorts;

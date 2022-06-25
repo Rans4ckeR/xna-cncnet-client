@@ -9,14 +9,13 @@ public class LogFileStatisticsParser : GenericMatchParser
 {
     private readonly bool isLoadedGame;
     private string fileName = "DTA.log";
+    private string economyString = "Economy"; // RA2/YR do not have economy stat, but a number of built objects.
 
     public LogFileStatisticsParser(MatchStatistics ms, bool isLoadedGame)
         : base(ms)
     {
         this.isLoadedGame = isLoadedGame;
     }
-
-    private string economyString = "Economy"; // RA2/YR do not have economy stat, but a number of built objects.
 
     public void ParseStats(string gamepath, string fileName)
     {

@@ -13,13 +13,12 @@ namespace DTAClient.Domain;
 /// </summary>
 public class DiscordHandler : GameComponent
 {
+    private RichPresence _currentPresence;
     private DiscordRpcClient client;
 
-    private RichPresence _currentPresence;
-
     /// <summary>
-    /// Initializes a new instance of the <see cref="DiscordHandler"/> class.
-    /// Creates a new instance of Discord handler.
+    /// Initializes a new instance of the <see cref="DiscordHandler" /> class. Creates a new
+    /// instance of Discord handler.
     /// </summary>
     /// <param name="windowManager">The window manager.</param>
     public DiscordHandler(WindowManager windowManager)
@@ -54,26 +53,13 @@ public class DiscordHandler : GameComponent
     /// </summary>
     public RichPresence PreviousPresence { get; private set; }
 
-    #region overrides
-
-    public override void Initialize()
-    {
-        InitializeClient();
-        UpdatePresence();
-
-        if (UserINISettings.Instance.DiscordIntegration)
-            Connect();
-
-        base.Initialize();
-    }
-
     /// <summary>
-    /// Connects to Discord.
-    /// Does not do anything if the Discord RPC client has not been initialized or is already connected.
+    /// Connects to Discord. Does not do anything if the Discord RPC client has not been initialized
+    /// or is already connected.
     /// </summary>
     public void Connect()
     {
-        if (client == null || client != null && client.IsInitialized)
+        if (client == null || (client != null && client.IsInitialized))
             return;
 
         bool success = client.Initialize();
@@ -84,60 +70,34 @@ public class DiscordHandler : GameComponent
             Logger.Log("DiscordHandler: Failed to connect Discord RPC client.");
     }
 
-    protected override void Dispose(bool disposing)
-    {
-        if (client.IsInitialized)
-            client.ClearPresence();
-
-        client.Dispose();
-        base.Dispose(disposing);
-    }
-
-    #endregion overrides
-
-    #region methods
-
     /// <summary>
-    /// Initializes or reinitializes Discord RPC client object & event handlers.
-    /// </summary>
-    private void InitializeClient()
-    {
-        if (client != null && client.IsInitialized)
-        {
-            client.ClearPresence();
-            client.Dispose();
-        }
-
-        client = new DiscordRpcClient(ClientConfiguration.Instance.DiscordAppId);
-        client.OnReady += OnReady;
-        client.OnClose += OnClose;
-        client.OnError += OnError;
-        client.OnConnectionEstablished += OnConnectionEstablished;
-        client.OnConnectionFailed += OnConnectionFailed;
-        client.OnPresenceUpdate += OnPresenceUpdate;
-        client.OnSubscribe += OnSubscribe;
-        client.OnUnsubscribe += OnUnsubscribe;
-
-        if (CurrentPresence != null)
-            client.SetPresence(CurrentPresence);
-    }
-
-    /// <summary>
-    /// Disconnects from Discord.
-    /// Does not do anything if the Discord RPC client has not been initialized or is not connected.
+    /// Disconnects from Discord. Does not do anything if the Discord RPC client has not been
+    /// initialized or is not connected.
     /// </summary>
     public void Disconnect()
     {
         if (client == null || !client.IsInitialized)
             return;
 
-        // HACK warning
-        // Currently DiscordRpcClient does not appear to have any way to reliably disconnect and reconnect using same client object.
-        // Deinitialize does not appear to completely reset connection state & resources and any attempts to call Initialize afterwards will fail.
-        // A hacky solution is to dispose current client object and create and initialize a new one.
+        // HACK warning Currently DiscordRpcClient does not appear to have any way to reliably
+        // disconnect and reconnect using same client object. Deinitialize does not appear to
+        // completely reset connection state & resources and any attempts to call Initialize
+        // afterwards will fail. A hacky solution is to dispose current client object and create and
+        // initialize a new one.
         InitializeClient(); //client.Deinitialize();
 
         Logger.Log("DiscordHandler: Disconnected Discord RPC client.");
+    }
+
+    public override void Initialize()
+    {
+        InitializeClient();
+        UpdatePresence();
+
+        if (UserINISettings.Instance.DiscordIntegration)
+            Connect();
+
+        base.Initialize();
     }
 
     /// <summary>
@@ -158,6 +118,8 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with simple state and details info.
     /// </summary>
+    /// <param name="state">state.</param>
+    /// <param name="details">details.</param>
     public void UpdatePresence(string state, string details)
     {
         CurrentPresence = new RichPresence()
@@ -174,10 +136,31 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with info from game lobbies.
     /// </summary>
-    public void UpdatePresence(string map, string mode, string type, string state,
-        int players, int maxPlayers, string side, string roomName,
-        bool isHost = false, bool isPassworded = false,
-        bool isLocked = false, bool resetTimer = false)
+    /// <param name="map">map.</param>
+    /// <param name="mode">mode.</param>
+    /// <param name="type">type.</param>
+    /// <param name="state">state.</param>
+    /// <param name="players">players.</param>
+    /// <param name="maxPlayers">maxPlayers.</param>
+    /// <param name="side">side.</param>
+    /// <param name="roomName">roomName.</param>
+    /// <param name="isHost">isHost.</param>
+    /// <param name="isPassworded">isPassworded.</param>
+    /// <param name="isLocked">isLocked.</param>
+    /// <param name="resetTimer">resetTimer.</param>
+    public void UpdatePresence(
+        string map,
+        string mode,
+        string type,
+        string state,
+        int players,
+        int maxPlayers,
+        string side,
+        string roomName,
+        bool isHost = false,
+        bool isPassworded = false,
+        bool isLocked = false,
+        bool resetTimer = false)
     {
         string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), string.Empty);
         string stateString = $"{state} [{players}/{maxPlayers}] • {roomName}";
@@ -205,9 +188,25 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with info from game loading lobbies.
     /// </summary>
-    public void UpdatePresence(string map, string mode, string type, string state,
-        int players, int maxPlayers, string roomName,
-        bool isHost = false, bool resetTimer = false)
+    /// <param name="map">map.</param>
+    /// <param name="mode">mode.</param>
+    /// <param name="type">type.</param>
+    /// <param name="state">state.</param>
+    /// <param name="players">players.</param>
+    /// <param name="maxPlayers">maxPlayers.</param>
+    /// <param name="roomName">roomName.</param>
+    /// <param name="isHost">isHost.</param>
+    /// <param name="resetTimer">resetTimer.</param>
+    public void UpdatePresence(
+        string map,
+        string mode,
+        string type,
+        string state,
+        int players,
+        int maxPlayers,
+        string roomName,
+        bool isHost = false,
+        bool resetTimer = false)
     {
         string stateString = $"{state} [{players}/{maxPlayers}] • {roomName}";
         stateString += "💾";
@@ -229,6 +228,11 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with info from skirmish "lobby".
     /// </summary>
+    /// <param name="map">map.</param>
+    /// <param name="mode">mode.</param>
+    /// <param name="state">state.</param>
+    /// <param name="side">side.</param>
+    /// <param name="resetTimer">resetTimer.</param>
     public void UpdatePresence(string map, string mode, string state, string side, bool resetTimer = false)
     {
         string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), string.Empty);
@@ -250,6 +254,10 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with info from campaign screen.
     /// </summary>
+    /// <param name="mission">mission.</param>
+    /// <param name="difficulty">difficulty.</param>
+    /// <param name="side">side.</param>
+    /// <param name="resetTimer">resetTimer.</param>
     public void UpdatePresence(string mission, string difficulty, string side, bool resetTimer = false)
     {
         string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), string.Empty);
@@ -271,6 +279,8 @@ public class DiscordHandler : GameComponent
     /// <summary>
     /// Updates Discord Rich Presence with info from game loading screen.
     /// </summary>
+    /// <param name="save">save.</param>
+    /// <param name="resetTimer">resetTimer.</param>
     public void UpdatePresence(string save, bool resetTimer = false)
     {
         CurrentPresence = new RichPresence()
@@ -286,24 +296,43 @@ public class DiscordHandler : GameComponent
         };
     }
 
-    #endregion methods
+    protected override void Dispose(bool disposing)
+    {
+        if (client.IsInitialized)
+            client.ClearPresence();
+
+        client.Dispose();
+        base.Dispose(disposing);
+    }
+
+    /// <summary> Initializes or reinitializes Discord RPC client object & event handlers. </summary>
+    private void InitializeClient()
+    {
+        if (client != null && client.IsInitialized)
+        {
+            client.ClearPresence();
+            client.Dispose();
+        }
+
+        client = new DiscordRpcClient(ClientConfiguration.Instance.DiscordAppId);
+        client.OnReady += OnReady;
+        client.OnClose += OnClose;
+        client.OnError += OnError;
+        client.OnConnectionEstablished += OnConnectionEstablished;
+        client.OnConnectionFailed += OnConnectionFailed;
+        client.OnPresenceUpdate += OnPresenceUpdate;
+        client.OnSubscribe += OnSubscribe;
+        client.OnUnsubscribe += OnUnsubscribe;
+
+        if (CurrentPresence != null)
+            client.SetPresence(CurrentPresence);
+    }
 
     #region eventhandlers
-
-    private void OnReady(object sender, ReadyMessage args)
-    {
-        Logger.Log($"Discord: Received Ready from user {args.User.Username}");
-        client.SetPresence(CurrentPresence);
-    }
 
     private void OnClose(object sender, CloseMessage args)
     {
         Logger.Log($"Discord: Lost Connection with client because of '{args.Reason}'");
-    }
-
-    private void OnError(object sender, ErrorMessage args)
-    {
-        Logger.Log($"Discord: Error occured. ({args.Code}) {args.Message}");
     }
 
     private void OnConnectionEstablished(object sender, ConnectionEstablishedMessage args)
@@ -316,9 +345,20 @@ public class DiscordHandler : GameComponent
         Logger.Log($"Discord: Pipe Connection Failed. Could not connect to pipe #{args.FailedPipe}");
     }
 
+    private void OnError(object sender, ErrorMessage args)
+    {
+        Logger.Log($"Discord: Error occured. ({args.Code}) {args.Message}");
+    }
+
     private void OnPresenceUpdate(object sender, PresenceMessage args)
     {
         Logger.Log($"Discord: Rich Presence Updated. State: {args.Presence?.State}; Details: {args.Presence?.Details}");
+    }
+
+    private void OnReady(object sender, ReadyMessage args)
+    {
+        Logger.Log($"Discord: Received Ready from user {args.User.Username}");
+        client.SetPresence(CurrentPresence);
     }
 
     private void OnSubscribe(object sender, SubscribeMessage args)

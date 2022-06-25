@@ -9,9 +9,9 @@ namespace ClientCore.Statistics;
 
 public class StatisticsManager : GenericStatisticsManager
 {
-    private const string VERSION = "1.06";
-    private const string SCORE_FILE_PATH = "Client/dscore.dat";
     private const string OLD_SCORE_FILE_PATH = "dscore.dat";
+    private const string SCORE_FILE_PATH = "Client/dscore.dat";
+    private const string VERSION = "1.06";
     private static StatisticsManager _instance;
 
     public event EventHandler GameAdded;
@@ -26,6 +26,317 @@ public class StatisticsManager : GenericStatisticsManager
         }
     }
 
+    public void AddMatchAndSaveDatabase(bool addMatch, MatchStatistics ms)
+    {
+        // Skip adding stats if the game only had one player, make exception for co-op since it
+        // doesn't recognize pre-placed houses as players.
+        if (ms.GetPlayerCount() <= 1 && !ms.MapIsCoop)
+        {
+            Logger.Log("Skipping adding match to statistics because game only had one player.");
+            return;
+        }
+
+        if (ms.LengthInSeconds < 60)
+        {
+            Logger.Log("Skipping adding match to statistics because the game was cancelled.");
+            return;
+        }
+
+        if (addMatch)
+        {
+            Statistics.Add(ms);
+            GameAdded?.Invoke(this, EventArgs.Empty);
+        }
+
+        if (!File.Exists(ProgramConstants.GamePath + SCORE_FILE_PATH))
+        {
+            StatisticsManager.CreateDummyFile();
+        }
+
+        Logger.Log("Writing game info to statistics file.");
+
+        using (FileStream fs = File.Open(ProgramConstants.GamePath + SCORE_FILE_PATH, FileMode.Open, FileAccess.ReadWrite))
+        {
+            fs.Position = 4; // First 4 bytes after the version mean the amount of games
+            fs.WriteInt(Statistics.Count);
+
+            fs.Position = fs.Length;
+            ms.Write(fs);
+        }
+
+        Logger.Log("Finished writing statistics.");
+    }
+
+    public void ClearDatabase()
+    {
+        Statistics.Clear();
+        CreateDummyFile();
+    }
+
+    public int GetCoopRankForDefaultMap(string mapName, int requiredPlayerCount)
+    {
+        List<MatchStatistics> matches = new();
+
+        // Filter out unfitting games
+        foreach (MatchStatistics ms in Statistics)
+        {
+            if (!ms.SawCompletion)
+                continue;
+
+            if (!ms.IsValidForStar)
+                continue;
+
+            if (ms.MapName != mapName)
+                continue;
+
+            if (ms.Players.Count != requiredPlayerCount)
+                continue;
+
+            if (ms.Players.Count(ps => !ps.IsAI && !ps.WasSpectator) > 1 &&
+                ms.Players.Find(ps => ps.IsAI) != null)
+            {
+                matches.Add(ms);
+            }
+        }
+
+        int rank = -1;
+
+        foreach (MatchStatistics ms in matches)
+        {
+            rank = Math.Max(rank, StatisticsManager.GetRankForCoopMatch(ms));
+        }
+
+        return rank;
+    }
+
+    public MatchStatistics GetMatchWithGameID(int gameId)
+    {
+        return Statistics.Find(m => m.GameID == gameId);
+    }
+
+    public int GetSkirmishRankForDefaultMap(string mapName, int requiredPlayerCount)
+    {
+        List<MatchStatistics> matches = new();
+
+        // Filter out unfitting games
+        foreach (MatchStatistics ms in Statistics)
+        {
+            if (ms.SawCompletion &&
+                ms.IsValidForStar &&
+                ms.MapName == mapName &&
+                ms.Players.Count == requiredPlayerCount &&
+                ms.Players.Count(p => !p.IsAI) == 1)
+            {
+                matches.Add(ms);
+            }
+        }
+
+        int rank = -1;
+
+        foreach (MatchStatistics ms in matches)
+        {
+            // TODO This code turned out pretty ugly, should design it better
+            PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
+
+            if (localPlayer == null || !localPlayer.Won)
+                continue;
+
+            int[] teamMemberCounts = new int[5];
+            int lowestEnemyAILevel = 2;
+            int highestAllyAILevel = 0;
+
+            for (int i = 0; i < ms.Players.Count; i++)
+            {
+                PlayerStatistics ps = ms.GetPlayer(i);
+
+                teamMemberCounts[ps.Team]++;
+
+                if (ps.IsLocalPlayer)
+                {
+                    continue;
+                }
+
+                if (ps.Team > 0 && ps.Team == localPlayer.Team)
+                {
+                    if (ps.AILevel > highestAllyAILevel)
+                        highestAllyAILevel = ps.AILevel;
+                }
+                else
+                {
+                    if (ps.AILevel < lowestEnemyAILevel)
+                        lowestEnemyAILevel = ps.AILevel;
+                }
+            }
+
+            if (lowestEnemyAILevel < highestAllyAILevel)
+            {
+                // Check that the player's AI allies weren't stronger
+                continue;
+            }
+
+            if (localPlayer.Team > 0)
+            {
+                // Check that all teams had at least as many players as the human player's team
+                int allyCount = teamMemberCounts[localPlayer.Team];
+                bool pass = true;
+
+                for (int i = 1; i < 5; i++)
+                {
+                    if (i == localPlayer.Team)
+                        continue;
+
+                    if (teamMemberCounts[i] > 0)
+                    {
+                        if (teamMemberCounts[i] < allyCount)
+                        {
+                            // The enemy team has fewer players than the player's team
+                            pass = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (!pass)
+                    continue;
+
+                // Check that there is a team other than the players' team that is at least as large
+                pass = false;
+                for (int i = 1; i < 5; i++)
+                {
+                    if (i == localPlayer.Team)
+                        continue;
+
+                    if (teamMemberCounts[i] >= allyCount)
+                    {
+                        pass = true;
+                        break;
+                    }
+                }
+
+                if (!pass)
+                    continue;
+            }
+
+            if (rank < lowestEnemyAILevel)
+            {
+                rank = lowestEnemyAILevel;
+
+                if (rank == 2)
+                    return rank; // Best possible rank
+            }
+        }
+
+        return rank;
+    }
+
+    public bool HasBeatCoOpMap(string mapName, string gameMode)
+    {
+        // _ = new();
+
+        // Filter out unfitting games
+        foreach (MatchStatistics ms in Statistics)
+        {
+            if (ms.SawCompletion &&
+                ms.MapName == mapName &&
+                ms.GameMode == gameMode)
+            {
+                if (ms.Players[0].Won)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    public bool HasWonMapInPvP(string mapName, string gameMode, int requiredPlayerCount)
+    {
+        List<MatchStatistics> matches = new();
+
+        foreach (MatchStatistics ms in Statistics)
+        {
+            if (!ms.SawCompletion)
+                continue;
+
+            if (!ms.IsValidForStar)
+                continue;
+
+            if (ms.MapName != mapName)
+                continue;
+
+            if (ms.GameMode != gameMode)
+                continue;
+
+            if (ms.Players.Count(ps => !ps.WasSpectator) != requiredPlayerCount)
+                continue;
+
+            if (ms.Players.Find(ps => ps.IsAI) != null)
+                continue;
+
+            PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
+
+            if (localPlayer == null)
+                continue;
+
+            if (localPlayer.WasSpectator)
+                continue;
+
+            if (!localPlayer.Won)
+                continue;
+
+            int[] teamMemberCounts = new int[5];
+
+            ms.Players.FindAll(ps => !ps.WasSpectator).ForEach(ps => teamMemberCounts[ps.Team]++);
+
+            if (localPlayer.Team > 0)
+            {
+                int lowestEnemyTeamMemberCount = int.MaxValue;
+
+                for (int i = 1; i < 5; i++)
+                {
+                    if (i != localPlayer.Team && teamMemberCounts[i] > 0)
+                    {
+                        if (teamMemberCounts[i] < lowestEnemyTeamMemberCount)
+                            lowestEnemyTeamMemberCount = teamMemberCounts[i];
+                    }
+                }
+
+                if (lowestEnemyTeamMemberCount > teamMemberCounts[localPlayer.Team])
+                    continue;
+
+                return true;
+            }
+
+            if (ms.Players.Count(ps => !ps.WasSpectator) > 1)
+                return true;
+        }
+
+        return false;
+    }
+
+    public bool IsGameIdUnique(int gameId)
+    {
+        return Statistics.Find(m => m.GameID == gameId) == null;
+    }
+
+    public void PurgeStats()
+    {
+        int removedCount = 0;
+
+        for (int i = 0; i < Statistics.Count; i++)
+        {
+            if (Statistics[i].LengthInSeconds < 60)
+            {
+                Logger.Log("Removing match on " + Statistics[i].MapName + " because it's too short.");
+                Statistics.RemoveAt(i);
+                i--;
+                removedCount++;
+            }
+        }
+
+        if (removedCount > 0)
+            SaveDatabase();
+    }
+
     public override void ReadStatistics(string gamePath)
     {
         if (!File.Exists(gamePath + SCORE_FILE_PATH))
@@ -36,7 +347,7 @@ public class StatisticsManager : GenericStatisticsManager
 
         Logger.Log("Reading statistics.");
 
-        statistics.Clear();
+        Statistics.Clear();
 
         bool resave = ReadFile(gamePath + OLD_SCORE_FILE_PATH);
         bool resaveNew = ReadFile(gamePath + SCORE_FILE_PATH);
@@ -55,83 +366,101 @@ public class StatisticsManager : GenericStatisticsManager
         }
     }
 
-    public void PurgeStats()
+    /// <summary>
+    /// Deletes the statistics file on the file system and rewrites it.
+    /// </summary>
+    public void SaveDatabase()
     {
-        int removedCount = 0;
+        File.Delete(ProgramConstants.GamePath + SCORE_FILE_PATH);
+        StatisticsManager.CreateDummyFile();
 
-        for (int i = 0; i < statistics.Count; i++)
+        using FileStream fs = File.Open(ProgramConstants.GamePath + SCORE_FILE_PATH, FileMode.Open, FileAccess.ReadWrite);
+        fs.Position = 4; // First 4 bytes after the version mean the amount of games
+        fs.WriteInt(Statistics.Count);
+
+        foreach (MatchStatistics ms in Statistics)
         {
-            if (statistics[i].LengthInSeconds < 60)
-            {
-                Logger.Log("Removing match on " + statistics[i].MapName + " because it's too short.");
-                statistics.RemoveAt(i);
-                i--;
-                removedCount++;
-            }
+            ms.Write(fs);
         }
-
-        if (removedCount > 0)
-            SaveDatabase();
     }
 
-    /// <summary>
-    /// Reads a statistics file.
-    /// </summary>
-    /// <param name="filePath">The path to the statistics file.</param>
-    /// <returns>A bool that determines whether the database should be re-saved.</returns>
-    private bool ReadFile(string filePath)
+    private static void CreateDummyFile()
     {
-        bool returnValue = false;
+        Logger.Log("Creating empty statistics file.");
 
-        try
+        StreamWriter sw = new(File.Create(ProgramConstants.GamePath + SCORE_FILE_PATH));
+        sw.Write(VERSION);
+        sw.Close();
+    }
+
+    private static int GetRankForCoopMatch(MatchStatistics ms)
+    {
+        PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
+
+        if (localPlayer == null || !localPlayer.Won)
+            return -1;
+
+        if (ms.Players.Find(p => p.WasSpectator) != null)
+            return -1; // Don't allow matches with spectators
+
+        if (ms.Players.Any(p => !p.IsAI && p.Team != localPlayer.Team))
+            return -1; // Don't allow matches with human players who were on a different team
+
+        if (ms.Players.Find(p => p.Team == 0) != null)
+            return -1; // Matches with non-allied players are discarded
+
+        if (ms.Players.All(ps => ps.Team == localPlayer.Team))
+            return -1; // Discard matches that had no enemies
+
+        int[] teamMemberCounts = new int[5];
+        int lowestEnemyAILevel = 2;
+        int highestAllyAILevel = 0;
+
+        for (int i = 0; i < ms.Players.Count; i++)
         {
-            string databaseVersion = GetStatDatabaseVersion(filePath);
+            PlayerStatistics ps = ms.GetPlayer(i);
 
-            if (databaseVersion == null)
-                return false; // No score database exists
+            teamMemberCounts[ps.Team]++;
 
-            switch (databaseVersion)
+            if (!ps.IsAI)
             {
-                case "1.00":
-                case "1.01":
-                    ReadDatabase(filePath, 0);
-                    returnValue = true;
-                    break;
+                continue;
+            }
 
-                case "1.02":
-                    ReadDatabase(filePath, 2);
-                    returnValue = true;
-                    break;
-
-                case "1.03":
-                    ReadDatabase(filePath, 3);
-                    returnValue = true;
-                    break;
-
-                case "1.04":
-                    ReadDatabase(filePath, 4);
-                    returnValue = true;
-                    break;
-
-                case "1.05":
-                    ReadDatabase(filePath, 5);
-                    returnValue = true;
-                    break;
-
-                case "1.06":
-                    ReadDatabase(filePath, 6);
-                    break;
-
-                default:
-                    throw new InvalidDataException("Invalid version for " + filePath + ": " + databaseVersion);
+            if (ps.Team > 0 && ps.Team == localPlayer.Team)
+            {
+                if (ps.AILevel > highestAllyAILevel)
+                    highestAllyAILevel = ps.AILevel;
+            }
+            else
+            {
+                if (ps.AILevel < lowestEnemyAILevel)
+                    lowestEnemyAILevel = ps.AILevel;
             }
         }
-        catch (Exception ex)
+
+        if (lowestEnemyAILevel < highestAllyAILevel)
         {
-            Logger.Log("Error reading statistics: " + ex.Message);
+            // Check that the player's AI allies weren't stronger
+            return -1;
         }
 
-        return returnValue;
+        // Check that all teams had at least as many players as the local player's team
+        int allyCount = teamMemberCounts[localPlayer.Team];
+
+        for (int i = 1; i < 5; i++)
+        {
+            if (i == localPlayer.Team)
+                continue;
+
+            if (teamMemberCounts[i] > 0)
+            {
+                if (teamMemberCounts[i] < allyCount)
+                    return -1;
+            }
+        }
+
+        return lowestEnemyAILevel;
     }
 
     private void ReadDatabase(string filePath, int version)
@@ -287,7 +616,7 @@ public class StatisticsManager : GenericStatisticsManager
                 if (ms.Players.Find(p => p.IsLocalPlayer && !p.IsAI) == null)
                     continue;
 
-                statistics.Add(ms);
+                Statistics.Add(ms);
             }
         }
         catch (Exception ex)
@@ -296,392 +625,63 @@ public class StatisticsManager : GenericStatisticsManager
         }
     }
 
-    public void ClearDatabase()
-    {
-        statistics.Clear();
-        StatisticsManager.CreateDummyFile();
-    }
-
-    public void AddMatchAndSaveDatabase(bool addMatch, MatchStatistics ms)
-    {
-        // Skip adding stats if the game only had one player, make exception for co-op since it doesn't recognize pre-placed houses as players.
-        if (ms.GetPlayerCount() <= 1 && !ms.MapIsCoop)
-        {
-            Logger.Log("Skipping adding match to statistics because game only had one player.");
-            return;
-        }
-
-        if (ms.LengthInSeconds < 60)
-        {
-            Logger.Log("Skipping adding match to statistics because the game was cancelled.");
-            return;
-        }
-
-        if (addMatch)
-        {
-            statistics.Add(ms);
-            GameAdded?.Invoke(this, EventArgs.Empty);
-        }
-
-        if (!File.Exists(ProgramConstants.GamePath + SCORE_FILE_PATH))
-        {
-            StatisticsManager.CreateDummyFile();
-        }
-
-        Logger.Log("Writing game info to statistics file.");
-
-        using (FileStream fs = File.Open(ProgramConstants.GamePath + SCORE_FILE_PATH, FileMode.Open, FileAccess.ReadWrite))
-        {
-            fs.Position = 4; // First 4 bytes after the version mean the amount of games
-            fs.WriteInt(statistics.Count);
-
-            fs.Position = fs.Length;
-            ms.Write(fs);
-        }
-
-        Logger.Log("Finished writing statistics.");
-    }
-
     /// <summary>
-    /// Deletes the statistics file on the file system and rewrites it.
+    /// Reads a statistics file.
     /// </summary>
-    public void SaveDatabase()
+    /// <param name="filePath">The path to the statistics file.</param>
+    /// <returns>A bool that determines whether the database should be re-saved.</returns>
+    private bool ReadFile(string filePath)
     {
-        File.Delete(ProgramConstants.GamePath + SCORE_FILE_PATH);
-        StatisticsManager.CreateDummyFile();
+        bool returnValue = false;
 
-        using FileStream fs = File.Open(ProgramConstants.GamePath + SCORE_FILE_PATH, FileMode.Open, FileAccess.ReadWrite);
-        fs.Position = 4; // First 4 bytes after the version mean the amount of games
-        fs.WriteInt(statistics.Count);
-
-        foreach (MatchStatistics ms in statistics)
+        try
         {
-            ms.Write(fs);
-        }
-    }
+            string databaseVersion = GetStatDatabaseVersion(filePath);
 
-    private static void CreateDummyFile()
-    {
-        Logger.Log("Creating empty statistics file.");
+            if (databaseVersion == null)
+                return false; // No score database exists
 
-        StreamWriter sw = new(File.Create(ProgramConstants.GamePath + SCORE_FILE_PATH));
-        sw.Write(VERSION);
-        sw.Close();
-    }
-
-    public bool HasBeatCoOpMap(string mapName, string gameMode)
-    {
-        // _ = new();
-
-        // Filter out unfitting games
-        foreach (MatchStatistics ms in statistics)
-        {
-            if (ms.SawCompletion &&
-                ms.MapName == mapName &&
-                ms.GameMode == gameMode)
+            switch (databaseVersion)
             {
-                if (ms.Players[0].Won)
-                    return true;
-            }
-        }
+                case "1.00":
+                case "1.01":
+                    ReadDatabase(filePath, 0);
+                    returnValue = true;
+                    break;
 
-        return false;
-    }
+                case "1.02":
+                    ReadDatabase(filePath, 2);
+                    returnValue = true;
+                    break;
 
-    public int GetCoopRankForDefaultMap(string mapName, int requiredPlayerCount)
-    {
-        List<MatchStatistics> matches = new();
+                case "1.03":
+                    ReadDatabase(filePath, 3);
+                    returnValue = true;
+                    break;
 
-        // Filter out unfitting games
-        foreach (MatchStatistics ms in statistics)
-        {
-            if (!ms.SawCompletion)
-                continue;
+                case "1.04":
+                    ReadDatabase(filePath, 4);
+                    returnValue = true;
+                    break;
 
-            if (!ms.IsValidForStar)
-                continue;
+                case "1.05":
+                    ReadDatabase(filePath, 5);
+                    returnValue = true;
+                    break;
 
-            if (ms.MapName != mapName)
-                continue;
+                case "1.06":
+                    ReadDatabase(filePath, 6);
+                    break;
 
-            if (ms.Players.Count != requiredPlayerCount)
-                continue;
-
-            if (ms.Players.Count(ps => !ps.IsAI && !ps.WasSpectator) > 1 &&
-                ms.Players.Find(ps => ps.IsAI) != null)
-            {
-                matches.Add(ms);
+                default:
+                    throw new InvalidDataException("Invalid version for " + filePath + ": " + databaseVersion);
             }
         }
-
-        int rank = -1;
-
-        foreach (MatchStatistics ms in matches)
+        catch (Exception ex)
         {
-            rank = Math.Max(rank, StatisticsManager.GetRankForCoopMatch(ms));
+            Logger.Log("Error reading statistics: " + ex.Message);
         }
 
-        return rank;
-    }
-
-    public bool HasWonMapInPvP(string mapName, string gameMode, int requiredPlayerCount)
-    {
-        List<MatchStatistics> matches = new();
-
-        foreach (MatchStatistics ms in statistics)
-        {
-            if (!ms.SawCompletion)
-                continue;
-
-            if (!ms.IsValidForStar)
-                continue;
-
-            if (ms.MapName != mapName)
-                continue;
-
-            if (ms.GameMode != gameMode)
-                continue;
-
-            if (ms.Players.Count(ps => !ps.WasSpectator) != requiredPlayerCount)
-                continue;
-
-            if (ms.Players.Find(ps => ps.IsAI) != null)
-                continue;
-
-            PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
-
-            if (localPlayer == null)
-                continue;
-
-            if (localPlayer.WasSpectator)
-                continue;
-
-            if (!localPlayer.Won)
-                continue;
-
-            int[] teamMemberCounts = new int[5];
-
-            ms.Players.FindAll(ps => !ps.WasSpectator).ForEach(ps => teamMemberCounts[ps.Team]++);
-
-            if (localPlayer.Team > 0)
-            {
-                int lowestEnemyTeamMemberCount = int.MaxValue;
-
-                for (int i = 1; i < 5; i++)
-                {
-                    if (i != localPlayer.Team && teamMemberCounts[i] > 0)
-                    {
-                        if (teamMemberCounts[i] < lowestEnemyTeamMemberCount)
-                            lowestEnemyTeamMemberCount = teamMemberCounts[i];
-                    }
-                }
-
-                if (lowestEnemyTeamMemberCount > teamMemberCounts[localPlayer.Team])
-                    continue;
-
-                return true;
-            }
-
-            if (ms.Players.Count(ps => !ps.WasSpectator) > 1)
-                return true;
-        }
-
-        return false;
-    }
-
-    private static int GetRankForCoopMatch(MatchStatistics ms)
-    {
-        PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
-
-        if (localPlayer == null || !localPlayer.Won)
-            return -1;
-
-        if (ms.Players.Find(p => p.WasSpectator) != null)
-            return -1; // Don't allow matches with spectators
-
-        if (ms.Players.Any(p => !p.IsAI && p.Team != localPlayer.Team))
-            return -1; // Don't allow matches with human players who were on a different team
-
-        if (ms.Players.Find(p => p.Team == 0) != null)
-            return -1; // Matches with non-allied players are discarded
-
-        if (ms.Players.All(ps => ps.Team == localPlayer.Team))
-            return -1; // Discard matches that had no enemies
-
-        int[] teamMemberCounts = new int[5];
-        int lowestEnemyAILevel = 2;
-        int highestAllyAILevel = 0;
-
-        for (int i = 0; i < ms.Players.Count; i++)
-        {
-            PlayerStatistics ps = ms.GetPlayer(i);
-
-            teamMemberCounts[ps.Team]++;
-
-            if (!ps.IsAI)
-            {
-                continue;
-            }
-
-            if (ps.Team > 0 && ps.Team == localPlayer.Team)
-            {
-                if (ps.AILevel > highestAllyAILevel)
-                    highestAllyAILevel = ps.AILevel;
-            }
-            else
-            {
-                if (ps.AILevel < lowestEnemyAILevel)
-                    lowestEnemyAILevel = ps.AILevel;
-            }
-        }
-
-        if (lowestEnemyAILevel < highestAllyAILevel)
-        {
-            // Check that the player's AI allies weren't stronger
-            return -1;
-        }
-
-        // Check that all teams had at least as many players
-        // as the local player's team
-        int allyCount = teamMemberCounts[localPlayer.Team];
-
-        for (int i = 1; i < 5; i++)
-        {
-            if (i == localPlayer.Team)
-                continue;
-
-            if (teamMemberCounts[i] > 0)
-            {
-                if (teamMemberCounts[i] < allyCount)
-                    return -1;
-            }
-        }
-
-        return lowestEnemyAILevel;
-    }
-
-    public int GetSkirmishRankForDefaultMap(string mapName, int requiredPlayerCount)
-    {
-        List<MatchStatistics> matches = new();
-
-        // Filter out unfitting games
-        foreach (MatchStatistics ms in statistics)
-        {
-            if (ms.SawCompletion &&
-                ms.IsValidForStar &&
-                ms.MapName == mapName &&
-                ms.Players.Count == requiredPlayerCount &&
-                ms.Players.Count(p => !p.IsAI) == 1)
-            {
-                matches.Add(ms);
-            }
-        }
-
-        int rank = -1;
-
-        foreach (MatchStatistics ms in matches)
-        {
-            // TODO This code turned out pretty ugly, should design it better
-            PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
-
-            if (localPlayer == null || !localPlayer.Won)
-                continue;
-
-            int[] teamMemberCounts = new int[5];
-            int lowestEnemyAILevel = 2;
-            int highestAllyAILevel = 0;
-
-            for (int i = 0; i < ms.Players.Count; i++)
-            {
-                PlayerStatistics ps = ms.GetPlayer(i);
-
-                teamMemberCounts[ps.Team]++;
-
-                if (ps.IsLocalPlayer)
-                {
-                    continue;
-                }
-
-                if (ps.Team > 0 && ps.Team == localPlayer.Team)
-                {
-                    if (ps.AILevel > highestAllyAILevel)
-                        highestAllyAILevel = ps.AILevel;
-                }
-                else
-                {
-                    if (ps.AILevel < lowestEnemyAILevel)
-                        lowestEnemyAILevel = ps.AILevel;
-                }
-            }
-
-            if (lowestEnemyAILevel < highestAllyAILevel)
-            {
-                // Check that the player's AI allies weren't stronger
-                continue;
-            }
-
-            if (localPlayer.Team > 0)
-            {
-                // Check that all teams had at least as many players as the human player's team
-                int allyCount = teamMemberCounts[localPlayer.Team];
-                bool pass = true;
-
-                for (int i = 1; i < 5; i++)
-                {
-                    if (i == localPlayer.Team)
-                        continue;
-
-                    if (teamMemberCounts[i] > 0)
-                    {
-                        if (teamMemberCounts[i] < allyCount)
-                        {
-                            // The enemy team has fewer players than the player's team
-                            pass = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (!pass)
-                    continue;
-
-                // Check that there is a team other than the players' team that is at least as large
-                pass = false;
-                for (int i = 1; i < 5; i++)
-                {
-                    if (i == localPlayer.Team)
-                        continue;
-
-                    if (teamMemberCounts[i] >= allyCount)
-                    {
-                        pass = true;
-                        break;
-                    }
-                }
-
-                if (!pass)
-                    continue;
-            }
-
-            if (rank < lowestEnemyAILevel)
-            {
-                rank = lowestEnemyAILevel;
-
-                if (rank == 2)
-                    return rank; // Best possible rank
-            }
-        }
-
-        return rank;
-    }
-
-    public bool IsGameIdUnique(int gameId)
-    {
-        return statistics.Find(m => m.GameID == gameId) == null;
-    }
-
-    public MatchStatistics GetMatchWithGameID(int gameId)
-    {
-        return statistics.Find(m => m.GameID == gameId);
+        return returnValue;
     }
 }

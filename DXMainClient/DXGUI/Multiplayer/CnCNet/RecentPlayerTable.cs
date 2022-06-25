@@ -9,8 +9,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 public class RecentPlayerTable : XNAMultiColumnListBox
 {
-    public EventHandler<RecentPlayerTableRightClickEventArgs> PlayerRightClick;
-
     private readonly CnCNetManager connectionManager;
 
     public RecentPlayerTable(WindowManager windowManager, CnCNetManager connectionManager)
@@ -19,16 +17,7 @@ public class RecentPlayerTable : XNAMultiColumnListBox
         this.connectionManager = connectionManager;
     }
 
-    public override void Initialize()
-    {
-        AllowRightClickUnselect = false;
-
-        base.Initialize();
-
-        AddColumn("Player".L10N("UI:Main:RecentPlayerPlayer"));
-        AddColumn("Game".L10N("UI:Main:RecentPlayerGame"));
-        AddColumn("Date/Time".L10N("UI:Main:RecentPlayerDateTime"));
-    }
+    public EventHandler<RecentPlayerTableRightClickEventArgs> PlayerRightClick { get; set; }
 
     public void AddRecentPlayer(RecentPlayer recentPlayer)
     {
@@ -53,6 +42,25 @@ public class RecentPlayerTable : XNAMultiColumnListBox
         });
     }
 
+    public override void Initialize()
+    {
+        AllowRightClickUnselect = false;
+
+        base.Initialize();
+
+        AddColumn("Player".L10N("UI:Main:RecentPlayerPlayer"));
+        AddColumn("Game".L10N("UI:Main:RecentPlayerGame"));
+        AddColumn("Date/Time".L10N("UI:Main:RecentPlayerDateTime"));
+    }
+
+    private void AddColumn(string headerText)
+    {
+        XNAPanel header = CreateColumnHeader(headerText);
+        XNAListBox xnaListBox = new(WindowManager);
+        xnaListBox.RightClick += ListBox_RightClick;
+        AddColumn(header, xnaListBox);
+    }
+
     private XNAPanel CreateColumnHeader(string headerText)
     {
         XNALabel xnaLabel = new(WindowManager)
@@ -71,14 +79,6 @@ public class RecentPlayerTable : XNAMultiColumnListBox
         header.AddChild(xnaLabel);
 
         return header;
-    }
-
-    private void AddColumn(string headerText)
-    {
-        XNAPanel header = CreateColumnHeader(headerText);
-        XNAListBox xnaListBox = new(WindowManager);
-        xnaListBox.RightClick += ListBox_RightClick;
-        AddColumn(header, xnaListBox);
     }
 
     private void ListBox_RightClick(object sender, EventArgs e)

@@ -10,22 +10,15 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer;
 
-public class GameLoadEventArgs : EventArgs
-{
-    public GameLoadEventArgs(int loadedGameId)
-    {
-        LoadedGameID = loadedGameId;
-    }
-
-    public int LoadedGameID { get; private set; }
-}
-
 /// <summary>
-/// A window that makes it possible for a LAN player who's hosting a game
-/// to pick between hosting a new game and hosting a loaded game.
+/// A window that makes it possible for a LAN player who's hosting a game to pick between hosting a
+/// new game and hosting a loaded game.
 /// </summary>
 internal class LANGameCreationWindow : XNAWindow
 {
+    private XNAButton btnCancel;
+    private XNAButton btnLoadGame;
+    private XNAButton btnNewGame;
     private XNALabel lblDescription;
 
     public LANGameCreationWindow(WindowManager windowManager)
@@ -33,13 +26,9 @@ internal class LANGameCreationWindow : XNAWindow
     {
     }
 
-    public event EventHandler NewGame;
-
     public event EventHandler<GameLoadEventArgs> LoadGame;
 
-    private XNAButton btnNewGame;
-    private XNAButton btnLoadGame;
-    private XNAButton btnCancel;
+    public event EventHandler NewGame;
 
     public override void Initialize()
     {
@@ -66,7 +55,7 @@ internal class LANGameCreationWindow : XNAWindow
         btnNewGame = new XNAButton(WindowManager)
         {
             Name = "btnNewGame",
-            ClientRectangle = new Rectangle(12, 42, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+            ClientRectangle = new Rectangle(12, 42, UIDesignConstants.ButtonWidth133, UIDesignConstants.ButtonHeight),
             IdleTexture = AssetLoader.LoadTexture("133pxbtn.png"),
             HoverTexture = AssetLoader.LoadTexture("133pxbtn_c.png"),
             FontIndex = 1,
@@ -80,7 +69,9 @@ internal class LANGameCreationWindow : XNAWindow
             Name = "btnLoadGame",
             ClientRectangle = new Rectangle(
                 btnNewGame.Right + 12,
-            btnNewGame.Y, UIDesignConstants.BUTTONWIDTH133, UIDesignConstants.BUTTONHEIGHT),
+                btnNewGame.Y,
+                UIDesignConstants.ButtonWidth133,
+                UIDesignConstants.ButtonHeight),
             IdleTexture = btnNewGame.IdleTexture,
             HoverTexture = btnNewGame.HoverTexture,
             FontIndex = 1,
@@ -94,7 +85,9 @@ internal class LANGameCreationWindow : XNAWindow
             Name = "btnCancel",
             ClientRectangle = new Rectangle(
                 btnLoadGame.Right + 12,
-            btnNewGame.Y, 133, 23),
+                btnNewGame.Y,
+                133,
+                23),
             IdleTexture = btnNewGame.IdleTexture,
             HoverTexture = btnNewGame.HoverTexture,
             FontIndex = 1,
@@ -118,27 +111,6 @@ internal class LANGameCreationWindow : XNAWindow
         Enable();
     }
 
-    private void BtnNewGame_LeftClick(object sender, EventArgs e)
-    {
-        Disable();
-        NewGame?.Invoke(this, EventArgs.Empty);
-    }
-
-    private void BtnLoadGame_LeftClick(object sender, EventArgs e)
-    {
-        Disable();
-
-        IniFile iniFile = new(ProgramConstants.GamePath +
-            ProgramConstants.SAVEDGAMESPAWNINI);
-
-        LoadGame?.Invoke(this, new GameLoadEventArgs(iniFile.GetIntValue("Settings", "GameID", -1)));
-    }
-
-    private void BtnCancel_LeftClick(object sender, EventArgs e)
-    {
-        Disable();
-    }
-
     private static bool AllowLoadingGame()
     {
         if (!File.Exists(ProgramConstants.GamePath +
@@ -160,5 +132,26 @@ internal class LANGameCreationWindow : XNAWindow
             return false;
 
         return true;
+    }
+
+    private void BtnCancel_LeftClick(object sender, EventArgs e)
+    {
+        Disable();
+    }
+
+    private void BtnLoadGame_LeftClick(object sender, EventArgs e)
+    {
+        Disable();
+
+        IniFile iniFile = new(ProgramConstants.GamePath +
+            ProgramConstants.SAVEDGAMESPAWNINI);
+
+        LoadGame?.Invoke(this, new GameLoadEventArgs(iniFile.GetIntValue("Settings", "GameID", -1)));
+    }
+
+    private void BtnNewGame_LeftClick(object sender, EventArgs e)
+    {
+        Disable();
+        NewGame?.Invoke(this, EventArgs.Empty);
     }
 }

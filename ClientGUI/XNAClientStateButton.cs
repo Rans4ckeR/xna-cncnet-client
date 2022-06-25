@@ -10,20 +10,22 @@ namespace ClientGUI;
 public class XNAClientStateButton<T> : XNAButton
     where T : Enum
 {
+    private T _state;
+
+    private ToolTip _toolTip;
+
+    private string _toolTipText;
+
     public XNAClientStateButton(WindowManager windowManager, Dictionary<T, Texture2D> textures)
-        : base(windowManager)
+                    : base(windowManager)
     {
         LeftClick += CycleState;
         StateTextures = textures;
     }
 
-    private T _state { get; set; }
-
     private Dictionary<T, Texture2D> StateTextures { get; set; }
 
-    private string _toolTipText { get; set; }
-
-    private ToolTip _toolTip { get; set; }
+    public T GetState() => _state;
 
     public override void Initialize()
     {
@@ -44,13 +46,11 @@ public class XNAClientStateButton<T> : XNAButton
     public void SetState(T state)
     {
         if (!Enum.IsDefined(typeof(T), state))
-            throw new IndexOutOfRangeException($"{state} not a valid texture value");
+            throw new ArgumentOutOfRangeException($"{state} not a valid texture value");
 
         _state = state;
         UpdateStateTexture();
     }
-
-    public T GetState() => _state;
 
     public void SetToolTipText(string text)
     {

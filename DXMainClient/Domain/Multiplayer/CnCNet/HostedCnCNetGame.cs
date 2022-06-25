@@ -8,10 +8,18 @@ public class HostedCnCNetGame : GenericHostedGame
     {
     }
 
-    public HostedCnCNetGame(string channelName, string revision, string gamever, int maxPlayers,
-        string roomName, bool passworded,
+    public HostedCnCNetGame(
+        string channelName,
+        string revision,
+        string gamever,
+        int maxPlayers,
+        string roomName,
+        bool passworded,
         bool tunneled,
-        string[] players, string adminName, string mapName, string gameMode)
+        string[] players,
+        string adminName,
+        string mapName,
+        string gameMode)
     {
         ChannelName = channelName;
         Revision = revision;

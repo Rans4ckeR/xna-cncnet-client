@@ -9,21 +9,30 @@ using Rampastring.XNAUI.XNAControls;
 namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 
 /// <summary>
-/// A box that allows users to make a choice,
-/// top-left of the game window.
+/// A box that allows users to make a choice, top-left of the game window.
 /// </summary>
 public class ChoiceNotificationBox : XNAPanel
 {
-    private const double DOWN_TIME_WAIT_SECONDS = 4.0;
-    private const double DOWN_MOVEMENT_RATE = 2.0;
-    private const double UP_MOVEMENT_RATE = 2.0;
-
     private const int BoxHeight = 101;
-
+    private const double DOWN_MOVEMENT_RATE = 2.0;
+    private const double DOWN_TIME_WAIT_SECONDS = 4.0;
+    private const double UP_MOVEMENT_RATE = 2.0;
+    private XNAClientButton affirmativeButton;
+    private TimeSpan downTime = TimeSpan.Zero;
+    private TimeSpan downTimeWaitTime;
+    private XNAPanel gameIconPanel;
+    private bool isDown = false;
+    private XNALabel lblChoiceText;
     private XNALabel lblHeader;
 
+    private XNALabel lblSender;
+
+    private double locationY = -BoxHeight;
+
+    private XNAClientButton negativeButton;
+
     public ChoiceNotificationBox(WindowManager windowManager)
-        : base(windowManager)
+                    : base(windowManager)
     {
         downTimeWaitTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS);
     }
@@ -31,19 +40,18 @@ public class ChoiceNotificationBox : XNAPanel
     public Action<ChoiceNotificationBox> AffirmativeClickedAction { get; set; }
 
     public Action<ChoiceNotificationBox> NegativeClickedAction { get; set; }
-    private XNAPanel gameIconPanel;
-    private XNALabel lblSender;
-    private XNALabel lblChoiceText;
-    private XNAClientButton affirmativeButton;
-    private XNAClientButton negativeButton;
 
-    private TimeSpan downTime = TimeSpan.Zero;
-
-    private TimeSpan downTimeWaitTime;
-
-    private bool isDown = false;
-
-    private double locationY = -BoxHeight;
+    public void Hide()
+    {
+        isDown = false;
+        locationY = -Height;
+        ClientRectangle = new Rectangle(
+            X,
+            (int)locationY,
+            Width,
+            Height);
+        Disable();
+    }
 
     public override void Initialize()
     {
@@ -136,15 +144,6 @@ public class ChoiceNotificationBox : XNAPanel
         downTimeWaitTime = TimeSpan.FromSeconds(timeout);
     }
 
-    public void Hide()
-    {
-        isDown = false;
-        locationY = -Height;
-        ClientRectangle = new Rectangle(X, (int)locationY,
-            Width, Height);
-        Disable();
-    }
-
     public override void Update(GameTime gameTime)
     {
         if (isDown)
@@ -152,8 +151,11 @@ public class ChoiceNotificationBox : XNAPanel
             if (locationY < 0)
             {
                 locationY += DOWN_MOVEMENT_RATE;
-                ClientRectangle = new Rectangle(X, (int)locationY,
-                    Width, Height);
+                ClientRectangle = new Rectangle(
+                    X,
+                    (int)locationY,
+                    Width,
+                    Height);
             }
 
             if (WindowManager.HasFocus)

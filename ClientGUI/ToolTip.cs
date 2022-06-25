@@ -13,9 +13,11 @@ public class ToolTip : XNAControl
 {
     private readonly XNAControl masterControl;
 
+    private TimeSpan cursorTime = TimeSpan.Zero;
+
     /// <summary>
-    /// Initializes a new instance of the <see cref="ToolTip"/> class.
-    /// Creates a new tool tip and attaches it to the given control.
+    /// Initializes a new instance of the <see cref="ToolTip" /> class. Creates a new tool tip and
+    /// attaches it to the given control.
     /// </summary>
     /// <param name="windowManager">The window manager.</param>
     /// <param name="masterControl">The control to attach the tool tip to.</param>
@@ -33,10 +35,15 @@ public class ToolTip : XNAControl
         Visible = false;
     }
 
+    public override float Alpha { get; set; }
+
     /// <summary>
-    /// Gets or sets a value indicating whether if set to true - makes tooltip not appear and instantly hides it if currently shown.
+    /// Gets or sets a value indicating whether if set to true - makes tooltip not appear and
+    /// instantly hides it if currently shown.
     /// </summary>
     public bool Blocked { get; set; }
+
+    public bool IsMasterControlOnCursor { get; set; }
 
     public override string Text
     {
@@ -50,27 +57,6 @@ public class ToolTip : XNAControl
         }
     }
 
-    private XNAControl GetParentControl(XNAControl parent)
-    {
-        if (parent is XNAWindow)
-            return parent as XNAWindow;
-        else if (parent is INItializableWindow)
-            return parent as INItializableWindow;
-        else if (parent.Parent != null)
-            return GetParentControl(parent.Parent);
-        else
-            return parent;
-    }
-
-    private void MasterControl_EnabledChanged(object sender, EventArgs e)
-        => Enabled = masterControl.Enabled;
-
-    public override float Alpha { get; set; }
-
-    public bool IsMasterControlOnCursor { get; set; }
-
-    private TimeSpan cursorTime = TimeSpan.Zero;
-
     /// <summary>
     /// Sets the tool tip's location, checking that it doesn't exceed the window's bounds.
     /// </summary>
@@ -82,33 +68,20 @@ public class ToolTip : XNAControl
         Y = location.Y - Height < 0 ? 0 : location.Y - Height;
     }
 
-    private void MasterControl_MouseEnter(object sender, EventArgs e)
+    public override void Draw(GameTime gameTime)
     {
-        if (string.IsNullOrEmpty(Text))
-            return;
-
-        DisplayAtLocation(ToolTip.SumPoints(
-            WindowManager.Cursor.Location,
-            new Point(ClientConfiguration.Instance.ToolTipOffsetX, ClientConfiguration.Instance.ToolTipOffsetY)));
-        IsMasterControlOnCursor = true;
-    }
-
-    private void MasterControl_MouseLeave(object sender, EventArgs e)
-    {
-        IsMasterControlOnCursor = false;
-        cursorTime = TimeSpan.Zero;
-    }
-
-    private void MasterControl_MouseMove(object sender, EventArgs e)
-    {
-        if (!Visible && !string.IsNullOrEmpty(Text))
-        {
-            // Move the tooltip if the cursor has moved while staying
-            // on the control area and we're invisible
-            DisplayAtLocation(ToolTip.SumPoints(
-                WindowManager.Cursor.Location,
-                new Point(ClientConfiguration.Instance.ToolTipOffsetX, ClientConfiguration.Instance.ToolTipOffsetY)));
-        }
+        Renderer.FillRectangle(
+            ClientRectangle,
+            UISettings.ActiveSettings.BackgroundColor * Alpha);
+        Renderer.DrawRectangle(
+            ClientRectangle,
+            UISettings.ActiveSettings.AltColor * Alpha);
+        Renderer.DrawString(
+            Text,
+            ClientConfiguration.Instance.ToolTipFontIndex,
+            new Vector2(X + ClientConfiguration.Instance.ToolTipMargin, Y + ClientConfiguration.Instance.ToolTipMargin),
+            UISettings.ActiveSettings.AltColor * Alpha,
+            1.0f);
     }
 
     public override void Update(GameTime gameTime)
@@ -142,25 +115,53 @@ public class ToolTip : XNAControl
         }
     }
 
-    public override void Draw(GameTime gameTime)
-    {
-        Renderer.FillRectangle(
-            ClientRectangle,
-            UISettings.ActiveSettings.BackgroundColor * Alpha);
-        Renderer.DrawRectangle(
-            ClientRectangle,
-            UISettings.ActiveSettings.AltColor * Alpha);
-        Renderer.DrawString(Text, ClientConfiguration.Instance.ToolTipFontIndex,
-            new Vector2(X + ClientConfiguration.Instance.ToolTipMargin, Y + ClientConfiguration.Instance.ToolTipMargin),
-            UISettings.ActiveSettings.AltColor * Alpha, 1.0f);
-    }
-
     private static Point SumPoints(Point p1, Point p2)
-
-        // This is also needed for XNA compatibility
-#if XNA
-        => new Point(p1.X + p2.X, p1.Y + p2.Y);
+#if XNA // This is also needed for XNA compatibility
+        => new(p1.X + p2.X, p1.Y + p2.Y);
 #else
         => p1 + p2;
 #endif
+
+    private XNAControl GetParentControl(XNAControl parent)
+    {
+        if (parent is XNAWindow)
+            return parent as XNAWindow;
+        else if (parent is INItializableWindow)
+            return parent as INItializableWindow;
+        else if (parent.Parent != null)
+            return GetParentControl(parent.Parent);
+        else
+            return parent;
+    }
+
+    private void MasterControl_EnabledChanged(object sender, EventArgs e)
+        => Enabled = masterControl.Enabled;
+
+    private void MasterControl_MouseEnter(object sender, EventArgs e)
+    {
+        if (string.IsNullOrEmpty(Text))
+            return;
+
+        DisplayAtLocation(ToolTip.SumPoints(
+            WindowManager.Cursor.Location,
+            new Point(ClientConfiguration.Instance.ToolTipOffsetX, ClientConfiguration.Instance.ToolTipOffsetY)));
+        IsMasterControlOnCursor = true;
+    }
+
+    private void MasterControl_MouseLeave(object sender, EventArgs e)
+    {
+        IsMasterControlOnCursor = false;
+        cursorTime = TimeSpan.Zero;
+    }
+
+    private void MasterControl_MouseMove(object sender, EventArgs e)
+    {
+        if (!Visible && !string.IsNullOrEmpty(Text))
+        {
+            // Move the tooltip if the cursor has moved while staying on the control area and we're invisible
+            DisplayAtLocation(ToolTip.SumPoints(
+                WindowManager.Cursor.Location,
+                new Point(ClientConfiguration.Instance.ToolTipOffsetX, ClientConfiguration.Instance.ToolTipOffsetY)));
+        }
+    }
 }

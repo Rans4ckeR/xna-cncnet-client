@@ -9,70 +9,101 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby;
 
-public enum CheckBoxMapScoringMode
-{
-    /// <summary>
-    /// The value of the check box makes no difference for scoring maps.
-    /// </summary>
-    Irrelevant = 0,
-
-    /// <summary>
-    /// The check box prevents map scoring when it's checked.
-    /// </summary>
-    DenyWhenChecked = 1,
-
-    /// <summary>
-    /// The check box prevents map scoring when it's unchecked.
-    /// </summary>
-    DenyWhenUnchecked = 2
-}
-
 /// <summary>
 /// A game option check box for the game lobby.
 /// </summary>
 public class GameLobbyCheckBox : XNAClientCheckBox
 {
-    /// <summary>
-    /// The side indices that this check box disallows when checked.
-    /// Defaults to -1, which means none.
-    /// </summary>
-    public List<int> DisallowedSideIndices = new();
+    private string customIniPath;
+
+    private string disabledSpawnIniValue = "False";
+
+    private string enabledSpawnIniValue = "True";
+
+    private bool reversed;
 
     private string spawnIniOption;
 
     public GameLobbyCheckBox(WindowManager windowManager)
-        : base(windowManager)
+            : base(windowManager)
     {
     }
 
-    public bool IsMultiplayer { get; set; }
+    public bool AllowChanges { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the side indices that this check box disallows when checked. Defaults to -1, which means none.
+    /// </summary>
+    public List<int> DisallowedSideIndices { get; set; } = new();
 
     /// <summary>
     /// Gets or sets a value indicating whether the last host-defined value for this check box.
-    /// Defaults to the default value of Checked after the check-box
-    /// has been initialized, but its value is only changed by user interaction.
+    /// Defaults to the default value of Checked after the check-box has been initialized, but its
+    /// value is only changed by user interaction.
     /// </summary>
     public bool HostChecked { get; set; }
 
-    /// <summary>
-    /// Gets or sets a value indicating whether the last value that the local player gave for this check box.
-    /// Defaults to the default value of Checked after the check-box
-    /// has been initialized, but its value is only changed by user interaction.
-    /// </summary>
-    public bool UserChecked { get; set; }
-
-    public bool AllowChanges { get; set; } = true;
+    public bool IsMultiplayer { get; set; }
 
     public CheckBoxMapScoringMode MapScoringMode { get; private set; } = CheckBoxMapScoringMode.Irrelevant;
 
-    private string customIniPath;
+    /// <summary>
+    /// Gets or sets a value indicating whether the last value that the local player gave for this
+    /// check box. Defaults to the default value of Checked after the check-box has been
+    /// initialized, but its value is only changed by user interaction.
+    /// </summary>
+    public bool UserChecked { get; set; }
 
-    private bool reversed;
+    /// <summary>
+    /// Applies the check-box's disallowed side index to a bool array that determines which sides
+    /// are disabled.
+    /// </summary>
+    /// <param name="disallowedArray">An array that determines which sides are disabled.</param>
+    public void ApplyDisallowedSideIndex(bool[] disallowedArray)
+    {
+        if (DisallowedSideIndices == null || DisallowedSideIndices.Count == 0)
+            return;
 
-    private bool defaultValue;
+        if (Checked != reversed)
+        {
+            for (int i = 0; i < DisallowedSideIndices.Count; i++)
+            {
+                int sideNotAllowed = DisallowedSideIndices[i];
+                disallowedArray[sideNotAllowed] = true;
+            }
+        }
+    }
 
-    private string enabledSpawnIniValue = "True";
-    private string disabledSpawnIniValue = "False";
+    /// <summary>
+    /// Applies the check-box's associated code to the map INI file.
+    /// </summary>
+    /// <param name="mapIni">The map INI file.</param>
+    /// <param name="gameMode">Currently selected gamemode, if set.</param>
+    public void ApplyMapCode(IniFile mapIni, GameMode gameMode)
+    {
+        if (Checked == reversed || string.IsNullOrEmpty(customIniPath))
+            return;
+
+        MapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
+    }
+
+    /// <summary>
+    /// Applies the check-box's associated code to the spawn INI file.
+    /// </summary>
+    /// <param name="spawnIni">The spawn INI file.</param>
+    public void ApplySpawnINICode(IniFile spawnIni)
+    {
+        if (string.IsNullOrEmpty(spawnIniOption))
+            return;
+
+        string value = disabledSpawnIniValue;
+        if (Checked != reversed)
+        {
+            value = enabledSpawnIniValue;
+        }
+
+        spawnIni.SetStringValue("Settings", spawnIniOption, value);
+    }
 
     public override void Initialize()
     {
@@ -94,6 +125,15 @@ public class GameLobbyCheckBox : XNAClientCheckBox
         }
 
         base.Initialize();
+    }
+
+    public override void OnLeftClick()
+    {
+        if (!AllowChanges)
+            return;
+
+        base.OnLeftClick();
+        UserChecked = Checked;
     }
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
@@ -128,7 +168,6 @@ public class GameLobbyCheckBox : XNAClientCheckBox
             case "Checked":
                 bool checkedValue = Conversions.BooleanFromString(value, false);
                 Checked = checkedValue;
-                defaultValue = checkedValue;
                 HostChecked = checkedValue;
                 UserChecked = checkedValue;
                 return;
@@ -146,65 +185,5 @@ public class GameLobbyCheckBox : XNAClientCheckBox
         }
 
         base.ParseAttributeFromINI(iniFile, key, value);
-    }
-
-    /// <summary>
-    /// Applies the check-box's associated code to the spawn INI file.
-    /// </summary>
-    /// <param name="spawnIni">The spawn INI file.</param>
-    public void ApplySpawnINICode(IniFile spawnIni)
-    {
-        if (string.IsNullOrEmpty(spawnIniOption))
-            return;
-
-        string value = disabledSpawnIniValue;
-        if (Checked != reversed)
-        {
-            value = enabledSpawnIniValue;
-        }
-
-        spawnIni.SetStringValue("Settings", spawnIniOption, value);
-    }
-
-    /// <summary>
-    /// Applies the check-box's associated code to the map INI file.
-    /// </summary>
-    /// <param name="mapIni">The map INI file.</param>
-    /// <param name="gameMode">Currently selected gamemode, if set.</param>
-    public void ApplyMapCode(IniFile mapIni, GameMode gameMode)
-    {
-        if (Checked == reversed || string.IsNullOrEmpty(customIniPath))
-            return;
-
-        MapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
-    }
-
-    /// <summary>
-    /// Applies the check-box's disallowed side index to a bool
-    /// array that determines which sides are disabled.
-    /// </summary>
-    /// <param name="disallowedArray">An array that determines which sides are disabled.</param>
-    public void ApplyDisallowedSideIndex(bool[] disallowedArray)
-    {
-        if (DisallowedSideIndices == null || DisallowedSideIndices.Count == 0)
-            return;
-
-        if (Checked != reversed)
-        {
-            for (int i = 0; i < DisallowedSideIndices.Count; i++)
-            {
-                int sideNotAllowed = DisallowedSideIndices[i];
-                disallowedArray[sideNotAllowed] = true;
-            }
-        }
-    }
-
-    public override void OnLeftClick()
-    {
-        if (!AllowChanges)
-            return;
-
-        base.OnLeftClick();
-        UserChecked = Checked;
     }
 }

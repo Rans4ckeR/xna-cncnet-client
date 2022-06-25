@@ -11,15 +11,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet;
 /// </summary>
 internal class MapSharingConfirmationPanel : XNAPanel
 {
-    private readonly string mapSharingRequestText =
-        ("The game host has selected a map that" + Environment.NewLine +
-        "doens't exist on your local installation.").L10N("UI:Main:MapSharingRequestText");
-
-    public MapSharingConfirmationPanel(WindowManager windowManager)
-        : base(windowManager)
-    {
-    }
-
     private readonly string mapSharingDownloadText =
         "Downloading map...".L10N("UI:Main:MapSharingDownloadText");
 
@@ -28,11 +19,20 @@ internal class MapSharingConfirmationPanel : XNAPanel
         "needs to change the map or you will be" + Environment.NewLine +
         "unable to participate in the match.").L10N("UI:Main:MapSharingFailedText");
 
-    private XNALabel lblDescription;
-
-    public event EventHandler MapDownloadConfirmed;
+    private readonly string mapSharingRequestText =
+                ("The game host has selected a map that" + Environment.NewLine +
+        "doens't exist on your local installation.").L10N("UI:Main:MapSharingRequestText");
 
     private XNAClientButton btnDownload;
+
+    private XNALabel lblDescription;
+
+    public MapSharingConfirmationPanel(WindowManager windowManager)
+                : base(windowManager)
+    {
+    }
+
+    public event EventHandler MapDownloadConfirmed;
 
     public override void Initialize()
     {
@@ -43,36 +43,29 @@ internal class MapSharingConfirmationPanel : XNAPanel
 
         lblDescription = new XNALabel(WindowManager);
         lblDescription.Name = nameof(lblDescription);
-        lblDescription.X = UIDesignConstants.EMPTYSPACESIDES;
-        lblDescription.Y = UIDesignConstants.EMPTYSPACETOP;
+        lblDescription.X = UIDesignConstants.EmptySpaceSides;
+        lblDescription.Y = UIDesignConstants.EmptySpaceTop;
         lblDescription.Text = mapSharingRequestText;
         AddChild(lblDescription);
 
-        Width = lblDescription.Right + UIDesignConstants.EMPTYSPACESIDES;
+        Width = lblDescription.Right + UIDesignConstants.EmptySpaceSides;
 
         btnDownload = new XNAClientButton(WindowManager);
         btnDownload.Name = nameof(btnDownload);
-        btnDownload.Width = UIDesignConstants.BUTTONWIDTH92;
-        btnDownload.Y = lblDescription.Bottom + (UIDesignConstants.EMPTYSPACETOP * 2);
+        btnDownload.Width = UIDesignConstants.ButtonWidth92;
+        btnDownload.Y = lblDescription.Bottom + (UIDesignConstants.EmptySpaceTop * 2);
         btnDownload.Text = "Download".L10N("UI:Main:ButtonDownload");
         btnDownload.LeftClick += (s, e) => MapDownloadConfirmed?.Invoke(this, EventArgs.Empty);
         AddChild(btnDownload);
         btnDownload.CenterOnParentHorizontally();
 
-        Height = btnDownload.Bottom + UIDesignConstants.EMPTYSPACEBOTTOM;
+        Height = btnDownload.Bottom + UIDesignConstants.EmptySpaceBottom;
 
         base.Initialize();
 
         CenterOnParent();
 
         Disable();
-    }
-
-    public void ShowForMapDownload()
-    {
-        lblDescription.Text = mapSharingRequestText;
-        btnDownload.AllowClick = true;
-        Enable();
     }
 
     public void SetDownloadingStatus()
@@ -85,5 +78,12 @@ internal class MapSharingConfirmationPanel : XNAPanel
     {
         lblDescription.Text = mapSharingFailedText;
         btnDownload.AllowClick = false;
+    }
+
+    public void ShowForMapDownload()
+    {
+        lblDescription.Text = mapSharingRequestText;
+        btnDownload.AllowClick = true;
+        Enable();
     }
 }

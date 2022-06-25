@@ -35,10 +35,10 @@ public class Startup
             themePath = ClientConfiguration.Instance.GetThemeInfoFromIndex(0)[1];
         }
 
-        ProgramConstants.RESOURCES_DIR = "Resources/" + themePath;
+        ProgramConstants.ResourceDir = "Resources/" + themePath;
 
-        if (!Directory.Exists(ProgramConstants.RESOURCES_DIR))
-            throw new DirectoryNotFoundException("Theme directory not found!" + Environment.NewLine + ProgramConstants.RESOURCES_DIR);
+        if (!Directory.Exists(ProgramConstants.ResourceDir))
+            throw new DirectoryNotFoundException("Theme directory not found!" + Environment.NewLine + ProgramConstants.ResourceDir);
 
         Logger.Log("Initializing updater.");
 
@@ -50,8 +50,8 @@ public class Startup
         Logger.Log("Selected OS profile: " + MainClientConstants.OSId.ToString());
         Logger.Log("Current culture: " + CultureInfo.CurrentCulture?.ToString());
 
-        // The query in CheckSystemSpecifications takes lots of time,
-        // so we'll do it in a separate thread to make startup faster
+        // The query in CheckSystemSpecifications takes lots of time, so we'll do it in a separate
+        // thread to make startup faster
         Thread thread = new(CheckSystemSpecifications);
         thread.Start();
 
@@ -119,11 +119,15 @@ public class Startup
     }
 
     /// <summary>
-    /// Move log files matching given search pattern from specified directory to another one and adjust filename timestamps.
+    /// Move log files matching given search pattern from specified directory to another one and
+    /// adjust filename timestamps.
     /// </summary>
     /// <param name="currentDirectory">Current log files directory.</param>
     /// <param name="newDirectory">New log files directory.</param>
-    /// <param name="searchPattern">Search string the log file names must match against to be copied. Can contain wildcard characters (* and ?) but doesn't support regular expressions.</param>
+    /// <param name="searchPattern">
+    /// Search string the log file names must match against to be copied. Can contain wildcard
+    /// characters (* and ?) but doesn't support regular expressions.
+    /// </param>
     private static void MigrateLogFiles(string currentDirectory, string newDirectory, string searchPattern)
     {
         try
@@ -146,7 +150,11 @@ public class Startup
                 {
                     timestamp = string.Format(
                         "_{0}_{1}_{2}_{3}_{4}",
-                        ts[3], ts[2].PadLeft(2, '0'), ts[1].PadLeft(2, '0'), ts[4].PadLeft(2, '0'), ts[5].PadLeft(2, '0'));
+                        ts[3],
+                        ts[2].PadLeft(2, '0'),
+                        ts[1].PadLeft(2, '0'),
+                        ts[4].PadLeft(2, '0'),
+                        ts[5].PadLeft(2, '0'));
                 }
 
                 string newFilename = newDirectory + "/" + baseFilename + timestamp + Path.GetExtension(filename);
@@ -222,13 +230,43 @@ public class Startup
         }
     }
 
-#if ARES
     /// <summary>
-    /// Recursively deletes all files from the specified directory that were created at <paramref name="pruneThresholdTime"/> or before.
-    /// If directory is empty after deleting files, the directory itself will also be deleted.
+    /// Writes the game installation path to the Windows registry.
+    /// </summary>
+    private static void WriteInstallPathToRegistry()
+    {
+        if (!UserINISettings.Instance.WritePathToRegistry)
+        {
+            Logger.Log("Skipping writing installation path to the Windows Registry because of INI setting.");
+            return;
+        }
+
+        Logger.Log("Writing installation path to the Windows registry.");
+
+        try
+        {
+            RegistryKey key;
+            key = Registry.CurrentUser.CreateSubKey("SOFTWARE\\" + ClientConfiguration.Instance.InstallationPathRegKey);
+            key.SetValue("InstallPath", ProgramConstants.GamePath);
+            key.Close();
+        }
+        catch
+        {
+            Logger.Log("Failed to write installation path to the Windows registry");
+        }
+    }
+
+#if ARES
+
+    /// <summary>
+    /// Recursively deletes all files from the specified directory that were created at
+    /// <paramref name="pruneThresholdTime" /> or before. If directory is empty after deleting
+    /// files, the directory itself will also be deleted.
     /// </summary>
     /// <param name="directoryPath">Directory to prune files from.</param>
-    /// <param name="pruneThresholdTime">Time at or before which files must have been created for them to be pruned.</param>
+    /// <param name="pruneThresholdTime">
+    /// Time at or before which files must have been created for them to be pruned.
+    /// </param>
     private void PruneFiles(string directoryPath, DateTime pruneThresholdTime)
     {
         if (!Directory.Exists(directoryPath))
@@ -272,7 +310,8 @@ public class Startup
 #endif
 
     /// <summary>
-    /// Move log files from obsolete directories to currently used ones and adjust filenames to match currently used timestamp scheme.
+    /// Move log files from obsolete directories to currently used ones and adjust filenames to
+    /// match currently used timestamp scheme.
     /// </summary>
     private void MigrateOldLogFiles()
     {
@@ -345,31 +384,5 @@ public class Startup
         }
 
         Logger.Log(string.Format("Hardware info: {0} | {1} | {2}", cpu.Trim(), videoController.Trim(), memory));
-    }
-
-    /// <summary>
-    /// Writes the game installation path to the Windows registry.
-    /// </summary>
-    private static void WriteInstallPathToRegistry()
-    {
-        if (!UserINISettings.Instance.WritePathToRegistry)
-        {
-            Logger.Log("Skipping writing installation path to the Windows Registry because of INI setting.");
-            return;
-        }
-
-        Logger.Log("Writing installation path to the Windows registry.");
-
-        try
-        {
-            RegistryKey key;
-            key = Registry.CurrentUser.CreateSubKey("SOFTWARE\\" + ClientConfiguration.Instance.InstallationPathRegKey);
-            key.SetValue("InstallPath", ProgramConstants.GamePath);
-            key.Close();
-        }
-        catch
-        {
-            Logger.Log("Failed to write installation path to the Windows registry");
-        }
     }
 }

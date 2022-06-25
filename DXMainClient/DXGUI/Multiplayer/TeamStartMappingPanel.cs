@@ -11,8 +11,8 @@ public class TeamStartMappingPanel : XNAPanel
 {
     private const int DdWidth = 35;
 
-    private readonly int _start;
     private readonly int _defaultTeamIndex = -1;
+    private readonly int _start;
 
     // private XNAClientDropDown ddStarts;
     private XNAClientDropDown ddTeams;
@@ -25,6 +25,19 @@ public class TeamStartMappingPanel : XNAPanel
     }
 
     public event EventHandler OptionsChanged;
+
+    public void ClearSelections() => ddTeams.SelectedIndex = _defaultTeamIndex;
+
+    public void EnableControls(bool enable) => ddTeams.AllowDropDown = enable;
+
+    public TeamStartMapping GetTeamStartMapping()
+    {
+        return new TeamStartMapping()
+        {
+            Team = ddTeams.SelectedItem?.Text,
+            Start = _start
+        };
+    }
 
     public override void Initialize()
     {
@@ -55,17 +68,4 @@ public class TeamStartMappingPanel : XNAPanel
     }
 
     private void DD_SelectedItemChanged(object sender, EventArgs e) => OptionsChanged?.Invoke(sender, e);
-
-    public void EnableControls(bool enable) => ddTeams.AllowDropDown = enable;
-
-    public void ClearSelections() => ddTeams.SelectedIndex = _defaultTeamIndex;
-
-    public TeamStartMapping GetTeamStartMapping()
-    {
-        return new TeamStartMapping()
-        {
-            Team = ddTeams.SelectedItem?.Text,
-            Start = _start
-        };
-    }
 }

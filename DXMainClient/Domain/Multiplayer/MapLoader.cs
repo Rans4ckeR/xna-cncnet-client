@@ -15,25 +15,27 @@ public class MapLoader
 {
     public const string MAPFILEEXTENSION = ".map";
 
-    /// <summary>
-    /// List of game modes.
-    /// </summary>
-    public List<GameMode> GameModes = new();
-
-    private const string CUSTOM_MAPS_DIRECTORY = "Maps/Custom";
-    private const string MultiMapsSection = "MultiMaps";
-    private static readonly string CUSTOM_MAPS_CACHE = ProgramConstants.ClientUserFilesPath + "custom_map_cache";
-    private const string GameModesSection = "GameModes";
-    private const string GameModeAliasesSection = "GameModeAliases";
     private const int CurrentCustomMapCacheVersion = 1;
 
-    public GameModeMapCollection GameModeMaps;
+    private const string CUSTOM_MAPS_DIRECTORY = "Maps/Custom";
+
+    private const string GameModeAliasesSection = "GameModeAliases";
+
+    private const string GameModesSection = "GameModes";
+
+    private const string MultiMapsSection = "MultiMaps";
+
+    private static readonly string CUSTOM_MAPS_CACHE = ProgramConstants.ClientUserFilesPath + "custom_map_cache";
 
     /// <summary>
-    /// A list of game mode aliases.
-    /// Every game mode entry that exists in this dictionary will get
-    /// replaced by the game mode entries of the value string array
-    /// when map is added to game mode map lists.
+    /// List of gamemodes allowed to be used on custom maps in order for them to display in map list.
+    /// </summary>
+    private readonly string[] allowedGameModes = ClientConfiguration.Instance.AllowedCustomGameModes.Split(',');
+
+    /// <summary>
+    /// A list of game mode aliases. Every game mode entry that exists in this dictionary will get
+    /// replaced by the game mode entries of the value string array when map is added to game mode
+    /// map lists.
     /// </summary>
     private readonly Dictionary<string, string[]> gameModeAliases = new();
 
@@ -42,45 +44,32 @@ public class MapLoader
     /// </summary>
     public event EventHandler MapLoadingComplete;
 
-    /// <summary>
-    /// List of gamemodes allowed to be used on custom maps in order for them to display in map list.
-    /// </summary>
-    private readonly string[] allowedGameModes = ClientConfiguration.Instance.AllowedCustomGameModes.Split(',');
+    public GameModeMapCollection GameModeMaps { get; set; }
 
     /// <summary>
-    /// Loads multiplayer map info asynchonously.
+    /// Gets or sets list of game modes.
     /// </summary>
-    public void LoadMapsAsync()
+    public List<GameMode> GameModes { get; set; } = new();
+
+    public void DeleteCustomMap(GameModeMap gameModeMap)
     {
-        Thread thread = new(LoadMaps);
-        thread.Start();
-    }
+        Logger.Log("Deleting map " + gameModeMap.Map.Name);
+        File.Delete(gameModeMap.Map.CompleteFilePath);
+        foreach (GameMode gameMode in GameModeMaps.GameModes)
+        {
+            _ = gameMode.Maps.Remove(gameModeMap.Map);
+        }
 
-    /// <summary>
-    /// Load maps based on INI info as well as those in the custom maps directory.
-    /// </summary>
-    public void LoadMaps()
-    {
-        Logger.Log("Loading maps.");
-
-        IniFile mpMapsIni = new(ProgramConstants.GamePath + ClientConfiguration.Instance.MPMapsIniPath);
-
-        LoadGameModes(mpMapsIni);
-        LoadGameModeAliases(mpMapsIni);
-        LoadMultiMaps(mpMapsIni);
-        LoadCustomMaps();
-
-        _ = GameModes.RemoveAll(g => g.Maps.Count < 1);
-        GameModeMaps = new GameModeMapCollection(GameModes);
-
-        MapLoadingComplete?.Invoke(this, EventArgs.Empty);
+        _ = GameModeMaps.Remove(gameModeMap);
     }
 
     /// <summary>
     /// Attempts to load a custom map.
     /// </summary>
     /// <param name="mapPath">The path to the map file relative to the game directory.</param>
-    /// <param name="resultMessage">When method returns, contains a message reporting whether or not loading the map failed and how.</param>
+    /// <param name="resultMessage">
+    /// When method returns, contains a message reporting whether or not loading the map failed and how.
+    /// </param>
     /// <returns>The map if loading it was succesful, otherwise false.</returns>
     public Map LoadCustomMap(string mapPath, out string resultMessage)
     {
@@ -126,69 +115,106 @@ public class MapLoader
         return null;
     }
 
-    private void LoadMultiMaps(IniFile mpMapsIni)
+    /// <summary>
+    /// Load maps based on INI info as well as those in the custom maps directory.
+    /// </summary>
+    public void LoadMaps()
     {
-        List<string> keys = mpMapsIni.GetSectionKeys(MultiMapsSection);
+        Logger.Log("Loading maps.");
 
-        if (keys == null)
+        IniFile mpMapsIni = new(ProgramConstants.GamePath + ClientConfiguration.Instance.MPMapsIniPath);
+
+        LoadGameModes(mpMapsIni);
+        LoadGameModeAliases(mpMapsIni);
+        LoadMultiMaps(mpMapsIni);
+        LoadCustomMaps();
+
+        _ = GameModes.RemoveAll(g => g.Maps.Count < 1);
+        GameModeMaps = new GameModeMapCollection(GameModes);
+
+        MapLoadingComplete?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Loads multiplayer map info asynchonously.
+    /// </summary>
+    public void LoadMapsAsync()
+    {
+        Thread thread = new(LoadMaps);
+        thread.Start();
+    }
+
+    /// <summary>
+    /// Save cache of custom maps.
+    /// </summary>
+    /// <param name="customMaps">Custom maps to cache.</param>
+    private static void CacheCustomMaps(ConcurrentDictionary<string, Map> customMaps)
+    {
+        CustomMapCache customMapCache = new()
         {
-            Logger.Log("Loading multiplayer map list failed!!!");
-            return;
+            Maps = customMaps,
+            Version = CurrentCustomMapCacheVersion
+        };
+        string jsonData = JsonConvert.SerializeObject(customMapCache);
+
+        File.WriteAllText(CUSTOM_MAPS_CACHE, jsonData);
+    }
+
+    /// <summary>
+    /// Load previously cached custom maps.
+    /// </summary>
+    /// <returns>result.</returns>
+    private static ConcurrentDictionary<string, Map> LoadCustomMapCache()
+    {
+        try
+        {
+            string jsonData = File.ReadAllText(CUSTOM_MAPS_CACHE);
+
+            CustomMapCache customMapCache = JsonConvert.DeserializeObject<CustomMapCache>(jsonData);
+
+            ConcurrentDictionary<string, Map> customMaps = customMapCache?.Version == CurrentCustomMapCacheVersion && customMapCache.Maps != null
+                ? customMapCache.Maps : new ConcurrentDictionary<string, Map>();
+
+            foreach (Map customMap in customMaps.Values)
+                customMap.CalculateSHA();
+
+            return customMaps;
         }
-
-        List<Map> maps = new();
-
-        foreach (string key in keys)
+        catch (Exception)
         {
-            string mapFilePath = mpMapsIni.GetStringValue(MultiMapsSection, key, string.Empty);
-
-            if (!File.Exists(ProgramConstants.GamePath + mapFilePath + MAPFILEEXTENSION))
-            {
-                Logger.Log("Map " + mapFilePath + " doesn't exist!");
-                continue;
-            }
-
-            Map map = new(mapFilePath);
-
-            if (!map.SetInfoFromMpMapsINI(mpMapsIni))
-                continue;
-
-            maps.Add(map);
-        }
-
-        foreach (Map map in maps)
-        {
-            AddMapToGameModes(map, false);
+            return new ConcurrentDictionary<string, Map>();
         }
     }
 
-    private void LoadGameModes(IniFile mpMapsIni)
+    /// <summary>
+    /// Adds map to all eligible game modes.
+    /// </summary>
+    /// <param name="map">Map to add.</param>
+    /// <param name="enableLogging">
+    /// If set to true, a message for each game mode the map is added to is output to the log file.
+    /// </param>
+    private void AddMapToGameModes(Map map, bool enableLogging)
     {
-        List<string> gameModes = mpMapsIni.GetSectionKeys(GameModesSection);
-        if (gameModes != null)
+        foreach (string gameMode in map.GameModes)
         {
-            foreach (string key in gameModes)
+            if (!this.gameModeAliases.TryGetValue(gameMode, out string[] gameModeAliases))
+                gameModeAliases = new string[] { gameMode };
+
+            foreach (string gameModeAlias in gameModeAliases)
             {
-                string gameModeName = mpMapsIni.GetStringValue(GameModesSection, key, string.Empty);
-                if (!string.IsNullOrEmpty(gameModeName))
+                if (!map.Official && !(allowedGameModes.Contains(gameMode) || allowedGameModes.Contains(gameModeAlias)))
+                    continue;
+
+                GameMode gm = GameModes.Find(g => g.Name == gameModeAlias);
+                if (gm == null)
                 {
-                    GameMode gm = new(gameModeName);
+                    gm = new GameMode(gameModeAlias);
                     GameModes.Add(gm);
                 }
-            }
-        }
-    }
 
-    private void LoadGameModeAliases(IniFile mpMapsIni)
-    {
-        List<string> gmAliases = mpMapsIni.GetSectionKeys(GameModeAliasesSection);
-
-        if (gmAliases != null)
-        {
-            foreach (string key in gmAliases)
-            {
-                gameModeAliases.Add(key, mpMapsIni.GetStringValue(GameModeAliasesSection, key, string.Empty).Split(
-                    new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+                gm.Maps.Add(map);
+                if (enableLogging)
+                    Logger.Log("AddMapToGameModes: Added map " + map.Name + " to game mode " + gm.Name);
             }
         }
     }
@@ -240,88 +266,70 @@ public class MapLoader
         }
     }
 
-    /// <summary>
-    /// Save cache of custom maps.
-    /// </summary>
-    /// <param name="customMaps">Custom maps to cache.</param>
-    private static void CacheCustomMaps(ConcurrentDictionary<string, Map> customMaps)
+    private void LoadGameModeAliases(IniFile mpMapsIni)
     {
-        CustomMapCache customMapCache = new()
+        List<string> gmAliases = mpMapsIni.GetSectionKeys(GameModeAliasesSection);
+
+        if (gmAliases != null)
         {
-            Maps = customMaps,
-            Version = CurrentCustomMapCacheVersion
-        };
-        string jsonData = JsonConvert.SerializeObject(customMapCache);
-
-        File.WriteAllText(CUSTOM_MAPS_CACHE, jsonData);
-    }
-
-    /// <summary>
-    /// Load previously cached custom maps.
-    /// </summary>
-    /// <returns></returns>
-    private static ConcurrentDictionary<string, Map> LoadCustomMapCache()
-    {
-        try
-        {
-            string jsonData = File.ReadAllText(CUSTOM_MAPS_CACHE);
-
-            CustomMapCache customMapCache = JsonConvert.DeserializeObject<CustomMapCache>(jsonData);
-
-            ConcurrentDictionary<string, Map> customMaps = customMapCache?.Version == CurrentCustomMapCacheVersion && customMapCache.Maps != null
-                ? customMapCache.Maps : new ConcurrentDictionary<string, Map>();
-
-            foreach (Map customMap in customMaps.Values)
-                customMap.CalculateSHA();
-
-            return customMaps;
-        }
-        catch (Exception)
-        {
-            return new ConcurrentDictionary<string, Map>();
-        }
-    }
-
-    public void DeleteCustomMap(GameModeMap gameModeMap)
-    {
-        Logger.Log("Deleting map " + gameModeMap.Map.Name);
-        File.Delete(gameModeMap.Map.CompleteFilePath);
-        foreach (GameMode gameMode in GameModeMaps.GameModes)
-        {
-            _ = gameMode.Maps.Remove(gameModeMap.Map);
-        }
-
-        _ = GameModeMaps.Remove(gameModeMap);
-    }
-
-    /// <summary>
-    /// Adds map to all eligible game modes.
-    /// </summary>
-    /// <param name="map">Map to add.</param>
-    /// <param name="enableLogging">If set to true, a message for each game mode the map is added to is output to the log file.</param>
-    private void AddMapToGameModes(Map map, bool enableLogging)
-    {
-        foreach (string gameMode in map.GameModes)
-        {
-            if (!this.gameModeAliases.TryGetValue(gameMode, out string[] gameModeAliases))
-                gameModeAliases = new string[] { gameMode };
-
-            foreach (string gameModeAlias in gameModeAliases)
+            foreach (string key in gmAliases)
             {
-                if (!map.Official && !(allowedGameModes.Contains(gameMode) || allowedGameModes.Contains(gameModeAlias)))
-                    continue;
+                gameModeAliases.Add(key, mpMapsIni.GetStringValue(GameModeAliasesSection, key, string.Empty).Split(
+                    new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+            }
+        }
+    }
 
-                GameMode gm = GameModes.Find(g => g.Name == gameModeAlias);
-                if (gm == null)
+    private void LoadGameModes(IniFile mpMapsIni)
+    {
+        List<string> gameModes = mpMapsIni.GetSectionKeys(GameModesSection);
+        if (gameModes != null)
+        {
+            foreach (string key in gameModes)
+            {
+                string gameModeName = mpMapsIni.GetStringValue(GameModesSection, key, string.Empty);
+                if (!string.IsNullOrEmpty(gameModeName))
                 {
-                    gm = new GameMode(gameModeAlias);
+                    GameMode gm = new(gameModeName);
                     GameModes.Add(gm);
                 }
-
-                gm.Maps.Add(map);
-                if (enableLogging)
-                    Logger.Log("AddMapToGameModes: Added map " + map.Name + " to game mode " + gm.Name);
             }
+        }
+    }
+
+    private void LoadMultiMaps(IniFile mpMapsIni)
+    {
+        List<string> keys = mpMapsIni.GetSectionKeys(MultiMapsSection);
+
+        if (keys == null)
+        {
+            Logger.Log("Loading multiplayer map list failed!!!");
+            return;
+        }
+
+        List<Map> maps = new();
+
+        foreach (string key in keys)
+        {
+            string mapFilePath = mpMapsIni.GetStringValue(MultiMapsSection, key, string.Empty);
+
+            if (!File.Exists(ProgramConstants.GamePath + mapFilePath + MAPFILEEXTENSION))
+            {
+                Logger.Log("Map " + mapFilePath + " doesn't exist!");
+                continue;
+            }
+
+            Map map = new(mapFilePath);
+
+            if (!map.SetInfoFromMpMapsINI(mpMapsIni))
+                continue;
+
+            maps.Add(map);
+        }
+
+        foreach (Map map in maps)
+        {
+            AddMapToGameModes(map, false);
         }
     }
 }

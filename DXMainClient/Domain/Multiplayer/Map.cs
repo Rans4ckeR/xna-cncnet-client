@@ -13,40 +13,57 @@ using Utilities = Rampastring.Tools.Utilities;
 
 namespace DTAClient.Domain.Multiplayer;
 
-public struct ExtraMapPreviewTexture
-{
-    public string TextureName;
-    public Point Point;
-    public int Level;
-    public bool Toggleable;
-
-    public ExtraMapPreviewTexture(string textureName, Point point, int level, bool toggleable)
-    {
-        TextureName = textureName;
-        Point = point;
-        Level = level;
-        Toggleable = toggleable;
-    }
-}
-
 /// <summary>
 /// A multiplayer map.
 /// </summary>
 public class Map
 {
-    /// <summary>
-    /// The game modes that the map is listed for.
-    /// </summary>
-    [JsonProperty]
-    public string[] GameModes;
-
-    [JsonProperty]
-    public List<TeamStartMappingPreset> TeamStartMappingPresets = new();
-
     private const int MAX_PLAYERS = 8;
 
     [JsonProperty]
     private readonly string customMapFilePath;
+
+    private readonly List<ExtraMapPreviewTexture> extraTextures = new(0);
+
+    private readonly List<KeyValuePair<string, string>> forcedSpawnIniOptions = new(0);
+
+    [JsonProperty]
+    private readonly List<string> waypoints = new();
+
+    /// <summary>
+    /// The forced UnitCount for the map. -1 means none.
+    /// </summary>
+    [JsonProperty]
+    private int unitCount = -1;
+
+    /// <summary>
+    /// The forced starting credits for the map. -1 means none.
+    /// </summary>
+    [JsonProperty]
+    private int credits = -1;
+
+    [JsonProperty]
+    private int neutralHouseColor = -1;
+
+    [JsonProperty]
+    private int specialHouseColor = -1;
+
+    [JsonProperty]
+    private int bases = -1;
+
+    [JsonProperty]
+    private string[] localSize;
+
+    [JsonProperty]
+    private string[] actualSize;
+
+    private IniFile customMapIni;
+
+    /// <summary>
+    /// The pixel coordinates of the map's player starting locations.
+    /// </summary>
+    [JsonProperty]
+    private List<Point> startingLocations;
 
     public Map(string baseFilePath, string customMapFilePath = null)
     {
@@ -54,6 +71,15 @@ public class Map
         this.customMapFilePath = customMapFilePath;
         Official = string.IsNullOrEmpty(this.customMapFilePath);
     }
+
+    /// <summary>
+    /// Gets or sets the game modes that the map is listed for.
+    /// </summary>
+    [JsonProperty]
+    public string[] GameModes { get; set; }
+
+    [JsonProperty]
+    public List<TeamStartMappingPreset> TeamStartMappingPresets { get; set; } = new();
 
     /// <summary>
     /// Gets the name of the map.
@@ -74,9 +100,9 @@ public class Map
     public int MinPlayers { get; private set; }
 
     /// <summary>
-    /// Gets a value indicating whether whether to use MaxPlayers for limiting the player count of the map.
-    /// If false (which is the default), MaxPlayers is only used for randomizing
-    /// players to starting waypoints.
+    /// Gets a value indicating whether whether to use MaxPlayers for limiting the player count of
+    /// the map. If false (which is the default), MaxPlayers is only used for randomizing players to
+    /// starting waypoints.
     /// </summary>
     [JsonProperty]
     public bool EnforceMaxPlayers { get; private set; }
@@ -89,8 +115,8 @@ public class Map
     public bool IsCoop { get; private set; }
 
     /// <summary>
-    /// Gets a value indicating whether if set, this map won't be automatically transferred over CnCNet when
-    /// a player doesn't have it.
+    /// Gets a value indicating whether if set, this map won't be automatically transferred over
+    /// CnCNet when a player doesn't have it.
     /// </summary>
     [JsonIgnore]
     public bool Official { get; private set; }
@@ -126,8 +152,7 @@ public class Map
     public string BaseFilePath { get; private set; }
 
     /// <summary>
-    /// Gets the complete path to the map file.
-    /// Includes the game directory in the path.
+    /// Gets the complete path to the map file. Includes the game directory in the path.
     /// </summary>
     public string CompleteFilePath => ProgramConstants.GamePath + BaseFilePath + ".map";
 
@@ -150,7 +175,8 @@ public class Map
     public bool HumanPlayersOnly { get; private set; }
 
     /// <summary>
-    /// Gets a value indicating whether if set, players are forced to random starting locations on this map.
+    /// Gets a value indicating whether if set, players are forced to random starting locations on
+    /// this map.
     /// </summary>
     [JsonProperty]
     public bool ForceRandomStartLocations { get; private set; }
@@ -162,51 +188,13 @@ public class Map
     public bool ForceNoTeams { get; private set; }
 
     /// <summary>
-    /// Gets the name of an extra INI file in INI\Map Code\ that should be
-    /// embedded into this map's INI code when a game is started.
+    /// Gets the name of an extra INI file in INI\Map Code\ that should be embedded into this map's
+    /// INI code when a game is started.
     /// </summary>
     [JsonProperty]
     public string ExtraININame { get; private set; }
 
-    /// <summary>
-    /// The forced UnitCount for the map. -1 means none.
-    /// </summary>
-    [JsonProperty]
-    private int unitCount = -1;
-
-    /// <summary>
-    /// The forced starting credits for the map. -1 means none.
-    /// </summary>
-    [JsonProperty]
-    private int credits = -1;
-
-    [JsonProperty]
-    private int neutralHouseColor = -1;
-
-    [JsonProperty]
-    private int specialHouseColor = -1;
-
-    [JsonProperty]
-    private int bases = -1;
-
-    [JsonProperty]
-    private string[] localSize;
-
-    [JsonProperty]
-    private string[] actualSize;
-
-    private IniFile customMapIni;
-
-    [JsonProperty]
-    private readonly List<string> waypoints = new();
-
-    /// <summary>
-    /// The pixel coordinates of the map's player starting locations.
-    /// </summary>
-    [JsonProperty]
-    private List<Point> startingLocations;
-
-    public List<KeyValuePair<string, bool>> ForcedCheckBoxValues = new(0);
+    public List<KeyValuePair<string, bool>> ForcedCheckBoxValues { get; set; } = new(0);
 
     [JsonIgnore]
     public List<TeamStartMapping> TeamStartMappings => TeamStartMappingPresets?.FirstOrDefault()?.TeamStartMappings;
@@ -214,28 +202,25 @@ public class Map
     public Texture2D PreviewTexture { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether if false, the preview shouldn't be extracted for this (custom) map.
+    /// Gets or sets a value indicating whether if false, the preview shouldn't be extracted for
+    /// this (custom) map.
     /// </summary>
     public bool ExtractCustomPreview { get; set; } = true;
+
+    public List<KeyValuePair<string, int>> ForcedDropDownValues { get; set; } = new(0);
 
     public void CalculateSHA()
     {
         SHA1 = Utilities.CalculateSHA1ForFile(CompleteFilePath);
     }
 
-    public List<KeyValuePair<string, int>> ForcedDropDownValues = new(0);
-
-    private readonly List<ExtraMapPreviewTexture> extraTextures = new(0);
-
-    private readonly List<KeyValuePair<string, string>> forcedSpawnIniOptions = new(0);
-
     public List<ExtraMapPreviewTexture> GetExtraMapPreviewTextures() => extraTextures;
 
     /// <summary>
     /// This is used to load a map from the MPMaps.ini (default name) file.
     /// </summary>
-    /// <param name="iniFile"></param>
-    /// <returns></returns>
+    /// <param name="iniFile">ini file.</param>
+    /// <returns>result.</returns>
     public bool SetInfoFromMpMapsINI(IniFile iniFile)
     {
         try
@@ -277,10 +262,9 @@ public class Map
             int i = 0;
             while (true)
             {
-                // Format example:
-                // ExtraTexture0=oilderrick.png,200,150,1,false
-                // Third value is optional map cell level, defaults to 0 if unspecified.
-                // Fourth value is optional boolean value that determines if the texture can be toggled on / off.
+                // Format example: ExtraTexture0=oilderrick.png,200,150,1,false Third value is
+                // optional map cell level, defaults to 0 if unspecified. Fourth value is optional
+                // boolean value that determines if the texture can be toggled on / off.
                 string value = section.GetStringValue("ExtraTexture" + i, null);
 
                 if (string.IsNullOrWhiteSpace(value))
@@ -392,45 +376,15 @@ public class Map
         return startingLocations;
     }
 
-    private void GetTeamStartMappingPresets(IniSection section)
-    {
-        TeamStartMappingPresets = new List<TeamStartMappingPreset>();
-        for (int i = 0; ; i++)
-        {
-            try
-            {
-                string teamStartMappingPreset = section.GetStringValue($"TeamStartMapping{i}", string.Empty);
-                if (string.IsNullOrEmpty(teamStartMappingPreset))
-                    return; // mapping not found
-
-                string teamStartMappingPresetName = section.GetStringValue($"TeamStartMapping{i}Name", string.Empty);
-                if (string.IsNullOrEmpty(teamStartMappingPresetName))
-                    continue; // mapping found, but no name specified
-
-                TeamStartMappingPresets.Add(new TeamStartMappingPreset()
-                {
-                    Name = teamStartMappingPresetName,
-                    TeamStartMappings = TeamStartMapping.FromListString(teamStartMappingPreset)
-                });
-            }
-            catch (Exception e)
-            {
-                Logger.Log($"Unable to parse team start mappings. Map: \"{Name}\", Error: {e.Message}");
-                TeamStartMappingPresets = new List<TeamStartMappingPreset>();
-            }
-        }
-    }
-
     public Point MapPointToMapPreviewPoint(Point mapPoint, Point previewSize, int level)
     {
         return GetIsoTilePixelCoord(mapPoint.X, mapPoint.Y, actualSize, localSize, previewSize, level);
     }
 
     /// <summary>
-    /// Loads map information from a TS/RA2 map INI file.
-    /// Returns true if successful, otherwise false.
+    /// Loads map information from a TS/RA2 map INI file. Returns true if successful, otherwise false.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>result.</returns>
     public bool SetInfoFromCustomMap()
     {
         if (!File.Exists(customMapFilePath))
@@ -540,7 +494,7 @@ public class Map
     /// <summary>
     /// Loads and returns the map preview texture.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>result.</returns>
     public Texture2D LoadPreviewTexture()
     {
         if (File.Exists(ProgramConstants.GamePath + PreviewPath))
@@ -562,11 +516,230 @@ public class Map
         return AssetLoader.CreateTexture(Color.Black, 10, 10);
     }
 
+    public IniFile GetMapIni()
+    {
+        IniFile mapIni = new(CompleteFilePath);
+
+        if (!string.IsNullOrEmpty(ExtraININame))
+        {
+            IniFile extraIni = new(ProgramConstants.GamePath + "INI/Map Code/" + ExtraININame);
+            IniFile.ConsolidateIniFiles(mapIni, extraIni);
+        }
+
+        return mapIni;
+    }
+
+    public void ApplySpawnIniCode(
+        IniFile spawnIni,
+        int totalPlayerCount,
+        int aiPlayerCount,
+        int coopDifficultyLevel)
+    {
+        foreach (KeyValuePair<string, string> key in forcedSpawnIniOptions)
+            spawnIni.SetStringValue("Settings", key.Key, key.Value);
+
+        if (credits != -1)
+            spawnIni.SetIntValue("Settings", "Credits", credits);
+
+        if (unitCount != -1)
+            spawnIni.SetIntValue("Settings", "UnitCount", unitCount);
+
+        int neutralHouseIndex = totalPlayerCount + 1;
+        int specialHouseIndex = totalPlayerCount + 2;
+
+        if (IsCoop)
+        {
+            List<CoopHouseInfo> allyHouses = CoopInfo.AllyHouses;
+            List<CoopHouseInfo> enemyHouses = CoopInfo.EnemyHouses;
+
+            int multiId = totalPlayerCount + 1;
+            foreach (CoopHouseInfo houseInfo in allyHouses.Concat(enemyHouses))
+            {
+                spawnIni.SetIntValue("HouseHandicaps", "Multi" + multiId, coopDifficultyLevel);
+                spawnIni.SetIntValue("HouseCountries", "Multi" + multiId, houseInfo.Side);
+                spawnIni.SetIntValue("HouseColors", "Multi" + multiId, houseInfo.Color);
+                spawnIni.SetIntValue("SpawnLocations", "Multi" + multiId, houseInfo.StartingLocation);
+
+                multiId++;
+            }
+
+            for (int i = 0; i < allyHouses.Count; i++)
+            {
+                int aMultiId = totalPlayerCount + i + 1;
+
+                int allyIndex = 0;
+
+                // Write alliances
+                for (int pIndex = 0; pIndex < totalPlayerCount + allyHouses.Count; pIndex++)
+                {
+                    int allyMultiIndex = pIndex;
+
+                    if (pIndex == aMultiId - 1)
+                        continue;
+
+                    spawnIni.SetIntValue(
+                        "Multi" + aMultiId + "_Alliances",
+                        "HouseAlly" + HouseAllyIndexToString(allyIndex),
+                        allyMultiIndex);
+                    spawnIni.SetIntValue(
+                        "Multi" + (allyMultiIndex + 1) + "_Alliances",
+                        "HouseAlly" + HouseAllyIndexToString(totalPlayerCount + i - 1),
+                        aMultiId - 1);
+                    allyIndex++;
+                }
+            }
+
+            for (int i = 0; i < enemyHouses.Count; i++)
+            {
+                int eMultiId = totalPlayerCount + allyHouses.Count + i + 1;
+
+                int allyIndex = 0;
+
+                // Write alliances
+                for (int enemyIndex = 0; enemyIndex < enemyHouses.Count; enemyIndex++)
+                {
+                    int allyMultiIndex = totalPlayerCount + allyHouses.Count + enemyIndex;
+
+                    if (enemyIndex == i)
+                        continue;
+
+                    spawnIni.SetIntValue(
+                        "Multi" + eMultiId + "_Alliances",
+                        "HouseAlly" + HouseAllyIndexToString(allyIndex),
+                        allyMultiIndex);
+                    allyIndex++;
+                }
+            }
+
+            spawnIni.SetIntValue(
+                "Settings",
+                "AIPlayers",
+                aiPlayerCount + allyHouses.Count + enemyHouses.Count);
+
+            neutralHouseIndex += allyHouses.Count + enemyHouses.Count;
+            specialHouseIndex += allyHouses.Count + enemyHouses.Count;
+        }
+
+        if (neutralHouseColor > -1)
+            spawnIni.SetIntValue("HouseColors", "Multi" + neutralHouseIndex, neutralHouseColor);
+
+        if (specialHouseColor > -1)
+            spawnIni.SetIntValue("HouseColors", "Multi" + specialHouseIndex, specialHouseColor);
+
+        if (bases > -1)
+            spawnIni.SetBooleanValue("Settings", "Bases", Convert.ToBoolean(bases));
+    }
+
+    public string GetSizeString()
+    {
+        if (actualSize == null || actualSize.Length < 4)
+            return "Not available";
+        return actualSize[2] + "x" + actualSize[3];
+    }
+
+    public override int GetHashCode() => SHA1 != null ? SHA1.GetHashCode() : 0;
+
+    protected bool Equals(Map other) => string.Equals(SHA1, other?.SHA1, StringComparison.OrdinalIgnoreCase);
+
+    private static string HouseAllyIndexToString(int index)
+    {
+        string[] houseAllyIndexStrings = new string[]
+        {
+            "One",
+            "Two",
+            "Three",
+            "Four",
+            "Five",
+            "Six",
+            "Seven"
+        };
+
+        return houseAllyIndexStrings[index];
+    }
+
     /// <summary>
-    /// Due to caching, this may not have been loaded on application start.
-    /// This function provides the ability to load when needed.
+    /// Converts a waypoint's coordinate string into pixel coordinates on the preview image.
     /// </summary>
-    /// <returns></returns>
+    /// <returns>The waypoint's location on the map preview as a point.</returns>
+    private static Point GetWaypointCoords(
+        string waypoint,
+        string[] actualSizeValues,
+        string[] localSizeValues,
+        Point previewSizePoint)
+    {
+        string[] parts = waypoint.Split(',');
+
+        int xCoordIndex = parts[0].Length - 3;
+
+        int isoTileY = Convert.ToInt32(parts[0].Substring(0, xCoordIndex));
+        int isoTileX = Convert.ToInt32(parts[0].Substring(xCoordIndex));
+
+        int level = 0;
+
+        if (parts.Length > 1)
+            level = Conversions.IntFromString(parts[1], 0);
+
+        return GetIsoTilePixelCoord(isoTileX, isoTileY, actualSizeValues, localSizeValues, previewSizePoint, level);
+    }
+
+    private static Point GetIsoTilePixelCoord(int isoTileX, int isoTileY, string[] actualSizeValues, string[] localSizeValues, Point previewSizePoint, int level)
+    {
+        int rx = isoTileX - isoTileY + Convert.ToInt32(actualSizeValues[2]) - 1;
+        int ry = isoTileX + isoTileY - Convert.ToInt32(actualSizeValues[2]) - 1;
+
+        int pixelPosX = rx * MainClientConstants.MapCellSizeX / 2;
+        int pixelPosY = (ry * MainClientConstants.MapCellSizeY / 2) - (level * MainClientConstants.MapCellSizeY / 2);
+
+        pixelPosX -= Convert.ToInt32(localSizeValues[0]) * MainClientConstants.MapCellSizeX;
+        pixelPosY -= Convert.ToInt32(localSizeValues[1]) * MainClientConstants.MapCellSizeY;
+
+        // Calculate map size
+        int mapSizeX = Convert.ToInt32(localSizeValues[2]) * MainClientConstants.MapCellSizeX;
+        int mapSizeY = Convert.ToInt32(localSizeValues[3]) * MainClientConstants.MapCellSizeY;
+
+        double ratioX = Convert.ToDouble(pixelPosX) / mapSizeX;
+        double ratioY = Convert.ToDouble(pixelPosY) / mapSizeY;
+
+        int pixelX = Convert.ToInt32(ratioX * previewSizePoint.X);
+        int pixelY = Convert.ToInt32(ratioY * previewSizePoint.Y);
+
+        return new Point(pixelX, pixelY);
+    }
+
+    private void GetTeamStartMappingPresets(IniSection section)
+    {
+        TeamStartMappingPresets = new List<TeamStartMappingPreset>();
+        for (int i = 0; ; i++)
+        {
+            try
+            {
+                string teamStartMappingPreset = section.GetStringValue($"TeamStartMapping{i}", string.Empty);
+                if (string.IsNullOrEmpty(teamStartMappingPreset))
+                    return; // mapping not found
+
+                string teamStartMappingPresetName = section.GetStringValue($"TeamStartMapping{i}Name", string.Empty);
+                if (string.IsNullOrEmpty(teamStartMappingPresetName))
+                    continue; // mapping found, but no name specified
+
+                TeamStartMappingPresets.Add(new TeamStartMappingPreset()
+                {
+                    Name = teamStartMappingPresetName,
+                    TeamStartMappings = TeamStartMapping.FromListString(teamStartMappingPreset)
+                });
+            }
+            catch (Exception e)
+            {
+                Logger.Log($"Unable to parse team start mappings. Map: \"{Name}\", Error: {e.Message}");
+                TeamStartMappingPresets = new List<TeamStartMappingPreset>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Due to caching, this may not have been loaded on application start. This function provides
+    /// the ability to load when needed.
+    /// </summary>
+    /// <returns>result.</returns>
     private IniFile GetCustomMapIniFile()
     {
         if (customMapIni != null)
@@ -621,184 +794,5 @@ public class Map
                 key,
                 forcedOptionsIni.GetStringValue(spawnIniOptionsSection, key, string.Empty)));
         }
-    }
-
-    public IniFile GetMapIni()
-    {
-        IniFile mapIni = new(CompleteFilePath);
-
-        if (!string.IsNullOrEmpty(ExtraININame))
-        {
-            IniFile extraIni = new(ProgramConstants.GamePath + "INI/Map Code/" + ExtraININame);
-            IniFile.ConsolidateIniFiles(mapIni, extraIni);
-        }
-
-        return mapIni;
-    }
-
-    public void ApplySpawnIniCode(IniFile spawnIni, int totalPlayerCount,
-        int aiPlayerCount, int coopDifficultyLevel)
-    {
-        foreach (KeyValuePair<string, string> key in forcedSpawnIniOptions)
-            spawnIni.SetStringValue("Settings", key.Key, key.Value);
-
-        if (credits != -1)
-            spawnIni.SetIntValue("Settings", "Credits", credits);
-
-        if (unitCount != -1)
-            spawnIni.SetIntValue("Settings", "UnitCount", unitCount);
-
-        int neutralHouseIndex = totalPlayerCount + 1;
-        int specialHouseIndex = totalPlayerCount + 2;
-
-        if (IsCoop)
-        {
-            List<CoopHouseInfo> allyHouses = CoopInfo.AllyHouses;
-            List<CoopHouseInfo> enemyHouses = CoopInfo.EnemyHouses;
-
-            int multiId = totalPlayerCount + 1;
-            foreach (CoopHouseInfo houseInfo in allyHouses.Concat(enemyHouses))
-            {
-                spawnIni.SetIntValue("HouseHandicaps", "Multi" + multiId, coopDifficultyLevel);
-                spawnIni.SetIntValue("HouseCountries", "Multi" + multiId, houseInfo.Side);
-                spawnIni.SetIntValue("HouseColors", "Multi" + multiId, houseInfo.Color);
-                spawnIni.SetIntValue("SpawnLocations", "Multi" + multiId, houseInfo.StartingLocation);
-
-                multiId++;
-            }
-
-            for (int i = 0; i < allyHouses.Count; i++)
-            {
-                int aMultiId = totalPlayerCount + i + 1;
-
-                int allyIndex = 0;
-
-                // Write alliances
-                for (int pIndex = 0; pIndex < totalPlayerCount + allyHouses.Count; pIndex++)
-                {
-                    int allyMultiIndex = pIndex;
-
-                    if (pIndex == aMultiId - 1)
-                        continue;
-
-                    spawnIni.SetIntValue(
-                        "Multi" + aMultiId + "_Alliances",
-                        "HouseAlly" + HouseAllyIndexToString(allyIndex), allyMultiIndex);
-                    spawnIni.SetIntValue(
-                        "Multi" + (allyMultiIndex + 1) + "_Alliances",
-                        "HouseAlly" + HouseAllyIndexToString(totalPlayerCount + i - 1), aMultiId - 1);
-                    allyIndex++;
-                }
-            }
-
-            for (int i = 0; i < enemyHouses.Count; i++)
-            {
-                int eMultiId = totalPlayerCount + allyHouses.Count + i + 1;
-
-                int allyIndex = 0;
-
-                // Write alliances
-                for (int enemyIndex = 0; enemyIndex < enemyHouses.Count; enemyIndex++)
-                {
-                    int allyMultiIndex = totalPlayerCount + allyHouses.Count + enemyIndex;
-
-                    if (enemyIndex == i)
-                        continue;
-
-                    spawnIni.SetIntValue(
-                        "Multi" + eMultiId + "_Alliances",
-                        "HouseAlly" + HouseAllyIndexToString(allyIndex), allyMultiIndex);
-                    allyIndex++;
-                }
-            }
-
-            spawnIni.SetIntValue("Settings", "AIPlayers", aiPlayerCount +
-                allyHouses.Count + enemyHouses.Count);
-
-            neutralHouseIndex += allyHouses.Count + enemyHouses.Count;
-            specialHouseIndex += allyHouses.Count + enemyHouses.Count;
-        }
-
-        if (neutralHouseColor > -1)
-            spawnIni.SetIntValue("HouseColors", "Multi" + neutralHouseIndex, neutralHouseColor);
-
-        if (specialHouseColor > -1)
-            spawnIni.SetIntValue("HouseColors", "Multi" + specialHouseIndex, specialHouseColor);
-
-        if (bases > -1)
-            spawnIni.SetBooleanValue("Settings", "Bases", Convert.ToBoolean(bases));
-    }
-
-    public string GetSizeString()
-    {
-        if (actualSize == null || actualSize.Length < 4)
-            return "Not available";
-        return actualSize[2] + "x" + actualSize[3];
-    }
-
-    public override int GetHashCode() => SHA1 != null ? SHA1.GetHashCode() : 0;
-
-    protected bool Equals(Map other) => string.Equals(SHA1, other?.SHA1, StringComparison.OrdinalIgnoreCase);
-
-    private static string HouseAllyIndexToString(int index)
-    {
-        string[] houseAllyIndexStrings = new string[]
-        {
-            "One",
-            "Two",
-            "Three",
-            "Four",
-            "Five",
-            "Six",
-            "Seven"
-        };
-
-        return houseAllyIndexStrings[index];
-    }
-
-    /// <summary>
-    /// Converts a waypoint's coordinate string into pixel coordinates on the preview image.
-    /// </summary>
-    /// <returns>The waypoint's location on the map preview as a point.</returns>
-    private static Point GetWaypointCoords(string waypoint, string[] actualSizeValues, string[] localSizeValues,
-        Point previewSizePoint)
-    {
-        string[] parts = waypoint.Split(',');
-
-        int xCoordIndex = parts[0].Length - 3;
-
-        int isoTileY = Convert.ToInt32(parts[0].Substring(0, xCoordIndex));
-        int isoTileX = Convert.ToInt32(parts[0].Substring(xCoordIndex));
-
-        int level = 0;
-
-        if (parts.Length > 1)
-            level = Conversions.IntFromString(parts[1], 0);
-
-        return GetIsoTilePixelCoord(isoTileX, isoTileY, actualSizeValues, localSizeValues, previewSizePoint, level);
-    }
-
-    private static Point GetIsoTilePixelCoord(int isoTileX, int isoTileY, string[] actualSizeValues, string[] localSizeValues, Point previewSizePoint, int level)
-    {
-        int rx = isoTileX - isoTileY + Convert.ToInt32(actualSizeValues[2]) - 1;
-        int ry = isoTileX + isoTileY - Convert.ToInt32(actualSizeValues[2]) - 1;
-
-        int pixelPosX = rx * MainClientConstants.MAP_CELL_SIZE_X / 2;
-        int pixelPosY = (ry * MainClientConstants.MAP_CELL_SIZE_Y / 2) - (level * MainClientConstants.MAP_CELL_SIZE_Y / 2);
-
-        pixelPosX -= Convert.ToInt32(localSizeValues[0]) * MainClientConstants.MAP_CELL_SIZE_X;
-        pixelPosY -= Convert.ToInt32(localSizeValues[1]) * MainClientConstants.MAP_CELL_SIZE_Y;
-
-        // Calculate map size
-        int mapSizeX = Convert.ToInt32(localSizeValues[2]) * MainClientConstants.MAP_CELL_SIZE_X;
-        int mapSizeY = Convert.ToInt32(localSizeValues[3]) * MainClientConstants.MAP_CELL_SIZE_Y;
-
-        double ratioX = Convert.ToDouble(pixelPosX) / mapSizeX;
-        double ratioY = Convert.ToDouble(pixelPosY) / mapSizeY;
-
-        int pixelX = Convert.ToInt32(ratioX * previewSizePoint.X);
-        int pixelY = Convert.ToInt32(ratioY * previewSizePoint.Y);
-
-        return new Point(pixelX, pixelY);
     }
 }

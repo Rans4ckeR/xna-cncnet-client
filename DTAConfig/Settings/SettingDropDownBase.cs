@@ -7,11 +7,9 @@ namespace DTAConfig.Settings;
 
 public abstract class SettingDropDownBase : XNAClientDropDown, IUserSetting
 {
-    protected string defaultSection = "CustomSettings";
+    private string _settingKey;
 
     private string _settingSection;
-
-    private string _settingKey;
 
     public SettingDropDownBase(WindowManager windowManager)
         : base(windowManager)
@@ -29,21 +27,27 @@ public abstract class SettingDropDownBase : XNAClientDropDown, IUserSetting
 
     public int DefaultValue { get; set; }
 
-    public string SettingSection
-    {
-        get => string.IsNullOrEmpty(_settingSection) ? defaultSection : _settingSection;
-        set => _settingSection = value;
-    }
+    public bool RestartRequired { get; set; }
 
     public string SettingKey
     {
-        get => string.IsNullOrEmpty(_settingKey) ? $"{Name}{defaultKeySuffix}" : _settingKey;
+        get => string.IsNullOrEmpty(_settingKey) ? $"{Name}{DefaultKeySuffix}" : _settingKey;
         set => _settingKey = value;
     }
 
-    public bool RestartRequired { get; set; }
-    protected string defaultKeySuffix = "_SelectedIndex";
-    protected int originalState;
+    public string SettingSection
+    {
+        get => string.IsNullOrEmpty(_settingSection) ? DefaultSection : _settingSection;
+        set => _settingSection = value;
+    }
+
+    protected string DefaultKeySuffix { get; set; } = "_SelectedIndex";
+
+    protected string DefaultSection { get; set; } = "CustomSettings";
+
+    protected int OriginalState { get; set; }
+
+    public abstract void Load();
 
     public override void ParseAttributeFromINI(IniFile iniFile, string key, string value)
     {
@@ -81,8 +85,6 @@ public abstract class SettingDropDownBase : XNAClientDropDown, IUserSetting
 
         base.ParseAttributeFromINI(iniFile, key, value);
     }
-
-    public abstract void Load();
 
     public abstract bool Save();
 }
