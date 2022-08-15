@@ -179,7 +179,7 @@ namespace DTAClient
             new Startup().Execute();
         }
 
-        static void LogException(Exception ex, bool innerException = false)
+        public static void LogException(Exception ex, bool innerException = false)
         {
             if (!innerException)
                 Logger.Log("KABOOOOOOM!!! Info:");
