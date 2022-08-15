@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DXMainClient": {
+      "commandName": "Project",
+      "commandLineArgs": "-MULTIPLEINSTANCE"
+    }
+  }
+}
