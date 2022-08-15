@@ -1,7 +1,8 @@
 {
   "profiles": {
     "DXMainClient": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "-MULTIPLEINSTANCE"
     },
     "WSL": {
       "commandName": "WSL2",
