@@ -267,7 +267,7 @@ namespace DTAClient
             {
                 searcher = new ManagementObjectSearcher("SELECT * FROM Win32_VideoController");
 
-                foreach (ManagementObject mo in searcher.Get())
+                foreach (ManagementObject mo in searcher.Get().Cast<ManagementObject>())
                 {
                     var currentBitsPerPixel = mo.Properties["CurrentBitsPerPixel"];
                     var description = mo.Properties["Description"];
@@ -288,7 +288,7 @@ namespace DTAClient
                 searcher = new ManagementObjectSearcher("Select * From Win32_PhysicalMemory");
                 ulong total = 0;
 
-                foreach (ManagementObject ram in searcher.Get())
+                foreach (ManagementObject ram in searcher.Get().Cast<ManagementObject>())
                 {
                     total += Convert.ToUInt64(ram.GetPropertyValue("Capacity"));
                 }
@@ -322,7 +322,7 @@ namespace DTAClient
                 ManagementObjectSearcher mbs = new ManagementObjectSearcher("Select * From Win32_processor");
                 mbsList = mbs.Get();
                 string cpuid = "";
-                foreach (ManagementObject mo in mbsList)
+                foreach (ManagementObject mo in mbsList.Cast<ManagementObject>())
                 {
                     cpuid = mo["ProcessorID"].ToString();
                 }
@@ -330,7 +330,7 @@ namespace DTAClient
                 ManagementObjectSearcher mos = new ManagementObjectSearcher("SELECT * FROM Win32_BaseBoard");
                 var moc = mos.Get();
                 string mbid = "";
-                foreach (ManagementObject mo in moc)
+                foreach (ManagementObject mo in moc.Cast<ManagementObject>())
                 {
                     mbid = (string)mo["SerialNumber"];
                 }
@@ -346,7 +346,7 @@ namespace DTAClient
                 Random rn = new Random();
 
                 using RegistryKey key = Registry.CurrentUser.CreateSubKey("SOFTWARE\\" + ClientConfiguration.Instance.InstallationPathRegKey);
-                string str = rn.Next(Int32.MaxValue - 1).ToString();
+                string str = rn.Next(int.MaxValue - 1).ToString();
 
                 try
                 {

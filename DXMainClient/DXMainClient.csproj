@@ -15,7 +15,7 @@
     <RootNamespace>DTAClient</RootNamespace>
     <ApplicationIcon>clienticon.ico</ApplicationIcon>
   </PropertyGroup>
-  
+
   <PropertyGroup>
     <AssemblyName Condition="'$(Engine)' == 'WindowsDX'">clientdx</AssemblyName>
     <AssemblyName Condition="'$(Engine)' == 'UniversalGL' Or '$(Engine)' == 'WindowsGL'">clientogl</AssemblyName>
@@ -26,8 +26,9 @@
 
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
     <Reference Include="System.DirectoryServices" />
-    <Reference Include="System.Management" />
     <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
     <PackageReference Include="System.Management" Version="6.0.0" />
