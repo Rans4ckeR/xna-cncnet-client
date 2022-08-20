@@ -22,19 +22,16 @@ namespace DTAClient.DXGUI.Generic
     {
         public LoadingScreen(WindowManager windowManager) : base(windowManager)
         {
-
         }
-
-        private static readonly object locker = new object();
 
         private MapLoader mapLoader;
 
         private PrivateMessagingPanel privateMessagingPanel;
 
-        private bool visibleSpriteCursor = false;
+        private bool visibleSpriteCursor;
 
-        private Task updaterInitTask = null;
-        private Task mapLoadTask = null;
+        private Task updaterInitTask;
+        private Task mapLoadTask;
 
         public override void Initialize()
         {
@@ -124,7 +121,7 @@ namespace DTAClient.DXGUI.Generic
                 topBar, cncnetManager, tunnelHandler, mapLoader.GameModes, gameCollection, discordHandler);
             var cncnetLobby = new CnCNetLobby(WindowManager, cncnetManager, 
                 cncnetGameLobby, cncnetGameLoadingLobby, topBar, pmWindow, tunnelHandler,
-                gameCollection, cncnetUserData, optionsWindow);
+                gameCollection, cncnetUserData);
             var gipw = new GameInProgressWindow(WindowManager);
 
             var skirmishLobby = new SkirmishLobby(WindowManager, topBar, mapLoader, discordHandler);
@@ -192,11 +189,6 @@ namespace DTAClient.DXGUI.Generic
                 if (mapLoadTask.Status == TaskStatus.RanToCompletion)
                     Finish();
             }
-        }
-
-        public override void Draw(GameTime gameTime)
-        {
-            base.Draw(gameTime);
         }
     }
 }
