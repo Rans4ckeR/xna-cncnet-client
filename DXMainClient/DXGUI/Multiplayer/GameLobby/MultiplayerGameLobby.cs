@@ -366,10 +366,17 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
         }
 
-        private Task ChkAutoReady_CheckedChangedAsync()
+        private async Task ChkAutoReady_CheckedChangedAsync()
         {
-            btnLaunchGame.Enabled = !chkAutoReady.Checked;
-            return RequestReadyStatusAsync();
+            try
+            {
+                btnLaunchGame.Enabled = !chkAutoReady.Checked;
+                await RequestReadyStatusAsync();
+            }
+            catch (Exception ex)
+            {
+                PreStartup.HandleException(ex);
+            }
         }
 
         protected void ResetAutoReadyCheckbox()
@@ -776,7 +783,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// launches the game if it's allowed. If the local player isn't the game host,
         /// sends a ready request.
         /// </summary>
-        protected override async Task BtnLaunchGame_LeftClickAsync(object sender, EventArgs e)
+        protected override async Task BtnLaunchGame_LeftClickAsync()
         {
             try
             {
@@ -1064,7 +1071,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected abstract Task HostLaunchGameAsync();
 
-        protected override async Task CopyPlayerDataFromUIAsync(object sender, EventArgs e)
+        protected override async Task CopyPlayerDataFromUIAsync(object sender)
         {
             try
             {
@@ -1073,7 +1080,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 if (IsHost)
                 {
-                    await base.CopyPlayerDataFromUIAsync(sender, e);
+                    await base.CopyPlayerDataFromUIAsync(sender);
                     await BroadcastPlayerOptionsAsync();
                     return;
                 }
