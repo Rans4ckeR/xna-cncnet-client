@@ -70,9 +70,9 @@ namespace DTAClient
             idThread.Start();
 
 #if ARES
-            Task.Factory.StartNew(() => PruneFiles(SafePath.GetDirectory(ProgramConstants.GamePath, "debug"), DateTime.Now.AddDays(-7)));
+            Task.Run(() => PruneFiles(SafePath.GetDirectory(ProgramConstants.GamePath, "debug"), DateTime.Now.AddDays(-7)));
 #endif
-            Task.Factory.StartNew(MigrateOldLogFiles);
+            Task.Run(MigrateOldLogFiles);
 
             DirectoryInfo updaterFolder = SafePath.GetDirectory(ProgramConstants.GamePath, "Updater");
 
