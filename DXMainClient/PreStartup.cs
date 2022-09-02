@@ -249,6 +249,7 @@ namespace DTAClient
                 MainClientConstants.SUPPORT_URL_SHORT);
 
             ProgramConstants.UserErrorAction("KABOOOOOOOM".L10N("UI:Main:FatalErrorTitle"), error);
+            Environment.Exit(1);
         }
 
         private static void CheckPermissions()
