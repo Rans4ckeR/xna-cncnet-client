@@ -253,6 +253,7 @@ namespace DTAClient
                 MainClientConstants.SUPPORT_URL_SHORT);
 
             ProgramConstants.DisplayErrorAction("KABOOOOOOOM".L10N("UI:Main:FatalErrorTitle"), error);
+            Environment.Exit(1);
         }
 
 #if !NETFRAMEWORK
