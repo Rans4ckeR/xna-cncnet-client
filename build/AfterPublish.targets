@@ -8,7 +8,7 @@
   </Target>
 
   <Target Name="CopySDL" AfterTargets="Publish" Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework' And '$(Engine)' == 'WindowsGL'">
-    <Message Importance="high" Text="Copying SDL files"/>
+    <Message Importance="high" Text="Copying missing SDL files"/>
     <Copy SourceFiles="$(OutDir)x64/SDL2.dll" DestinationFolder="$(PublishDir)x64" />
     <Copy SourceFiles="$(OutDir)x64/soft_oal.dll" DestinationFolder="$(PublishDir)x64" />
     <Copy SourceFiles="$(OutDir)x86/SDL2.dll" DestinationFolder="$(PublishDir)x86" />
