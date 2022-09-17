@@ -22,7 +22,6 @@
         WindowsGraphicalUserInterface="$(_UseWindowsGraphicalUserInterface)"
         Retries="$(CopyRetryCount)"
         RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)"
-        EnableMacOSCodeSign="$(_EnableMacOSCodeSign)"
-        />
+        EnableMacOSCodeSign="$(_EnableMacOSCodeSign)"/>
   </Target>
 </Project>
