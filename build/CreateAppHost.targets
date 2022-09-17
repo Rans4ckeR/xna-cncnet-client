@@ -9,6 +9,7 @@
     <__RunAppHostPatcher>False</__RunAppHostPatcher>
     <__RunAppHostPatcher Condition="$(TargetFramework.Contains('-'))">True</__RunAppHostPatcher> <!-- .NET6 WinForms Windows specific -->
     <__RunAppHostPatcher Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework' And '$(Engine)' == 'UniversalGL' And'$(RuntimeIdentifier)' != ''">True</__RunAppHostPatcher> <!-- .NET6 UniversalGL platform specific -->
+    <__RunAppHostPatcher Condition="'$(BuildingInsideVisualStudio)' == 'true'">False</__RunAppHostPatcher>
   </PropertyGroup>
 
   <Target Name="PatchAppHost" AfterTargets="_CreateAppHost" Condition="'$(__RunAppHostPatcher)'">
