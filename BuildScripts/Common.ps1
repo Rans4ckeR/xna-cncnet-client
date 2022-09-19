@@ -12,7 +12,11 @@ $EngineMap = @{
 }
 
 function Build-Project($Configuration, $Game, $Engine, $Framework) {
-  $Output = Join-Path $CompiledRoot $Game $Framework Resources Binaries ($EngineMap[$Engine])
+  $Output = Join-Path $CompiledRoot $Game $Framework
+  if ($Engine -EQ 'UniversalGL') {
+    $Output = Join-Path $Output any
+  }
+  $Output = Join-Path $Output Resources Binaries ($EngineMap[$Engine])
   if ($Engine -EQ 'WindowsXNA') {
     dotnet publish $ProjectPath --configuration=$Configuration -property:GAME=$Game -property:ENGINE=$Engine --arch=x86 --framework=$Framework --output=$Output
   }
