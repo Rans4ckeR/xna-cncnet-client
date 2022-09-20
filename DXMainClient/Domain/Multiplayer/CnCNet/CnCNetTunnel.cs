@@ -6,10 +6,8 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
-#if !NETFRAMEWORK
-using System.Threading;
-#endif
 using System.Threading.Tasks;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
@@ -31,21 +29,38 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// <returns>A CnCNetTunnel instance parsed from the given string.</returns>
         public static CnCNetTunnel Parse(string str)
         {
-            // For the format, check http://cncnet.org/master-list
-
+            // For the format, check https://cncnet.org/master-list
             try
             {
                 var tunnel = new CnCNetTunnel();
                 string[] parts = str.Split(';');
-                string address = parts[0];
-                int version = int.Parse(parts[10]);
+                string addressAndPort = parts[0];
+                string secondaryAddress = parts.Length > 12 ? parts[12] : null;
+                int version = int.Parse(parts[10], CultureInfo.InvariantCulture);
+#if NETFRAMEWORK
+                string primaryAddress = addressAndPort.Substring(0, addressAndPort.LastIndexOf(':'));
+#else
+                string primaryAddress = addressAndPort[..addressAndPort.LastIndexOf(':')];
+#endif
+                var primaryIpAddress = IPAddress.Parse(primaryAddress);
+                IPAddress secondaryIpAddress = string.IsNullOrWhiteSpace(secondaryAddress) ? null : IPAddress.Parse(secondaryAddress);
+
+                if (Socket.OSSupportsIPv6 && primaryIpAddress.AddressFamily is AddressFamily.InterNetworkV6)
+                    tunnel.Address = primaryIpAddress.ToString();
+                else if (Socket.OSSupportsIPv6 && secondaryIpAddress?.AddressFamily is AddressFamily.InterNetworkV6)
+                    tunnel.Address = secondaryIpAddress.ToString();
+                else if (Socket.OSSupportsIPv4 && primaryIpAddress.AddressFamily is AddressFamily.InterNetwork)
+                    tunnel.Address = primaryIpAddress.ToString();
+                else if (Socket.OSSupportsIPv4 && secondaryIpAddress?.AddressFamily is AddressFamily.InterNetwork)
+                    tunnel.Address = secondaryIpAddress.ToString();
+                else
+                    throw new($"No supported IP address found ({nameof(Socket.OSSupportsIPv6)}={Socket.OSSupportsIPv6}," +
+                              $" {nameof(Socket.OSSupportsIPv4)}={Socket.OSSupportsIPv4}) for {str}.");
 
 #if NETFRAMEWORK
-                tunnel.Address = address.Substring(0, address.LastIndexOf(':'));
-                tunnel.Port = int.Parse(address.Substring(address.LastIndexOf(':') + 1));
+                tunnel.Port = int.Parse(addressAndPort.Substring(addressAndPort.LastIndexOf(':') + 1), CultureInfo.InvariantCulture);
 #else
-                tunnel.Address = address[..address.LastIndexOf(':')];
-                tunnel.Port = int.Parse(address[(address.LastIndexOf(':') + 1)..]);
+                tunnel.Port = int.Parse(addressAndPort[(addressAndPort.LastIndexOf(':') + 1)..], CultureInfo.InvariantCulture);
 #endif
                 tunnel.Country = parts[1];
                 tunnel.CountryCode = parts[2];
@@ -65,15 +80,10 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
                 return tunnel;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is FormatException or OverflowException or IndexOutOfRangeException)
             {
-                if (ex is FormatException || ex is OverflowException || ex is IndexOutOfRangeException)
-                {
-                    Logger.Log("Parsing tunnel information failed: " + ex.Message + Environment.NewLine + "Parsed string: " + str);
-                    return null;
-                }
-
-                throw;
+                PreStartup.LogException(ex, "Parsing tunnel information failed. Parsed string: " + str);
+                return null;
             }
         }
 
@@ -104,16 +114,16 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         public double Longitude { get; private set; }
         public int Version { get; private set; }
         public double Distance { get; private set; }
-        public int PingInMs { get; set; } = -1;
+        public int PingInMs { get; private set; } = -1;
 
         /// <summary>
         /// Gets a list of player ports to use from a specific tunnel server.
         /// </summary>
         /// <returns>A list of player ports to use.</returns>
-        public List<int> GetPlayerPortInfo(int playerCount)
+        public async Task<List<int>> GetPlayerPortInfoAsync(int playerCount)
         {
             if (Version != Constants.TUNNEL_VERSION_2)
-                throw new InvalidOperationException("GetPlayerPortInfo only works with version 2 tunnels.");
+                throw new InvalidOperationException($"GetPlayerPortInfo only works with version {Constants.TUNNEL_VERSION_2} tunnels.");
 
             try
             {
@@ -122,28 +132,41 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 string addressString = $"http://{Address}:{Port}/request?clients={playerCount}";
                 Logger.Log($"Downloading from {addressString}");
 
-                using (var client = new ExtendedWebClient(Constants.TUNNEL_CONNECTION_TIMEOUT))
+                var httpClientHandler = new HttpClientHandler
                 {
-                    string data = client.DownloadString(addressString);
+#if NETFRAMEWORK
+                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+#else
+                    AutomaticDecompression = DecompressionMethods.All
+#endif
+                };
+                using var client = new HttpClient(httpClientHandler, true)
+                {
+                    Timeout = TimeSpan.FromMilliseconds(Constants.TUNNEL_CONNECTION_TIMEOUT),
+#if !NETFRAMEWORK
+                    DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
+#endif
+                };
 
-                    data = data.Replace("[", string.Empty);
-                    data = data.Replace("]", string.Empty);
+                string data = await client.GetStringAsync(addressString);
 
-                    string[] portIDs = data.Split(',');
-                    List<int> playerPorts = new List<int>();
+                data = data.Replace("[", string.Empty);
+                data = data.Replace("]", string.Empty);
 
-                    foreach (string _port in portIDs)
-                    {
-                        playerPorts.Add(Convert.ToInt32(_port));
-                        Logger.Log($"Added port {_port}");
-                    }
+                string[] portIDs = data.Split(',');
+                List<int> playerPorts = new List<int>();
 
-                    return playerPorts;
+                foreach (string _port in portIDs)
+                {
+                    playerPorts.Add(Convert.ToInt32(_port));
+                    Logger.Log($"Added port {_port}");
                 }
+
+                return playerPorts;
             }
             catch (Exception ex)
             {
-                Logger.Log("Unable to connect to the specified tunnel server. Returned error message: " + ex.Message);
+                PreStartup.LogException(ex, "Unable to connect to the specified tunnel server.");
             }
 
             return new List<int>();
@@ -183,7 +206,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (SocketException ex)
             {
-                Logger.Log($"Failed to ping tunnel {Name} ({Address}:{Port}). Message: {ex.Message}");
+                PreStartup.LogException(ex, $"Failed to ping tunnel {Name} ({Address}:{Port}).");
 
                 PingInMs = -1;
             }

@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using ClientUpdater;
 
 namespace DTAClient.DXGUI.Generic
@@ -159,7 +160,7 @@ namespace DTAClient.DXGUI.Generic
             btnLan.IdleTexture = AssetLoader.LoadTexture("MainMenu/lan.png");
             btnLan.HoverTexture = AssetLoader.LoadTexture("MainMenu/lan_c.png");
             btnLan.HoverSoundEffect = new EnhancedSoundEffect("MainMenu/button.wav");
-            btnLan.LeftClick += BtnLan_LeftClick;
+            btnLan.LeftClick += (_, _) => BtnLan_LeftClickAsync();
 
             btnOptions = new XNAClientButton(WindowManager);
             btnOptions.Name = nameof(btnOptions);
@@ -278,7 +279,7 @@ namespace DTAClient.DXGUI.Generic
             cncnetPlayerCountCancellationSource = new CancellationTokenSource();
             CnCNetPlayerCountTask.InitializeService(cncnetPlayerCountCancellationSource);
 
-            WindowManager.GameClosing += WindowManager_GameClosing;
+            WindowManager.GameClosing += (_, _) => WindowManager_GameClosingAsync();
 
             skirmishLobby.Exited += SkirmishLobby_Exited;
             lanLobby.Exited += LanLobby_Exited;
@@ -359,7 +360,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         private void Updater_Restart(object sender, EventArgs e) =>
-            WindowManager.AddCallback(new Action(ExitClient), null);
+            WindowManager.AddCallback(ExitClient);
 
         /// <summary>
         /// Applies configuration changes (music playback and volume)
@@ -473,7 +474,7 @@ namespace DTAClient.DXGUI.Generic
 
         private void SharedUILogic_GameProcessStarted() => MusicOff();
 
-        private void WindowManager_GameClosing(object sender, EventArgs e) => Clean();
+        private Task WindowManager_GameClosingAsync() => CleanAsync();
 
         private void SkirmishLobby_Exited(object sender, EventArgs e)
         {
@@ -506,17 +507,24 @@ namespace DTAClient.DXGUI.Generic
         /// <summary>
         /// Attemps to "clean" the client session in a nice way if the user closes the game.
         /// </summary>
-        private void Clean()
+        private async Task CleanAsync()
         {
-            Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
+            try
+            {
+                Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
 
-            if (cncnetPlayerCountCancellationSource != null) cncnetPlayerCountCancellationSource.Cancel();
-            topBar.Clean();
-            if (UpdateInProgress)
-                Updater.StopUpdate();
+                cncnetPlayerCountCancellationSource?.Cancel();
+                topBar.Clean();
+                if (UpdateInProgress)
+                    Updater.StopUpdate();
 
-            if (connectionManager.IsConnected)
-                connectionManager.Disconnect();
+                if (connectionManager.IsConnected)
+                    await connectionManager.DisconnectAsync();
+            }
+            catch (Exception ex)
+            {
+                PreStartup.HandleException(ex);
+            }
         }
 
         /// <summary>
@@ -667,7 +675,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         private void Updater_FileIdentifiersUpdated()
-            => WindowManager.AddCallback(new Action(HandleFileIdentifierUpdate), null);
+            => WindowManager.AddCallback(HandleFileIdentifierUpdate);
 
         /// <summary>
         /// Used for displaying the result of an update check in the UI.
@@ -784,17 +792,24 @@ namespace DTAClient.DXGUI.Generic
         private void BtnLoadGame_LeftClick(object sender, EventArgs e)
             => innerPanel.Show(innerPanel.GameLoadingWindow);
 
-        private void BtnLan_LeftClick(object sender, EventArgs e)
+        private async Task BtnLan_LeftClickAsync()
         {
-            lanLobby.Open();
+            try
+            {
+                await lanLobby.OpenAsync();
 
-            if (UserINISettings.Instance.StopMusicOnMenu)
-                MusicOff();
+                if (UserINISettings.Instance.StopMusicOnMenu)
+                    MusicOff();
 
-            if (connectionManager.IsConnected)
-                connectionManager.Disconnect();
+                if (connectionManager.IsConnected)
+                    await connectionManager.DisconnectAsync();
 
-            topBar.SetLanMode(true);
+                topBar.SetLanMode(true);
+            }
+            catch (Exception ex)
+            {
+                PreStartup.HandleException(ex);
+            }
         }
 
         private void BtnCnCNet_LeftClick(object sender, EventArgs e) => topBar.SwitchToSecondary();
@@ -829,7 +844,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         private void SharedUILogic_GameProcessExited() =>
-            AddCallback(new Action(HandleGameProcessExited), null);
+            AddCallback(HandleGameProcessExited);
 
         private void HandleGameProcessExited()
         {
@@ -934,7 +949,7 @@ namespace DTAClient.DXGUI.Generic
             if (MediaPlayer.Volume > step)
             {
                 MediaPlayer.Volume -= step;
-                AddCallback(new Action(FadeMusicExit), null);
+                AddCallback(FadeMusicExit);
             }
             else
             {

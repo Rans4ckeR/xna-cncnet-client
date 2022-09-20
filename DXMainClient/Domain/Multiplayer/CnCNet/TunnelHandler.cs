@@ -7,9 +7,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Net.Http;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
 {
@@ -57,13 +57,13 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         private void DoTunnelPinged(int index)
         {
             if (TunnelPinged != null)
-                wm.AddCallback(TunnelPinged, index);
+                wm.AddCallback(() => TunnelPinged(index));
         }
 
         private void DoCurrentTunnelPinged()
         {
             if (CurrentTunnelPinged != null)
-                wm.AddCallback(CurrentTunnelPinged, this, EventArgs.Empty);
+                wm.AddCallback(() => CurrentTunnelPinged(this, EventArgs.Empty));
         }
 
         private void ConnectionManager_Connected(object sender, EventArgs e) => Enabled = true;
@@ -77,11 +77,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             try
             {
                 List<CnCNetTunnel> tunnels = await DoRefreshTunnelsAsync();
-                wm.AddCallback(new Action<List<CnCNetTunnel>>(HandleRefreshedTunnels), tunnels);
+                wm.AddCallback(() => HandleRefreshedTunnels(tunnels));
             }
             catch (Exception ex)
             {
-                PreStartup.LogException(ex);
+                PreStartup.HandleException(ex);
             }
         }
 
@@ -125,7 +125,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                PreStartup.LogException(ex);
+                PreStartup.HandleException(ex);
             }
         }
 
@@ -145,7 +145,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                PreStartup.LogException(ex);
+                PreStartup.HandleException(ex);
             }
         }
 
@@ -153,32 +153,45 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// Downloads and parses the list of CnCNet tunnels.
         /// </summary>
         /// <returns>A list of tunnel servers.</returns>
-        private async Task<List<CnCNetTunnel>> DoRefreshTunnelsAsync()
+        private static async Task<List<CnCNetTunnel>> DoRefreshTunnelsAsync()
         {
             FileInfo tunnelCacheFile = SafePath.GetFile(ProgramConstants.GamePath, "Client", "tunnel_cache");
 
             List<CnCNetTunnel> returnValue = new List<CnCNetTunnel>();
+            var httpClientHandler = new HttpClientHandler
+            {
+#if NETFRAMEWORK
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+#else
+                AutomaticDecompression = DecompressionMethods.All
+#endif
+            };
+            using var client = new HttpClient(httpClientHandler, true)
+            {
+                Timeout = TimeSpan.FromSeconds(100),
+#if !NETFRAMEWORK
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
+#endif
+            };
 
-            WebClient client = new WebClient();
-
-            byte[] data;
+            string data;
 
             Logger.Log("Fetching tunnel server info.");
 
             try
             {
-                data = await client.DownloadDataTaskAsync(MainClientConstants.CNCNET_TUNNEL_LIST_URL);
+                data = await client.GetStringAsync(MainClientConstants.CNCNET_TUNNEL_LIST_URL);
             }
-            catch (WebException ex)
+            catch (HttpRequestException ex)
             {
-                Logger.Log("Error when downloading tunnel server info: " + ex.Message);
-                Logger.Log("Retrying.");
+                PreStartup.LogException(ex, "Error when downloading tunnel server info. Retrying.");
                 try
                 {
-                    data = await client.DownloadDataTaskAsync(MainClientConstants.CNCNET_TUNNEL_LIST_URL);
+                    data = await client.GetStringAsync(MainClientConstants.CNCNET_TUNNEL_LIST_URL);
                 }
-                catch (WebException)
+                catch (HttpRequestException ex1)
                 {
+                    PreStartup.LogException(ex1);
                     if (!tunnelCacheFile.Exists)
                     {
                         Logger.Log("Tunnel cache file doesn't exist!");
@@ -187,23 +200,21 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
                     Logger.Log("Fetching tunnel server list failed. Using cached tunnel data.");
 #if NETFRAMEWORK
-                    data = File.ReadAllBytes(tunnelCacheFile.FullName);
+                    data = File.ReadAllText(tunnelCacheFile.FullName);
 #else
-                    data = await File.ReadAllBytesAsync(tunnelCacheFile.FullName);
+                    data = await File.ReadAllTextAsync(tunnelCacheFile.FullName);
 #endif
                 }
             }
 
-            string convertedData = Encoding.Default.GetString(data);
+            string[] serverList = data.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
-            string[] serverList = convertedData.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
-
-            // skip first header item ("address;country;countrycode;name;password;clients;maxclients;official;latitude;longitude;version;distance")
+            // skip the header
             foreach (string serverInfo in serverList.Skip(1))
             {
                 try
                 {
-                    CnCNetTunnel tunnel = CnCNetTunnel.Parse(serverInfo);
+                    var tunnel = CnCNetTunnel.Parse(serverInfo);
 
                     if (tunnel == null)
                         continue;
@@ -219,32 +230,31 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Caught an exception when parsing a tunnel server: " + ex.Message);
+                    PreStartup.LogException(ex, "Caught an exception when parsing a tunnel server.");
                 }
             }
 
-            if (returnValue.Count > 0)
+            if (!returnValue.Any())
+                return returnValue;
+
+            try
             {
-                try
-                {
-                    if (tunnelCacheFile.Exists)
-                        tunnelCacheFile.Delete();
+                if (tunnelCacheFile.Exists)
+                    tunnelCacheFile.Delete();
 
-                    DirectoryInfo clientDirectoryInfo = SafePath.GetDirectory(ProgramConstants.GamePath, "Client");
+                DirectoryInfo clientDirectoryInfo = SafePath.GetDirectory(ProgramConstants.GamePath, "Client");
 
-                    if (!clientDirectoryInfo.Exists)
-                        clientDirectoryInfo.Create();
-
+                if (!clientDirectoryInfo.Exists)
+                    clientDirectoryInfo.Create();
 #if NETFRAMEWORK
-                    File.WriteAllBytes(tunnelCacheFile.FullName, data);
+                File.WriteAllText(tunnelCacheFile.FullName, data);
 #else
-                    await File.WriteAllBytesAsync(tunnelCacheFile.FullName, data);
+                await File.WriteAllTextAsync(tunnelCacheFile.FullName, data);
 #endif
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log("Refreshing tunnel cache file failed! Returned error: " + ex.Message);
-                }
+            }
+            catch (Exception ex)
+            {
+                PreStartup.LogException(ex, "Refreshing tunnel cache file failed!");
             }
 
             return returnValue;

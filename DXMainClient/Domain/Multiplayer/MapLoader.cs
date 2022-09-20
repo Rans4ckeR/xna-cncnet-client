@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Linq;
 using System.Threading.Tasks;
 using ClientCore;
@@ -45,15 +44,6 @@ namespace DTAClient.Domain.Multiplayer
         /// List of gamemodes allowed to be used on custom maps in order for them to display in map list.
         /// </summary>
         private string[] AllowedGameModes = ClientConfiguration.Instance.AllowedCustomGameModes.Split(',');
-
-        /// <summary>
-        /// Loads multiplayer map info asynchonously.
-        /// </summary>
-        public void LoadMapsAsync()
-        {
-            Thread thread = new Thread(LoadMaps);
-            thread.Start();
-        }
 
         /// <summary>
         /// Load maps based on INI info as well as those in the custom maps directory.
@@ -163,8 +153,7 @@ namespace DTAClient.Domain.Multiplayer
 
             foreach (FileInfo mapFile in mapFiles)
             {
-                // this must be Task.Factory.StartNew for XNA/.Net 4.0 compatibility
-                tasks.Add(Task.Factory.StartNew(() =>
+                tasks.Add(Task.Run(() =>
                 {
                     string baseFilePath = mapFile.FullName.Substring(ProgramConstants.GamePath.Length);
                     baseFilePath = baseFilePath.Substring(0, baseFilePath.Length - 4);
