@@ -276,9 +276,9 @@ namespace DTAClient.DXGUI.Multiplayer
                     try
                     {
 #endif
-                        await SendMessageAsync("QUIT", cancellationToken);
-                        cancellationTokenSource.Cancel();
-                        socket.Close();
+                    await SendMessageAsync("QUIT", cancellationToken);
+                    cancellationTokenSource.Cancel();
+                    socket.Close();
 #if NETFRAMEWORK
                     }
                     catch (ObjectDisposedException)
