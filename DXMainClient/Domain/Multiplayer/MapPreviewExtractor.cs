@@ -5,8 +5,10 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using ClientCore;
+using ClientCore.Extensions;
 using Rampastring.Tools;
 using lzo.net;
+using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Memory;
@@ -17,14 +19,21 @@ namespace DTAClient.Domain.Multiplayer
     /// <summary>
     /// A helper class for extracting preview images from maps.
     /// </summary>
-    public static class MapPreviewExtractor
+    internal sealed class MapPreviewExtractor
     {
+        private readonly ILogger logger;
+
+        public MapPreviewExtractor(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
         /// <summary>
         /// Extracts map preview image as a bitmap.
         /// </summary>
         /// <param name="mapIni">Map file.</param>
         /// <returns>Bitmap of map preview image, or null if preview could not be extracted.</returns>
-        public static Image ExtractMapPreview(IniFile mapIni)
+        public Image ExtractMapPreview(IniFile mapIni)
         {
             List<string> sectionKeys = mapIni.GetSectionKeys("PreviewPack");
 
@@ -32,14 +41,14 @@ namespace DTAClient.Domain.Multiplayer
 
             if (sectionKeys == null || sectionKeys.Count == 0)
             {
-                Logger.Log("MapPreviewExtractor: " + baseFilename + " - no [PreviewPack] exists, unable to extract preview.");
+                logger.LogInformation("MapPreviewExtractor: " + baseFilename + " - no [PreviewPack] exists, unable to extract preview.");
                 return null;
             }
 
             if (mapIni.GetStringValue("PreviewPack", "1", string.Empty) ==
                 "yAsAIAXQ5PDQ5PDQ6JQATAEE6PDQ4PDI4JgBTAFEAkgAJyAATAG0AydEAEABpAJIA0wBVA")
             {
-                Logger.Log("MapPreviewExtractor: " + baseFilename + " - Hidden preview detected, not extracting preview.");
+                logger.LogInformation("MapPreviewExtractor: " + baseFilename + " - Hidden preview detected, not extracting preview.");
                 return null;
             }
 
@@ -49,7 +58,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (previewWidth < 1 || previewHeight < 1)
             {
-                Logger.Log("MapPreviewExtractor: " + baseFilename + " - [Preview] Size value is invalid, unable to extract preview.");
+                logger.LogInformation("MapPreviewExtractor: " + baseFilename + " - [Preview] Size value is invalid, unable to extract preview.");
                 return null;
             }
 
@@ -68,7 +77,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "MapPreviewExtractor: " + baseFilename + " - [PreviewPack] is malformed, unable to extract preview.");
+                logger.LogExceptionDetails(ex, "MapPreviewExtractor: " + baseFilename + " - [PreviewPack] is malformed, unable to extract preview.");
                 return null;
             }
 
@@ -76,7 +85,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (errorMessage != null)
             {
-                Logger.Log("MapPreviewExtractor: " + baseFilename + " - " + errorMessage);
+                logger.LogInformation("MapPreviewExtractor: " + baseFilename + " - " + errorMessage);
                 return null;
             }
 
@@ -84,7 +93,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (errorMessage != null)
             {
-                Logger.Log("MapPreviewExtractor: " + baseFilename + " - " + errorMessage);
+                logger.LogInformation("MapPreviewExtractor: " + baseFilename + " - " + errorMessage);
                 return null;
             }
 
@@ -98,7 +107,7 @@ namespace DTAClient.Domain.Multiplayer
         /// <param name="decompressedDataSize">Size of decompressed preview image data.</param>
         /// <param name="errorMessage">Will be set to error message if something went wrong, otherwise null.</param>
         /// <returns>Array of decompressed preview image data if successfully decompressed, otherwise null.</returns>
-        private static byte[] DecompressPreviewData(byte[] dataSource, int decompressedDataSize, out string errorMessage)
+        private byte[] DecompressPreviewData(byte[] dataSource, int decompressedDataSize, out string errorMessage)
         {
             try
             {
@@ -136,7 +145,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Error encountered decompressing preview data.");
+                logger.LogExceptionDetails(ex, "Error encountered decompressing preview data.");
                 errorMessage = "Error encountered decompressing preview data. Message: " + ex.Message;
                 return null;
             }
@@ -150,7 +159,7 @@ namespace DTAClient.Domain.Multiplayer
         /// <param name="imageData">Raw image pixel data in 24-bit RGB format.</param>
         /// <param name="errorMessage">Will be set to error message if something went wrong, otherwise null.</param>
         /// <returns>Bitmap based on the provided dimensions and raw image data, or null if length of image data does not match the provided dimensions or if something went wrong.</returns>
-        private static Image CreatePreviewBitmapFromImageData(int width, int height, byte[] imageData, out string errorMessage)
+        private Image CreatePreviewBitmapFromImageData(int width, int height, byte[] imageData, out string errorMessage)
         {
             const int pixelFormatBitCount = 24;
             const int pixelFormatByteCount = pixelFormatBitCount / 8;
@@ -216,7 +225,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Error encountered creating preview bitmap.");
+                logger.LogExceptionDetails(ex, "Error encountered creating preview bitmap.");
                 errorMessage = "Error encountered creating preview bitmap. Message: " + ex.Message;
                 return null;
             }

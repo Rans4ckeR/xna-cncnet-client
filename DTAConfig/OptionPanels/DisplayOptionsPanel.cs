@@ -1,13 +1,14 @@
-using Localization;
+using System;
+using System.Collections.Generic;
 using ClientCore;
 using ClientGUI;
+using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
 #if WINFORMS
 using System.Windows.Forms;
 #endif
@@ -21,15 +22,25 @@ using System.Runtime.Versioning;
 
 namespace DTAConfig.OptionPanels
 {
-    class DisplayOptionsPanel : XNAOptionsPanel
+    public sealed class DisplayOptionsPanel : XNAOptionsPanel
     {
         private const int DRAG_DISTANCE_DEFAULT = 4;
         private const int ORIGINAL_RESOLUTION_WIDTH = 640;
         private const string RENDERERS_INI = "Renderers.ini";
 
-        public DisplayOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
-            : base(windowManager, iniSettings)
+        private readonly GameProcessLogic gameProcessLogic;
+        private readonly ILogger logger;
+
+        public DisplayOptionsPanel(
+            WindowManager windowManager,
+            UserINISettings iniSettings,
+            GameProcessLogic gameProcessLogic,
+            ILogger logger,
+            IServiceProvider serviceProvider)
+            : base(windowManager, iniSettings, serviceProvider)
         {
+            this.gameProcessLogic = gameProcessLogic;
+            this.logger = logger;
         }
 
         private XNAClientDropDown ddIngameResolution;
@@ -45,7 +56,7 @@ namespace DTAConfig.OptionPanels
         private List<DirectDrawWrapper> renderers;
 
         private string defaultRenderer;
-        private DirectDrawWrapper selectedRenderer = null;
+        private DirectDrawWrapper selectedRenderer;
 
 #if TS
         private XNALabel lblCompatibilityFixes;
@@ -57,7 +68,6 @@ namespace DTAConfig.OptionPanels
         private bool GameCompatFixInstalled = false;
         private bool FinalSunCompatFixInstalled = false;
         private bool GameCompatFixDeclined = false;
-        //private bool FinalSunCompatFixDeclined = false;
 #endif
 
 
@@ -348,7 +358,7 @@ namespace DTAConfig.OptionPanels
             {
                 string internalName = renderersIni.GetStringValue("Renderers", key, string.Empty);
 
-                var ddWrapper = new DirectDrawWrapper(internalName, renderersIni);
+                var ddWrapper = new DirectDrawWrapper(internalName, renderersIni, logger);
                 renderers.Add(ddWrapper);
             }
 
@@ -359,7 +369,7 @@ namespace DTAConfig.OptionPanels
             if (defaultRenderer == null)
                 throw new ClientConfigurationException("Invalid or missing default renderer for operating system: " + osVersion);
 
-            string renderer = UserINISettings.Instance.Renderer;
+            string renderer = IniSettings.Renderer;
 
             selectedRenderer = renderers.Find(r => r.InternalName == renderer);
 
@@ -369,8 +379,8 @@ namespace DTAConfig.OptionPanels
             if (selectedRenderer == null)
                 throw new ClientConfigurationException("Missing renderer: " + renderer);
 
-            GameProcessLogic.UseQres = selectedRenderer.UseQres;
-            GameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
+            gameProcessLogic.UseQres = selectedRenderer.UseQres;
+            gameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
         }
 #if TS
 
@@ -415,12 +425,12 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Setting TSCompatFixDeclined failed!");
+                    logger.LogExceptionDetails(ex, "Setting TSCompatFixDeclined failed!");
                 }
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
             }
         }
 
@@ -441,7 +451,7 @@ namespace DTAConfig.OptionPanels
 
                     sdbinst.WaitForExit();
 
-                    Logger.Log("DTA/TI/TS Compatibility Fix succesfully uninstalled.");
+                    logger.LogInformation("DTA/TI/TS Compatibility Fix succesfully uninstalled.");
                     XNAMessageBox.Show(WindowManager, "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFixUninstallTitle"),
                         "The DTA/TI/TS Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFixUninstallText"));
 
@@ -455,7 +465,7 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Uninstalling DTA/TI/TS Compatibility Fix failed.");
+                    logger.LogExceptionDetails(ex, "Uninstalling DTA/TI/TS Compatibility Fix failed.");
                     XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixUninstallFailTitle"),
                         "Uninstalling DTA/TI/TS Compatibility Fix failed. Returned error:".L10N("UI:DTAConfig:TSFixUninstallFailText") + " " + ex.Message);
                 }
@@ -469,7 +479,7 @@ namespace DTAConfig.OptionPanels
 
                 sdbinst.WaitForExit();
 
-                Logger.Log("DTA/TI/TS Compatibility Fix succesfully installed.");
+                logger.LogInformation("DTA/TI/TS Compatibility Fix succesfully installed.");
                 XNAMessageBox.Show(WindowManager, "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFixInstallSuccessTitle"),
                     "The DTA/TI/TS Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFixInstallSuccessText"));
 
@@ -483,7 +493,7 @@ namespace DTAConfig.OptionPanels
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Installing DTA/TI/TS Compatibility Fix failed.");
+                logger.LogExceptionDetails(ex, "Installing DTA/TI/TS Compatibility Fix failed.");
                 XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFixInstallFailTitle"),
                     "Installing DTA/TI/TS Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFixInstallFailText") + " " + ex.Message);
             }
@@ -506,7 +516,7 @@ namespace DTAConfig.OptionPanels
 
                     btnMapEditorCompatibilityFix.Text = "Enable".L10N("UI:DTAConfig:TSFEnable");
 
-                    Logger.Log("FinalSun Compatibility Fix succesfully uninstalled.");
+                    logger.LogInformation("FinalSun Compatibility Fix succesfully uninstalled.");
                     XNAMessageBox.Show(WindowManager, "Compatibility Fix Uninstalled".L10N("UI:DTAConfig:TSFinalSunFixUninstallTitle"),
                         "The FinalSun Compatibility Fix has been succesfully uninstalled.".L10N("UI:DTAConfig:TSFinalSunFixUninstallText"));
 
@@ -514,7 +524,7 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Uninstalling FinalSun Compatibility Fix failed.");
+                    logger.LogExceptionDetails(ex, "Uninstalling FinalSun Compatibility Fix failed.");
                     XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedTitle"),
                         "Uninstalling FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunFixUninstallFailedText") + " " + ex.Message);
                 }
@@ -534,7 +544,7 @@ namespace DTAConfig.OptionPanels
 
                 btnMapEditorCompatibilityFix.Text = "Disable".L10N("UI:DTAConfig:TSDisable");
 
-                Logger.Log("FinalSun Compatibility Fix succesfully installed.");
+                logger.LogInformation("FinalSun Compatibility Fix succesfully installed.");
                 XNAMessageBox.Show(WindowManager, "Compatibility Fix Installed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledTitle"),
                     "The FinalSun Compatibility Fix has been succesfully installed.".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledText"));
 
@@ -542,7 +552,7 @@ namespace DTAConfig.OptionPanels
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Installing FinalSun Compatibility Fix failed.");
+                logger.LogExceptionDetails(ex, "Installing FinalSun Compatibility Fix failed.");
                 XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedTitle"),
                     "Installing FinalSun Compatibility Fix failed. Error message:".L10N("UI:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedText") + " " + ex.Message);
             }
@@ -613,17 +623,17 @@ namespace DTAConfig.OptionPanels
             base.Load();
 
             LoadRenderer();
-            ddDetailLevel.SelectedIndex = UserINISettings.Instance.DetailLevel;
+            ddDetailLevel.SelectedIndex = IniSettings.DetailLevel;
 
-            string currentRes = UserINISettings.Instance.IngameScreenWidth.Value +
-                "x" + UserINISettings.Instance.IngameScreenHeight.Value;
+            string currentRes = IniSettings.IngameScreenWidth.Value +
+                "x" + IniSettings.IngameScreenHeight.Value;
 
             int index = ddIngameResolution.Items.FindIndex(i => i.Text == currentRes);
 
             ddIngameResolution.SelectedIndex = index > -1 ? index : 0;
 
             // Wonder what this "Win8CompatMode" actually does..
-            // Disabling it used to be TS-DDRAW only, but it was never enabled after 
+            // Disabling it used to be TS-DDRAW only, but it was never enabled after
             // you had tried TS-DDRAW once, so most players probably have it always
             // disabled anyway
             IniSettings.Win8CompatMode.Value = "No";
@@ -649,13 +659,13 @@ namespace DTAConfig.OptionPanels
                 }
                 else
                 {
-                    chkBorderlessWindowedMode.Checked = UserINISettings.Instance.BorderlessWindowedMode;
+                    chkBorderlessWindowedMode.Checked = IniSettings.BorderlessWindowedMode;
                 }
             }
             else
             {
-                chkWindowedMode.Checked = UserINISettings.Instance.WindowedMode;
-                chkBorderlessWindowedMode.Checked = UserINISettings.Instance.BorderlessWindowedMode;
+                chkWindowedMode.Checked = IniSettings.WindowedMode;
+                chkBorderlessWindowedMode.Checked = IniSettings.BorderlessWindowedMode;
             }
 
             string currentClientRes = IniSettings.ClientResolutionX.Value + "x" + IniSettings.ClientResolutionY.Value;
@@ -664,14 +674,14 @@ namespace DTAConfig.OptionPanels
 
             ddClientResolution.SelectedIndex = clientResIndex > -1 ? clientResIndex : 0;
 
-            chkBorderlessClient.Checked = UserINISettings.Instance.BorderlessWindowedClient;
+            chkBorderlessClient.Checked = IniSettings.BorderlessWindowedClient;
 
             int selectedThemeIndex = ddClientTheme.Items.FindIndex(
-                ddi => ddi.Text == UserINISettings.Instance.ClientTheme);
+                ddi => ddi.Text == IniSettings.ClientTheme);
             ddClientTheme.SelectedIndex = selectedThemeIndex > -1 ? selectedThemeIndex : 0;
 
 #if TS
-            chkBackBufferInVRAM.Checked = !UserINISettings.Instance.BackBufferInVRAM;
+            chkBackBufferInVRAM.Checked = !IniSettings.BackBufferInVRAM;
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return;
@@ -713,7 +723,7 @@ namespace DTAConfig.OptionPanels
             //    FinalSunCompatFixDeclined = true;
             //}
 #else
-            chkBackBufferInVRAM.Checked = UserINISettings.Instance.BackBufferInVRAM;
+            chkBackBufferInVRAM.Checked = IniSettings.BackBufferInVRAM;
 #endif
         }
 
@@ -782,8 +792,8 @@ namespace DTAConfig.OptionPanels
 
             selectedRenderer.Apply();
 
-            GameProcessLogic.UseQres = selectedRenderer.UseQres;
-            GameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
+            gameProcessLogic.UseQres = selectedRenderer.UseQres;
+            gameProcessLogic.SingleCoreAffinity = selectedRenderer.SingleCoreAffinity;
 
             if (selectedRenderer.UsesCustomWindowedOption())
             {
@@ -852,7 +862,7 @@ namespace DTAConfig.OptionPanels
         /// <summary>
         /// A single screen resolution.
         /// </summary>
-        sealed class ScreenResolution : IComparable<ScreenResolution>
+        private sealed class ScreenResolution : IComparable<ScreenResolution>
         {
             public ScreenResolution(int width, int height)
             {

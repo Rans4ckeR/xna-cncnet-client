@@ -4,20 +4,22 @@ using System.Linq;
 using ClientGUI;
 using DTAClient.Domain.Multiplayer;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
-    public class PlayerExtraOptionsPanel : XNAWindow
+    internal sealed class PlayerExtraOptionsPanel : XNAWindow
     {
         private const int maxStartCount = 8;
         private const int defaultX = 24;
-        private const int defaultTeamStartMappingX = UIDesignConstants.EMPTY_SPACE_SIDES;
         private const int teamMappingPanelWidth = 50;
         private const int teamMappingPanelHeight = 22;
+
         private readonly string customPresetName = "Custom".L10N("UI:Main:CustomPresetName");
+        private readonly XNAMessageBox xnaMessageBox;
 
         private XNAClientCheckBox chkBoxForceRandomSides;
         private XNAClientCheckBox chkBoxForceRandomTeams;
@@ -30,12 +32,17 @@ namespace DTAClient.DXGUI.Multiplayer
         private bool ignoreMappingChanges;
 
         public EventHandler OptionsChanged;
-        public EventHandler OnClose;
 
         private Map _map;
 
-        public PlayerExtraOptionsPanel(WindowManager windowManager) : base(windowManager)
+        public PlayerExtraOptionsPanel(
+            WindowManager windowManager,
+            ILogger logger,
+            XNAMessageBox xnaMessageBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
+            this.xnaMessageBox = xnaMessageBox;
         }
 
         public bool IsForcedRandomSides() => chkBoxForceRandomSides.Checked;
@@ -247,14 +254,16 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private void BtnHelp_LeftClick(object sender, EventArgs args)
         {
-            XNAMessageBox.Show(WindowManager, "Auto Allying".L10N("UI:Main:AutoAllyingTitle"),
-                ("Auto allying allows the host to assign starting locations to teams, not players.\n" +
+            xnaMessageBox.Caption = "Auto Allying".L10N("UI:Main:AutoAllyingTitle");
+            xnaMessageBox.Description = ("Auto allying allows the host to assign starting locations to teams, not players.\n" +
                 "When players are assigned to spawn locations, they will be auto assigned to teams based on these mappings.\n" +
                 "This is best used with random teams and random starts. However, only random teams is required.\n" +
                 "Manually specified starts will take precedence.\n\n").L10N("UI:Main:AutoAllyingText1") +
                 $"{TeamStartMapping.NO_TEAM} : " + "Block this location from being assigned to a player.".L10N("UI:Main:AutoAllyingTextNoTeam") + "\n" +
-                $"{TeamStartMapping.RANDOM_TEAM} : "+"Allow a player here, but don't assign a team.".L10N("UI:Main:AutoAllyingTextRandomTeam")
-            );
+                $"{TeamStartMapping.RANDOM_TEAM} : " + "Allow a player here, but don't assign a team.".L10N("UI:Main:AutoAllyingTextRandomTeam");
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+            xnaMessageBox.Show();
         }
 
         public void UpdateForMap(Map map)

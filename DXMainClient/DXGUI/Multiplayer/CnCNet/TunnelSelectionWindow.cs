@@ -1,18 +1,20 @@
-﻿using ClientGUI;
+﻿using System;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
     /// <summary>
     /// A window for selecting a CnCNet tunnel server.
     /// </summary>
-    class TunnelSelectionWindow : XNAWindow
+    internal sealed class TunnelSelectionWindow : XNAWindow
     {
-        public TunnelSelectionWindow(WindowManager windowManager, TunnelHandler tunnelHandler) : base(windowManager)
+        public TunnelSelectionWindow(WindowManager windowManager, TunnelHandler tunnelHandler, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.tunnelHandler = tunnelHandler;
         }
@@ -121,7 +123,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         }
     }
 
-    class TunnelEventArgs : EventArgs
+    internal class TunnelEventArgs : EventArgs
     {
         public TunnelEventArgs(CnCNetTunnel tunnel)
         {

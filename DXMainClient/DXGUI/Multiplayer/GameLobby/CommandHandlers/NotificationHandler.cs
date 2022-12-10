@@ -11,8 +11,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers
             this.innerAction = innerAction;
         }
 
-        Action<string, Action> action;
-        Action innerAction;
+        private Action<string, Action> action;
+        private Action innerAction;
 
         public override bool Handle(string sender, string message)
         {

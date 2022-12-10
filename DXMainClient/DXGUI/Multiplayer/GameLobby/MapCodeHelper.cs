@@ -3,19 +3,27 @@ using System.Collections.Generic;
 using System.Linq;
 using ClientCore;
 using DTAClient.Domain.Multiplayer;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
-    public static class MapCodeHelper
+    internal sealed class MapCodeHelper
     {
+        private readonly ILogger logger;
+
+        public MapCodeHelper(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
         /// <summary>
         /// Applies code from a component custom INI file to a map INI file.
         /// </summary>
         /// <param name="mapIni">The map INI file.</param>
         /// <param name="customIniPath">The custom INI file path.</param>
         /// <param name="gameMode">Currently selected gamemode, if set.</param>
-        public static void ApplyMapCode(IniFile mapIni, string customIniPath, GameMode gameMode)
+        public void ApplyMapCode(IniFile mapIni, string customIniPath, GameMode gameMode)
         {
             IniFile associatedIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, customIniPath));
             string extraIniName = null;
@@ -23,7 +31,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 extraIniName = associatedIni.GetStringValue("GameModeIncludes", gameMode.Name, null);
             associatedIni.EraseSectionKeys("GameModeIncludes");
             ApplyMapCode(mapIni, associatedIni);
-            if (!String.IsNullOrEmpty(extraIniName))
+            if (!string.IsNullOrEmpty(extraIniName))
                 ApplyMapCode(mapIni, new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, extraIniName)));
         }
 
@@ -32,7 +40,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// </summary>
         /// <param name="mapIni">The map INI file.</param>
         /// <param name="mapCodeIni">The INI file to apply to map INI file.</param>
-        public static void ApplyMapCode(IniFile mapIni, IniFile mapCodeIni)
+        public void ApplyMapCode(IniFile mapIni, IniFile mapCodeIni)
         {
             ReplaceMapObjects(mapIni, mapCodeIni, "Aircraft");
             ReplaceMapObjects(mapIni, mapCodeIni, "Infantry");
@@ -48,7 +56,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// <param name="mapIni">The map INI file.</param>
         /// <param name="mapCodeIni">The INI file to apply to map INI file.</param>
         /// <param name="sectionName">The object section ID.</param>
-        private static void ReplaceMapObjects(IniFile mapIni, IniFile mapCodeIni, string sectionName)
+        private void ReplaceMapObjects(IniFile mapIni, IniFile mapCodeIni, string sectionName)
         {
             string replaceSectionName = "ReplaceMap" + sectionName;
 
@@ -69,12 +77,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     if (!String.IsNullOrEmpty(objectRemapPair.Value))
                     {
                         mapIni.SetStringValue(sectionName, matchingSectionKVP.Key, matchingSectionKVP.Value.Replace(id, objectRemapPair.Value));
-                        Logger.Log("MapCodeHelper: Changed an instance of '" + sectionName + "' object '" + id + "' into '" + objectRemapPair.Value + "'.");
+                        logger.LogInformation("MapCodeHelper: Changed an instance of '" + sectionName + "' object '" + id + "' into '" + objectRemapPair.Value + "'.");
                     }
                     else
                     {
                         mapIni.SetStringValue(sectionName, matchingSectionKVP.Key, "");
-                        Logger.Log("MapCodeHelper: Removed an instance of '" + sectionName + "' object '" + id + "'.");
+                        logger.LogInformation("MapCodeHelper: Removed an instance of '" + sectionName + "' object '" + id + "'.");
                     }
                 }
             }

@@ -1,16 +1,18 @@
-﻿using ClientGUI;
+﻿using System;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
-    internal class PasswordRequestWindow : XNAWindow
+    internal sealed class PasswordRequestWindow : XNAWindow
     {
-        public PasswordRequestWindow(WindowManager windowManager, PrivateMessagingWindow privateMessagingWindow) : base(windowManager)
+        public PasswordRequestWindow(WindowManager windowManager, PrivateMessagingWindow privateMessagingWindow, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.privateMessagingWindow = privateMessagingWindow;
         }

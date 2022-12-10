@@ -1,15 +1,17 @@
-﻿using ClientGUI;
-using System;
+﻿using System;
+using ClientGUI;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using Microsoft.Xna.Framework;
-using Localization;
 
 namespace DTAClient.DXGUI.Generic
 {
-    public class CheaterWindow : XNAWindow
+    public sealed class CheaterWindow : XNAWindow
     {
-        public CheaterWindow(WindowManager windowManager) : base(windowManager)
+        public CheaterWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
         }
 
@@ -30,7 +32,7 @@ namespace DTAClient.DXGUI.Generic
             var lblDescription = new XNALabel(WindowManager);
             lblDescription.Name = "lblDescription";
             lblDescription.ClientRectangle = new Rectangle(12, 40, 0, 0);
-            lblDescription.Text = ("Modified game files have been detected. They could affect" + Environment.NewLine + 
+            lblDescription.Text = ("Modified game files have been detected. They could affect" + Environment.NewLine +
                 "the game experience." +
                 Environment.NewLine + Environment.NewLine +
                 "Do you really lack the skill for winning the mission without" + Environment.NewLine + "cheating?").L10N("UI:Main:CheaterText");

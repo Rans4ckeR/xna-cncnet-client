@@ -6,29 +6,37 @@ using System.Threading;
 using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
 {
     /// <summary>
     /// A class for updating of the CnCNet game/player count.
     /// </summary>
-    public static class CnCNetPlayerCountTask
+    internal sealed class CnCNetPlayerCountTask
     {
         private const int REFRESH_INTERVAL = 60000;
         private const int REFRESH_TIMEOUT = 10000;
 
-        internal static event EventHandler<PlayerCountEventArgs> CnCNetGameCountUpdated;
+        internal event EventHandler<PlayerCountEventArgs> CnCNetGameCountUpdated;
 
-        private static string cncnetLiveStatusIdentifier;
+        private string cncnetLiveStatusIdentifier;
 
-        public static void InitializeService(CancellationTokenSource cts)
+        private readonly ILogger logger;
+
+        public CnCNetPlayerCountTask(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
+        public void InitializeService(CancellationTokenSource cts)
         {
             cncnetLiveStatusIdentifier = ClientConfiguration.Instance.CnCNetLiveStatusIdentifier;
 
             RunServiceAsync(cts.Token).HandleTask();
         }
 
-        private static async ValueTask RunServiceAsync(CancellationToken cancellationToken)
+        private async ValueTask RunServiceAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -47,7 +55,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
         }
 
-        private static async ValueTask<int> GetCnCNetPlayerCountAsync(CancellationToken cancellationToken)
+        private async ValueTask<int> GetCnCNetPlayerCountAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -84,7 +92,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
                 return -1;
             }
         }

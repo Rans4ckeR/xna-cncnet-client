@@ -1,19 +1,22 @@
-﻿using Localization;
+﻿using System;
 using ClientCore;
 using ClientGUI;
+using ClientUpdater;
+using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using ClientUpdater;
 
 namespace DTAConfig.OptionPanels
 {
-    class UpdaterOptionsPanel : XNAOptionsPanel
+    public sealed class UpdaterOptionsPanel : XNAOptionsPanel
     {
-        public UpdaterOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
-            : base(windowManager, iniSettings)
+        private readonly XNAMessageBox xnaMessageBox;
+
+        public UpdaterOptionsPanel(WindowManager windowManager, UserINISettings iniSettings, XNAMessageBox xnaMessageBox, IServiceProvider serviceProvider)
+            : base(windowManager, iniSettings, serviceProvider)
         {
+            this.xnaMessageBox = xnaMessageBox;
         }
 
         public event EventHandler OnForceUpdate;
@@ -78,8 +81,8 @@ namespace DTAConfig.OptionPanels
 
         private void BtnForceUpdate_LeftClick(object sender, EventArgs e)
         {
-            var msgBox = new XNAMessageBox(WindowManager, "Force Update Confirmation".L10N("UI:DTAConfig:ForceUpdateConfirmTitle"),
-                    ("WARNING: Force update will result in files being re-verified" + Environment.NewLine +
+            xnaMessageBox.Caption = "Force Update Confirmation".L10N("UI:DTAConfig:ForceUpdateConfirmTitle");
+            xnaMessageBox.Description = ("WARNING: Force update will result in files being re-verified" + Environment.NewLine +
                     "and re-downloaded. While this may fix problems with game" + Environment.NewLine +
                     "files, this also may delete some custom modifications" + Environment.NewLine +
                     "made to this installation. Use at your own risk!" +
@@ -87,9 +90,9 @@ namespace DTAConfig.OptionPanels
                     "If you proceed, the options window will close and the" + Environment.NewLine +
                     "client will proceed to checking for updates." +
                     Environment.NewLine + Environment.NewLine +
-                    "Do you really want to force update?" + Environment.NewLine).L10N("UI:DTAConfig:ForceUpdateConfirmText"), XNAMessageBoxButtons.YesNo);
-            msgBox.Show();
-            msgBox.YesClickedAction = ForceUpdateMsgBox_YesClicked;
+                    "Do you really want to force update?" + Environment.NewLine).L10N("UI:DTAConfig:ForceUpdateConfirmText");
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+            xnaMessageBox.YesClickedAction = ForceUpdateMsgBox_YesClicked;
         }
 
         private void ForceUpdateMsgBox_YesClicked(XNAMessageBox obj)
@@ -140,7 +143,7 @@ namespace DTAConfig.OptionPanels
             {
                 lbUpdateServerList.AddItem(updaterMirror.Name +
                     (!string.IsNullOrEmpty(updaterMirror.Location) ?
-                    $" ({ updaterMirror.Location })" : string.Empty));
+                    $" ({updaterMirror.Location})" : string.Empty));
             }
 
             chkAutoCheck.Checked = IniSettings.CheckForUpdates;

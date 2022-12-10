@@ -1,15 +1,4 @@
-﻿using ClientCore;
-using DTAClient.Domain;
-using DTAClient.Domain.LAN;
-using DTAClient.Domain.Multiplayer;
-using DTAClient.Domain.Multiplayer.LAN;
-using DTAClient.DXGUI.Multiplayer.GameLobby;
-using DTAClient.Online;
-using Localization;
-using Microsoft.Xna.Framework;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Net;
@@ -17,7 +6,22 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
 using ClientCore.Extensions;
+using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
+using ClientGUI;
+using DTAClient.Domain;
+using DTAClient.Domain.LAN;
+using DTAClient.Domain.Multiplayer;
+using DTAClient.Domain.Multiplayer.LAN;
+using DTAClient.DXGUI.Multiplayer.GameLobby;
+using DTAClient.Online;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -26,16 +30,21 @@ namespace DTAClient.DXGUI.Multiplayer
         private const double DROPOUT_TIMEOUT = 20.0;
         private const double GAME_BROADCAST_INTERVAL = 10.0;
 
+        private readonly FileHashCalculator fileHashCalculator;
+
         public LANGameLoadingLobby(
             WindowManager windowManager,
-            LANColor[] chatColors,
-            MapLoader mapLoader,
-            DiscordHandler discordHandler)
-            : base(windowManager, discordHandler)
+            DiscordHandler discordHandler,
+            ILogger logger,
+            SavedGameManager savedGameManager,
+            StatisticsManager statisticsManager,
+            GameProcessLogic gameProcessLogic,
+            LogFileStatisticsParser logFileStatisticsParser,
+            FileHashCalculator fileHashCalculator,
+            IServiceProvider serviceProvider)
+            : base(windowManager, discordHandler, logger, savedGameManager, statisticsManager, gameProcessLogic, logFileStatisticsParser, serviceProvider)
         {
             encoding = ProgramConstants.LAN_ENCODING;
-            this.chatColors = chatColors;
-            this.mapLoader = mapLoader;
 
             localGame = ClientConfiguration.Instance.LocalGame;
 
@@ -54,6 +63,7 @@ namespace DTAClient.DXGUI.Multiplayer
             };
 
             WindowManager.GameClosing += (_, _) => WindowManager_GameClosingAsync().HandleTask();
+            this.fileHashCalculator = fileHashCalculator;
         }
 
         private async ValueTask WindowManager_GameClosingAsync()
@@ -67,8 +77,6 @@ namespace DTAClient.DXGUI.Multiplayer
         private Socket listener;
         private Socket client;
 
-        private readonly LANColor[] chatColors;
-        private readonly MapLoader mapLoader;
         private const int chatColorIndex = 0;
         private readonly Encoding encoding;
 
@@ -85,13 +93,13 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private string localFileHash;
 
-        private List<GameMode> gameModes => mapLoader.GameModes;
-
         private int loadedGameId;
 
         private bool started;
 
         private CancellationTokenSource cancellationTokenSource;
+
+        public LANColor[] ChatColors { get; set; }
 
         public async ValueTask SetUpAsync(bool isHost, Socket client, int loadedGameId)
         {
@@ -125,9 +133,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
                 await this.client.SendAsync(buffer, SocketFlags.None, CancellationToken.None);
 
-                var fhc = new FileHashCalculator();
-                fhc.CalculateHashes(gameModes);
-                localFileHash = fhc.GetCompleteHash();
+                fileHashCalculator.CalculateHashes();
+                localFileHash = fileHashCalculator.GetCompleteHash();
             }
             else
             {
@@ -145,9 +152,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public async ValueTask PostJoinAsync()
         {
-            var fhc = new FileHashCalculator();
-            fhc.CalculateHashes(gameModes);
-            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + fhc.GetCompleteHash(), cancellationTokenSource?.Token ?? default);
+            fileHashCalculator.CalculateHashes();
+            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + fileHashCalculator.GetCompleteHash(), cancellationTokenSource?.Token ?? default);
             UpdateDiscordPresence(true);
         }
 
@@ -173,13 +179,13 @@ namespace DTAClient.DXGUI.Multiplayer
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Listener error.");
+                    logger.LogExceptionDetails(ex, "Listener error.");
                     break;
                 }
 
-                Logger.Log("New client connected from " + ((IPEndPoint)newPlayerSocket.RemoteEndPoint).Address);
+                logger.LogInformation("New client connected from " + ((IPEndPoint)newPlayerSocket.RemoteEndPoint).Address);
 
-                LANPlayerInfo lpInfo = new LANPlayerInfo(encoding);
+                LANPlayerInfo lpInfo = new LANPlayerInfo(encoding, logger);
                 lpInfo.SetClient(newPlayerSocket);
 
                 HandleClientConnectionAsync(lpInfo, cancellationToken).HandleTask();
@@ -206,13 +212,13 @@ namespace DTAClient.DXGUI.Multiplayer
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Socket error with client " + lpInfo.IPAddress + "; removing.");
+                    logger.LogExceptionDetails(ex, "Socket error with client " + lpInfo.IPAddress + "; removing.");
                     break;
                 }
 
                 if (bytesRead == 0)
                 {
-                    Logger.Log("Connect attempt from " + lpInfo.IPAddress + " failed! (0 bytes read)");
+                    logger.LogInformation("Connect attempt from " + lpInfo.IPAddress + " failed! (0 bytes read)");
 
                     break;
                 }
@@ -302,7 +308,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     return;
             }
 
-            Logger.Log("Unknown LAN command from " + lpInfo + " : " + data);
+            logger.LogInformation("Unknown LAN command from " + lpInfo + " : " + data);
         }
 
         private void CleanUpPlayer(LANPlayerInfo lpInfo)
@@ -340,7 +346,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Reading data from the server failed!");
+                    logger.LogExceptionDetails(ex, "Reading data from the server failed!");
                     await LeaveGameAsync();
                     break;
                 }
@@ -375,7 +381,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     continue;
                 }
 
-                Logger.Log("Reading data from the server failed (0 bytes received)!");
+                logger.LogInformation("Reading data from the server failed (0 bytes received)!");
                 await LeaveGameAsync();
                 break;
             }
@@ -391,7 +397,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     return;
             }
 
-            Logger.Log("Unknown LAN command from the server: " + message);
+            logger.LogInformation("Unknown LAN command from the server: " + message);
         }
 
         protected override async ValueTask LeaveGameAsync()
@@ -470,7 +476,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
-            if (colorIndex < 0 || colorIndex >= chatColors.Length)
+            if (colorIndex < 0 || colorIndex >= ChatColors.Length)
                 return;
 
             await BroadcastMessageAsync(LANCommands.CHAT_GAME_LOADING_COMMAND + " " + sender +
@@ -510,11 +516,11 @@ namespace DTAClient.DXGUI.Multiplayer
 
             int colorIndex = Conversions.IntFromString(parts[1], -1);
 
-            if (colorIndex < 0 || colorIndex >= chatColors.Length)
+            if (colorIndex < 0 || colorIndex >= ChatColors.Length)
                 return;
 
             lbChatMessages.AddMessage(new ChatMessage(playerName,
-                chatColors[colorIndex].XNAColor, DateTime.Now, parts[2]));
+                ChatColors[colorIndex].XNAColor, DateTime.Now, parts[2]));
 
             sndMessageSound.Play();
         }
@@ -545,7 +551,7 @@ namespace DTAClient.DXGUI.Multiplayer
             {
                 int baseIndex = 1 + (i * PLAYER_INFO_PARTS);
 
-                Players.Add(new LANPlayerInfo(encoding)
+                Players.Add(new LANPlayerInfo(encoding, logger)
                 {
                     Name = parts[baseIndex],
                     Ready = Conversions.IntFromString(parts[baseIndex + 1], -1) > 0,
@@ -608,7 +614,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Sending message to game host failed!");
+                logger.LogExceptionDetails(ex, "Sending message to game host failed!");
             }
         }
 

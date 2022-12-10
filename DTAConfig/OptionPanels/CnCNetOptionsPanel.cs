@@ -1,45 +1,37 @@
-﻿using Localization;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using ClientCore;
 using ClientCore.CnCNet5;
+using ClientCore.Enums;
+using ClientCore.Extensions;
 using ClientGUI;
+using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using ClientCore.Enums;
-using ClientCore.Extensions;
 
 namespace DTAConfig.OptionPanels
 {
-    class CnCNetOptionsPanel : XNAOptionsPanel
+    public sealed class CnCNetOptionsPanel : XNAOptionsPanel
     {
-        public CnCNetOptionsPanel(WindowManager windowManager, UserINISettings iniSettings,
-            GameCollection gameCollection)
-            : base(windowManager, iniSettings)
+        public CnCNetOptionsPanel(WindowManager windowManager, UserINISettings iniSettings, IServiceProvider serviceProvider)
+            : base(windowManager, iniSettings, serviceProvider)
         {
-            this.gameCollection = gameCollection;
         }
 
-        XNAClientCheckBox chkPingUnofficialTunnels;
-        XNAClientCheckBox chkWriteInstallPathToRegistry;
-        XNAClientCheckBox chkPlaySoundOnGameHosted;
-
-        XNAClientCheckBox chkNotifyOnUserListChange;
-
-        XNAClientCheckBox chkSkipLoginWindow;
-        XNAClientCheckBox chkPersistentMode;
-        XNAClientCheckBox chkConnectOnStartup;
-        XNAClientCheckBox chkDiscordIntegration;
-        XNAClientCheckBox chkAllowGameInvitesFromFriendsOnly;
-        XNAClientCheckBox chkDisablePrivateMessagePopup;
-
-        XNAClientDropDown ddAllowPrivateMessagesFrom;
-
-        GameCollection gameCollection;
-
-        List<XNAClientCheckBox> followedGameChks = new List<XNAClientCheckBox>();
+        private XNAClientCheckBox chkPingUnofficialTunnels;
+        private XNAClientCheckBox chkWriteInstallPathToRegistry;
+        private XNAClientCheckBox chkPlaySoundOnGameHosted;
+        private XNAClientCheckBox chkNotifyOnUserListChange;
+        private XNAClientCheckBox chkSkipLoginWindow;
+        private XNAClientCheckBox chkPersistentMode;
+        private XNAClientCheckBox chkConnectOnStartup;
+        private XNAClientCheckBox chkDiscordIntegration;
+        private XNAClientCheckBox chkAllowGameInvitesFromFriendsOnly;
+        private XNAClientCheckBox chkDisablePrivateMessagePopup;
+        private XNAClientDropDown ddAllowPrivateMessagesFrom;
+        private List<XNAClientCheckBox> followedGameChks = new List<XNAClientCheckBox>();
 
         public override void Initialize()
         {
@@ -50,10 +42,12 @@ namespace DTAConfig.OptionPanels
             InitGameListPanel();
         }
 
+        public GameCollection GameCollection { get; set; }
+
         private void InitOptions()
         {
             // LEFT COLUMN
-            
+
             chkPingUnofficialTunnels = new XNAClientCheckBox(WindowManager);
             chkPingUnofficialTunnels.Name = nameof(chkPingUnofficialTunnels);
             chkPingUnofficialTunnels.ClientRectangle = new Rectangle(12, 12, 0, 0);
@@ -101,7 +95,7 @@ namespace DTAConfig.OptionPanels
             AddChild(chkDisablePrivateMessagePopup);
 
             InitAllowPrivateMessagesFromDropdown();
-            
+
             // RIGHT COLUMN
 
             chkSkipLoginWindow = new XNAClientCheckBox(WindowManager);
@@ -140,7 +134,7 @@ namespace DTAConfig.OptionPanels
                 chkSkipLoginWindow.X,
                 chkConnectOnStartup.Bottom + 12, 0, 0);
             chkDiscordIntegration.Text = "Show detailed game info in Discord status".L10N("UI:DTAConfig:DiscordStatus");
-            
+
             if (String.IsNullOrEmpty(ClientConfiguration.Instance.DiscordAppId))
             {
                 chkDiscordIntegration.AllowChecking = false;
@@ -183,19 +177,19 @@ namespace DTAConfig.OptionPanels
             ddAllowPrivateMessagesFrom.AddItem(new XNADropDownItem()
             {
                 Text = "All".L10N("UI:DTAConfig:PMAll"),
-                Tag =  AllowPrivateMessagesFromEnum.All
+                Tag = AllowPrivateMessagesFromEnum.All
             });
 
             ddAllowPrivateMessagesFrom.AddItem(new XNADropDownItem()
             {
                 Text = "Friends".L10N("UI:DTAConfig:PMFriends"),
-                Tag =  AllowPrivateMessagesFromEnum.Friends
+                Tag = AllowPrivateMessagesFromEnum.Friends
             });
 
             ddAllowPrivateMessagesFrom.AddItem(new XNADropDownItem()
             {
                 Text = "None".L10N("UI:DTAConfig:PMNone"),
-                Tag =  AllowPrivateMessagesFromEnum.None
+                Tag = AllowPrivateMessagesFromEnum.None
             });
 
             AddChild(ddAllowPrivateMessagesFrom);
@@ -208,9 +202,9 @@ namespace DTAConfig.OptionPanels
             gameListPanel.DrawBorders = false;
             gameListPanel.Name = nameof(gameListPanel);
             gameListPanel.ClientRectangle = new Rectangle(0, Bottom - gameListPanelHeight, Width, gameListPanelHeight);
-            
+
             AddChild(gameListPanel);
-            
+
             var lblFollowedGames = new XNALabel(WindowManager);
             lblFollowedGames.Name = nameof(lblFollowedGames);
             lblFollowedGames.ClientRectangle = new Rectangle(12, 12, 0, 0);
@@ -230,7 +224,7 @@ namespace DTAConfig.OptionPanels
             const int gameIconBuffer = 6;
 
             // List of supported games
-            IEnumerable<CnCNetGame> supportedGames = gameCollection.GameList
+            IEnumerable<CnCNetGame> supportedGames = GameCollection.GameList
                 .Where(game => game.Supported && !string.IsNullOrEmpty(game.GameBroadcastChannel));
 
             // Convert to a matrix of XNAPanels that contain the game icons and check boxes
@@ -271,11 +265,11 @@ namespace DTAConfig.OptionPanels
                 List<XNAPanel> gamePanelColumn = gamePanelMatrix[col];
                 for (int row = 0; row < gamePanelColumn.Count; row++)
                 {
-                    
+
                     int columnOffset = columnWidths.Take(col).Sum();
                     int rowOffset = startY + row * rowBuffer;
                     XNAPanel gamePanel = gamePanelColumn[row];
-                    gamePanel.ClientRectangle = new Rectangle(gamePanel.X  + columnOffset, rowOffset, gamePanel.Width, gamePanel.Height);
+                    gamePanel.ClientRectangle = new Rectangle(gamePanel.X + columnOffset, rowOffset, gamePanel.Width, gamePanel.Height);
                     gameListPanel.AddChild(gamePanel);
                 }
             }

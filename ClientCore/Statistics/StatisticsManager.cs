@@ -3,28 +3,25 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
+using ClientCore.Extensions;
 
 namespace ClientCore.Statistics
 {
-    public class StatisticsManager : GenericStatisticsManager
+    public sealed class StatisticsManager : GenericStatisticsManager
     {
         private const string VERSION = "1.06";
         private const string SCORE_FILE_PATH = "Client/dscore.dat";
         private const string OLD_SCORE_FILE_PATH = "dscore.dat";
-        private static StatisticsManager _instance;
+
+        private readonly ILogger logger;
 
         public event EventHandler GameAdded;
 
-
-        public static StatisticsManager Instance
+        public StatisticsManager(ILogger logger)
         {
-            get
-            {
-                if (_instance == null)
-                    _instance = new StatisticsManager();
-                return _instance;
-            }
+            this.logger = logger;
         }
 
         public override void ReadStatistics(string gamePath)
@@ -33,11 +30,11 @@ namespace ClientCore.Statistics
 
             if (!scoreFileInfo.Exists)
             {
-                Logger.Log("Skipping reading statistics because the file doesn't exist!");
+                logger.LogInformation("Skipping reading statistics because the file doesn't exist!");
                 return;
             }
 
-            Logger.Log("Reading statistics.");
+            logger.LogInformation("Reading statistics.");
 
             Statistics.Clear();
 
@@ -107,7 +104,7 @@ namespace ClientCore.Statistics
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Error reading statistics.");
+                logger.LogExceptionDetails(ex, "Error reading statistics.");
             }
 
             return returnValue;
@@ -259,7 +256,7 @@ namespace ClientCore.Statistics
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Reading the statistics file failed!");
+                logger.LogExceptionDetails(ex, "Reading the statistics file failed!");
             }
         }
 
@@ -271,7 +268,7 @@ namespace ClientCore.Statistics
             {
                 if (Statistics[i].LengthInSeconds < 60)
                 {
-                    Logger.Log("Removing match on " + Statistics[i].MapName + " because it's too short.");
+                    logger.LogInformation("Removing match on " + Statistics[i].MapName + " because it's too short.");
                     Statistics.RemoveAt(i);
                     i--;
                     removedCount++;
@@ -293,13 +290,13 @@ namespace ClientCore.Statistics
             // Skip adding stats if the game only had one player, make exception for co-op since it doesn't recognize pre-placed houses as players.
             if (ms.GetPlayerCount() <= 1 && !ms.MapIsCoop)
             {
-                Logger.Log("Skipping adding match to statistics because game only had one player.");
+                logger.LogInformation("Skipping adding match to statistics because game only had one player.");
                 return;
             }
 
             if (ms.LengthInSeconds < 60)
             {
-                Logger.Log("Skipping adding match to statistics because the game was cancelled.");
+                logger.LogInformation("Skipping adding match to statistics because the game was cancelled.");
                 return;
             }
 
@@ -316,7 +313,7 @@ namespace ClientCore.Statistics
                 CreateDummyFile();
             }
 
-            Logger.Log("Writing game info to statistics file.");
+            logger.LogInformation("Writing game info to statistics file.");
 
             using (FileStream fs = scoreFileInfo.Open(FileMode.Open, FileAccess.ReadWrite))
             {
@@ -327,12 +324,12 @@ namespace ClientCore.Statistics
                 ms.Write(fs);
             }
 
-            Logger.Log("Finished writing statistics.");
+            logger.LogInformation("Finished writing statistics.");
         }
 
         private void CreateDummyFile()
         {
-            Logger.Log("Creating empty statistics file.");
+            logger.LogInformation("Creating empty statistics file.");
 
             using StreamWriter sw = new StreamWriter(SafePath.GetFile(ProgramConstants.GamePath, SCORE_FILE_PATH).Create());
             sw.Write(VERSION);
@@ -412,7 +409,7 @@ namespace ClientCore.Statistics
             return rank;
         }
 
-        int GetRankForCoopMatch(MatchStatistics ms)
+        private int GetRankForCoopMatch(MatchStatistics ms)
         {
             PlayerStatistics localPlayer = ms.Players.Find(p => p.IsLocalPlayer);
 
@@ -422,7 +419,7 @@ namespace ClientCore.Statistics
             if (ms.Players.Find(p => p.WasSpectator) != null)
                 return -1; // Don't allow matches with spectators
 
-            if (ms.Players.Count(p => !p.IsAI && p.Team != localPlayer.Team) > 0)
+            if (ms.Players.Any(p => !p.IsAI && p.Team != localPlayer.Team))
                 return -1; // Don't allow matches with human players who were on a different team
 
             if (ms.Players.Find(p => p.Team == 0) != null)
@@ -460,7 +457,7 @@ namespace ClientCore.Statistics
 
             if (lowestEnemyAILevel < highestAllyAILevel)
             {
-                // Check that the player's AI allies weren't stronger 
+                // Check that the player's AI allies weren't stronger
                 return -1;
             }
 
@@ -603,7 +600,7 @@ namespace ClientCore.Statistics
 
                 if (lowestEnemyAILevel < highestAllyAILevel)
                 {
-                    // Check that the player's AI allies weren't stronger 
+                    // Check that the player's AI allies weren't stronger
                     continue;
                 }
 
@@ -672,6 +669,5 @@ namespace ClientCore.Statistics
         {
             return Statistics.Find(m => m.GameID == gameId);
         }
-
     }
 }

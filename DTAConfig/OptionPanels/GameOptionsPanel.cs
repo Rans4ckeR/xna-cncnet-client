@@ -1,48 +1,71 @@
-﻿using ClientCore;
+﻿using System;
+using ClientCore;
 using ClientCore.CnCNet5;
 using ClientGUI;
-using Localization;
 using DTAConfig.Settings;
+using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAConfig.OptionPanels
 {
-    class GameOptionsPanel : XNAOptionsPanel
+    public sealed class GameOptionsPanel : XNAOptionsPanel
     {
-
 #if TS
         private const string TEXT_BACKGROUND_COLOR_TRANSPARENT = "0";
         private const string TEXT_BACKGROUND_COLOR_BLACK = "12";
 #endif
         private const int MAX_SCROLL_RATE = 6;
 
-        public GameOptionsPanel(WindowManager windowManager, UserINISettings iniSettings, XNAControl topBar)
-            : base(windowManager, iniSettings)
+        private readonly HotkeyConfigurationWindow hotkeyConfigWindow;
+
+        public GameOptionsPanel(
+            WindowManager windowManager,
+            UserINISettings iniSettings,
+            XNAControl topBar,
+            HotkeyConfigurationWindow hotkeyConfigurationWindow,
+            IServiceProvider serviceProvider,
+            SettingCheckBox chkTargetLines,
+            SettingCheckBox chkScrollCoasting,
+            SettingCheckBox chkTooltips,
+#if TS
+            SettingCheckBox chkAltToUndeploy,
+            SettingCheckBox chkBlackChatBackground,
+#else
+            SettingCheckBox chkShowHiddenObjects)
+#endif
+            : base(windowManager, iniSettings, serviceProvider)
         {
             this.topBar = topBar;
+            hotkeyConfigWindow = hotkeyConfigurationWindow;
+            this.chkTargetLines = chkTargetLines;
+            this.chkScrollCoasting = chkScrollCoasting;
+            this.chkTooltips = chkTooltips;
+#if TS
+            this.chkAltToUndeploy = chkAltToUndeploy;
+            this.chkBlackChatBackground = chkBlackChatBackground;
+#else
+            this.chkShowHiddenObjects = chkShowHiddenObjects;
+#endif
         }
 
         private XNALabel lblScrollRateValue;
 
         private XNATrackbar trbScrollRate;
-        private XNAClientCheckBox chkTargetLines;
-        private XNAClientCheckBox chkScrollCoasting;
-        private XNAClientCheckBox chkTooltips;
+        private readonly SettingCheckBox chkTargetLines;
+        private readonly SettingCheckBox chkScrollCoasting;
+        private readonly SettingCheckBox chkTooltips;
 #if TS
-        private XNAClientCheckBox chkAltToUndeploy;
-        private XNAClientCheckBox chkBlackChatBackground;
+        private readonly SettingCheckBox chkAltToUndeploy;
+        private readonly SettingCheckBox chkBlackChatBackground;
 #else
-        private XNAClientCheckBox chkShowHiddenObjects;
+        private readonly SettingCheckBox chkShowHiddenObjects;
 #endif
 
         private XNAControl topBar;
 
         private XNATextBox tbPlayerName;
-
-        private HotkeyConfigurationWindow hotkeyConfigWindow;
 
         public override void Initialize()
         {
@@ -76,21 +99,30 @@ namespace DTAConfig.OptionPanels
             trbScrollRate.MaxValue = MAX_SCROLL_RATE;
             trbScrollRate.ValueChanged += TrbScrollRate_ValueChanged;
 
-            chkScrollCoasting = new SettingCheckBox(WindowManager, true, UserINISettings.OPTIONS, "ScrollMethod", true, "0", "1");
+            chkScrollCoasting.DefaultValue = true;
+            chkScrollCoasting.SettingSection = UserINISettings.OPTIONS;
+            chkScrollCoasting.SettingKey = "ScrollMethod";
+            chkScrollCoasting.WriteSettingValue = true;
+            chkScrollCoasting.EnabledSettingValue = "0";
+            chkScrollCoasting.DisabledSettingValue = "1";
             chkScrollCoasting.Name = "chkScrollCoasting";
             chkScrollCoasting.ClientRectangle = new Rectangle(
                 lblScrollRate.X,
                 trbScrollRate.Bottom + 20, 0, 0);
             chkScrollCoasting.Text = "Scroll Coasting".L10N("UI:DTAConfig:ScrollCoasting");
 
-            chkTargetLines = new SettingCheckBox(WindowManager, true, UserINISettings.OPTIONS, "UnitActionLines");
+            chkTargetLines.DefaultValue = true;
+            chkTargetLines.SettingSection = UserINISettings.OPTIONS;
+            chkTargetLines.SettingKey = "UnitActionLines";
             chkTargetLines.Name = "chkTargetLines";
             chkTargetLines.ClientRectangle = new Rectangle(
                 lblScrollRate.X,
                 chkScrollCoasting.Bottom + 24, 0, 0);
             chkTargetLines.Text = "Target Lines".L10N("UI:DTAConfig:TargetLines");
 
-            chkTooltips = new SettingCheckBox(WindowManager, true, UserINISettings.OPTIONS, "ToolTips");
+            chkTooltips.DefaultValue = true;
+            chkTooltips.SettingSection = UserINISettings.OPTIONS;
+            chkTooltips.SettingKey = "ToolTips";
             chkTooltips.Name = "chkTooltips";
             chkTooltips.Text = "Tooltips".L10N("UI:DTAConfig:Tooltips");
 
@@ -103,7 +135,9 @@ namespace DTAConfig.OptionPanels
                 lblScrollRate.X,
                 chkTargetLines.Bottom + 24, 0, 0);
 #else
-            chkShowHiddenObjects = new SettingCheckBox(WindowManager, true, UserINISettings.OPTIONS, "ShowHidden");
+            chkShowHiddenObjects.DefaultValue = true;
+            chkShowHiddenObjects.SettingSection = UserINISettings.OPTIONS;
+            chkShowHiddenObjects.SettingKey = "ShowHidden";
             chkShowHiddenObjects.Name = "chkShowHiddenObjects";
             chkShowHiddenObjects.ClientRectangle = new Rectangle(
                 lblScrollRate.X,
@@ -159,7 +193,6 @@ namespace DTAConfig.OptionPanels
             lblNotice.Text = ("* If you are currently connected to CnCNet, you need to log out and reconnect" +
                 Environment.NewLine + "for your new name to be applied.").L10N("UI:DTAConfig:ReconnectAfterRename");
 
-            hotkeyConfigWindow = new HotkeyConfigurationWindow(WindowManager);
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, hotkeyConfigWindow);
             hotkeyConfigWindow.Disable();
 
@@ -206,7 +239,7 @@ namespace DTAConfig.OptionPanels
         public override void Load()
         {
             base.Load();
-            
+
             int scrollRate = ReverseScrollRate(IniSettings.ScrollRate);
 
             if (scrollRate >= trbScrollRate.MinValue && scrollRate <= trbScrollRate.MaxValue)
@@ -215,7 +248,7 @@ namespace DTAConfig.OptionPanels
                 lblScrollRateValue.Text = scrollRate.ToString();
             }
 
-            tbPlayerName.Text = UserINISettings.Instance.PlayerName;
+            tbPlayerName.Text = IniSettings.PlayerName;
         }
 
         public override bool Save()

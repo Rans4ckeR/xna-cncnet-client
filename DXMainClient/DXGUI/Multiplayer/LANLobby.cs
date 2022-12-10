@@ -21,6 +21,7 @@ using DTAClient.Domain.Multiplayer.LAN;
 using DTAClient.DXGUI.Multiplayer.GameLobby;
 using DTAClient.Online;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
@@ -37,32 +38,46 @@ namespace DTAClient.DXGUI.Multiplayer
         private const double ALIVE_MESSAGE_INTERVAL = 5.0;
         private const double INACTIVITY_REMOVE_TIME = 10.0;
 
+        private readonly UserINISettings userIniSettings;
+        private readonly LANGameCreationWindow gameCreationWindow;
+        private readonly LANGameLoadingLobby lanGameLoadingLobby;
+        private readonly LANGameLobby lanGameLobby;
+        private readonly GameListBox lbGameList;
+
         public LANLobby(
             WindowManager windowManager,
             GameCollection gameCollection,
             MapLoader mapLoader,
-            DiscordHandler discordHandler)
-            : base(windowManager)
+            DiscordHandler discordHandler,
+            ILogger logger,
+            UserINISettings userIniSettings,
+            LANGameCreationWindow lanGameCreationWindow,
+            LANGameLoadingLobby lanGameLoadingLobby,
+            LANGameLobby lanGameLobby,
+            GameListBox gameListBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.gameCollection = gameCollection;
             this.mapLoader = mapLoader;
             this.discordHandler = discordHandler;
+            this.userIniSettings = userIniSettings;
+            this.lanGameLoadingLobby = lanGameLoadingLobby;
+            this.lanGameLobby = lanGameLobby;
+            lbGameList = gameListBox;
+            gameCreationWindow = lanGameCreationWindow;
         }
 
         public event EventHandler Exited;
 
         private XNAListBox lbPlayerList;
         private ChatListBox lbChatMessages;
-        private GameListBox lbGameList;
         private XNAClientButton btnMainMenu;
         private XNAClientButton btnNewGame;
         private XNAClientButton btnJoinGame;
         private XNAChatTextBox tbChatInput;
         private XNALabel lblColor;
         private XNAClientDropDown ddColor;
-        private LANGameCreationWindow gameCreationWindow;
-        private LANGameLobby lanGameLobby;
-        private LANGameLoadingLobby lanGameLoadingLobby;
         private Texture2D unknownGameIcon;
         private LANColor[] chatColors;
         private string localGame;
@@ -109,7 +124,8 @@ namespace DTAClient.DXGUI.Multiplayer
             btnMainMenu.Text = "Main Menu".L10N("UI:Main:MainMenu");
             btnMainMenu.LeftClick += (_, _) => BtnMainMenu_LeftClickAsync().HandleTask();
 
-            lbGameList = new GameListBox(WindowManager, localGame, null);
+            lbGameList.LocalGameIdentifier = localGame;
+            lbGameList.GameMatchesFilter = null;
             lbGameList.Name = "lbGameList";
             lbGameList.ClientRectangle = new Rectangle(btnNewGame.X,
                 41, btnJoinGame.Right - btnNewGame.X,
@@ -194,7 +210,6 @@ namespace DTAClient.DXGUI.Multiplayer
             AddChild(lblColor);
             AddChild(ddColor);
 
-            gameCreationWindow = new LANGameCreationWindow(WindowManager);
             var gameCreationPanel = new DarkeningPanel(WindowManager);
             AddChild(gameCreationPanel);
             gameCreationPanel.AddChild(gameCreationWindow);
@@ -215,17 +230,16 @@ namespace DTAClient.DXGUI.Multiplayer
             CenterOnParent();
             gameCreationPanel.SetPositionAndSize();
 
-            lanGameLobby = new LANGameLobby(WindowManager, "MultiplayerGameLobby",
-                null, chatColors, mapLoader, discordHandler);
+            lanGameLobby.Name = "MultiplayerGameLobby";
+            lanGameLobby.ChatColors = chatColors;
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLobby);
             lanGameLobby.Disable();
 
-            lanGameLoadingLobby = new LANGameLoadingLobby(WindowManager,
-                chatColors, mapLoader, discordHandler);
+            lanGameLoadingLobby.ChatColors = chatColors;
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLoadingLobby);
             lanGameLoadingLobby.Disable();
 
-            int selectedColor = UserINISettings.Instance.LANChatColor;
+            int selectedColor = userIniSettings.LANChatColor;
 
             ddColor.SelectedIndex = selectedColor >= ddColor.Items.Count || selectedColor < 0
                 ? 0 : selectedColor;
@@ -263,8 +277,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private async ValueTask GameCreationWindow_NewGameAsync()
         {
-            await lanGameLobby.SetUpAsync(true,
-                new IPEndPoint(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT), null);
+            await lanGameLobby.SetUpAsync(true, new IPEndPoint(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT), null);
 
             lanGameLobby.Enable();
         }
@@ -273,13 +286,13 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             tbChatInput.TextColor = chatColors[ddColor.SelectedIndex].XNAColor;
             lanGameLobby.SetChatColorIndex(ddColor.SelectedIndex);
-            UserINISettings.Instance.LANChatColor.Value = ddColor.SelectedIndex;
+            userIniSettings.LANChatColor.Value = ddColor.SelectedIndex;
         }
 
         private void DdColor_SelectedIndexChanged(object sender, EventArgs e)
         {
             SetChatColor();
-            UserINISettings.Instance.SaveSettings();
+            userIniSettings.SaveSettings();
         }
 
         public async ValueTask OpenAsync()
@@ -293,7 +306,7 @@ namespace DTAClient.DXGUI.Multiplayer
             Enabled = true;
             cancellationTokenSource = new CancellationTokenSource();
 
-            Logger.Log("Creating LAN socket.");
+            logger.LogInformation("Creating LAN socket.");
 
             IEnumerable<UnicastIPAddressInformation> lanIpAddresses = NetworkHelper.GetUniCastIpAddresses();
             UnicastIPAddressInformation lanIpV4Address = lanIpAddresses.FirstOrDefault(q => q.Address.AddressFamily is AddressFamily.InterNetwork);
@@ -314,7 +327,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
             catch (SocketException ex)
             {
-                ProgramConstants.LogException(ex, "Creating LAN socket failed!");
+                logger.LogExceptionDetails(ex, "Creating LAN socket failed!");
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,
                     "Creating LAN socket failed! Message:".L10N("UI:Main:SocketFailure1") + " " + ex.Message));
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red,
@@ -327,7 +340,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 return;
             }
 
-            Logger.Log("Starting listener.");
+            logger.LogInformation("Starting listener.");
             ListenAsync(cancellationTokenSource.Token).HandleTask();
             await SendAliveAsync(cancellationTokenSource.Token);
         }
@@ -379,7 +392,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "LAN socket listener exception.");
+                logger.LogExceptionDetails(ex, "LAN socket listener exception.");
             }
         }
 
@@ -451,7 +464,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     if (user == null)
                         return;
 
-                    HostedLANGame game = new HostedLANGame();
+                    HostedLANGame game = new HostedLANGame(logger);
                     if (!game.SetDataFromStringArray(gameCollection, parameters))
                         return;
                     game.EndPoint = endPoint;
@@ -588,7 +601,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Connecting to the game failed!");
+                logger.LogExceptionDetails(ex, "Connecting to the game failed!");
                 lbChatMessages.AddMessage(null,
                     "Connecting to the game failed! Message:".L10N("UI:Main:ConnectGameFailed") + " " + ex.Message, Color.White);
             }

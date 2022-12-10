@@ -1,9 +1,8 @@
-﻿using ClientGUI;
-using DTAClient.Domain;
+﻿using System;
+using ClientGUI;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Generic
 {
@@ -11,16 +10,32 @@ namespace DTAClient.DXGUI.Generic
     /// TODO Replace this class with DarkeningPanels.
     /// Handles transitions between the main menu and its sub-menus.
     /// </summary>
-    public class MainMenuDarkeningPanel : XNAPanel
+    internal sealed class MainMenuDarkeningPanel : XNAPanel
     {
-        public MainMenuDarkeningPanel(WindowManager windowManager, DiscordHandler discordHandler) : base(windowManager)
+        private readonly GameLoadingWindow gameLoadingWindow;
+        private readonly CampaignSelector campaignSelector;
+
+        public MainMenuDarkeningPanel(
+            WindowManager windowManager,
+            GameLoadingWindow gameLoadingWindow,
+            CampaignSelector campaignSelector,
+            ExtrasWindow extrasWindow,
+            UpdateWindow updateWindow,
+            StatisticsWindow statisticsWindow,
+            UpdateQueryWindow updateQueryWindow,
+            ManualUpdateQueryWindow manualUpdateQueryWindow)
+            : base(windowManager)
         {
-            this.discordHandler = discordHandler;
+            this.gameLoadingWindow = gameLoadingWindow;
+            this.campaignSelector = campaignSelector;
+            StatisticsWindow = statisticsWindow;
+            UpdateWindow = updateWindow;
+            UpdateQueryWindow = updateQueryWindow;
+            ManualUpdateQueryWindow = manualUpdateQueryWindow;
             DrawBorders = false;
             DrawMode = ControlDrawMode.UNIQUE_RENDER_TARGET;
+            ExtrasWindow = extrasWindow;
         }
-
-        private DiscordHandler discordHandler;
 
         public CampaignSelector CampaignSelector;
         public GameLoadingWindow GameLoadingWindow;
@@ -40,25 +55,16 @@ namespace DTAClient.DXGUI.Generic
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
             Alpha = 1.0f;
 
-            CampaignSelector = new CampaignSelector(WindowManager, discordHandler);
+            CampaignSelector = campaignSelector;
             AddChild(CampaignSelector);
 
-            GameLoadingWindow = new GameLoadingWindow(WindowManager, discordHandler);
+            GameLoadingWindow = gameLoadingWindow;
             AddChild(GameLoadingWindow);
-
-            StatisticsWindow = new StatisticsWindow(WindowManager);
             AddChild(StatisticsWindow);
-
-            UpdateQueryWindow = new UpdateQueryWindow(WindowManager);
             AddChild(UpdateQueryWindow);
-
-            ManualUpdateQueryWindow = new ManualUpdateQueryWindow(WindowManager);
             AddChild(ManualUpdateQueryWindow);
 
-            UpdateWindow = new UpdateWindow(WindowManager);
             AddChild(UpdateWindow);
-
-            ExtrasWindow = new ExtrasWindow(WindowManager);
             AddChild(ExtrasWindow);
 
             foreach (XNAControl child in Children)

@@ -10,7 +10,7 @@ using System.Threading;
 
 namespace DTAClient
 {
-    static class Program
+    internal static class Program
     {
 #if !DEBUG
         static Program()
@@ -50,7 +50,7 @@ namespace DTAClient
 #if WINFORMS
         [STAThread]
 #endif
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             bool noAudio = false;
             bool multipleInstanceMode = false;

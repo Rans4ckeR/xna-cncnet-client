@@ -3,7 +3,7 @@
     /// <summary>
     /// An instance of a Map in a given GameMode
     /// </summary>
-    public class GameModeMap
+    internal sealed class GameModeMap
     {
         public GameMode GameMode { get; }
         public Map Map { get; }
@@ -15,8 +15,6 @@
             Map = map;
             IsFavorite = isFavorite;
         }
-
-        protected bool Equals(GameModeMap other) => Equals(GameMode, other.GameMode) && Equals(Map, other.Map);
 
         public override int GetHashCode()
         {

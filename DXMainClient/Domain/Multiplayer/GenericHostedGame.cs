@@ -1,5 +1,5 @@
-﻿using ClientCore.CnCNet5;
-using System;
+﻿using System;
+using ClientCore.CnCNet5;
 
 namespace DTAClient.Domain.Multiplayer
 {
@@ -7,7 +7,7 @@ namespace DTAClient.Domain.Multiplayer
     /// A base class for hosted games.
     /// CnCNet and LAN games derive from this.
     /// </summary>
-    public abstract class GenericHostedGame: IEquatable<GenericHostedGame>
+    public abstract class GenericHostedGame : IEquatable<GenericHostedGame>
     {
         public string RoomName { get; set; }
         public bool Incompatible { get; set; }
@@ -21,7 +21,7 @@ namespace DTAClient.Domain.Multiplayer
         public string HostName { get; set; }
         public string[] Players { get; set; }
 
-        int _maxPlayers = 8;
+        private int _maxPlayers = 8;
 
         public int MaxPlayers
         {
@@ -35,8 +35,8 @@ namespace DTAClient.Domain.Multiplayer
         }
 
         public DateTime LastRefreshTime { get; set; }
-        
-        public virtual bool Equals(GenericHostedGame other) => 
+
+        public virtual bool Equals(GenericHostedGame other) =>
             string.Equals(RoomName, other?.RoomName, StringComparison.InvariantCultureIgnoreCase);
     }
 }

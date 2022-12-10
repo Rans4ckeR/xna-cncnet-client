@@ -1,13 +1,13 @@
-﻿using Rampastring.XNAUI.XNAControls;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using ClientCore;
-using Rampastring.XNAUI;
-using Microsoft.Xna.Framework.Graphics;
-using PlayerInfo = DTAClient.Domain.Multiplayer.PlayerInfo;
-using Microsoft.Xna.Framework;
 using DTAClient.Domain.Multiplayer;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
+using PlayerInfo = DTAClient.Domain.Multiplayer.PlayerInfo;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
@@ -16,7 +16,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     /// </summary>
     internal sealed class PlayerLocationIndicator : XNAControl
     {
-        const float TEXTURE_SCALE = 0.25f;
+        private const float TEXTURE_SCALE = 0.25f;
 
         public PlayerLocationIndicator(WindowManager windowManager, List<MultiplayerColor> mpColors,
             Color nameBackgroundColor, Color nameBorderColor, XNAContextMenu contextMenu) : base(windowManager)
@@ -34,8 +34,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private Texture2D usedTexture;
         public Texture2D WaypointTexture { get; set; }
         public List<PlayerInfo> Players = new List<PlayerInfo>();
-
-        List<MultiplayerColor> mpColors;
+        private List<MultiplayerColor> mpColors;
 
         public bool BackgroundShown { get; set; }
 
@@ -54,11 +53,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private readonly string[] teamIds = new[] { string.Empty }
             .Concat(ProgramConstants.TEAMS.Select(team => $"[{team}]")).ToArray();
 
-        private bool usePlayerRemapColor = false;
+        private bool usePlayerRemapColor;
 
-        private bool isHoveredOn = false;
+        private bool isHoveredOn;
 
-        private double backgroundAlpha = 0.0;
+        private double backgroundAlpha;
         private double backgroundAlphaRate = 0.1;
 
         private double angle;
@@ -257,7 +256,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 Renderer.DrawTexture(WaypointTexture,
                     new Vector2(displayRectangle.Center.X + 0.5f, displayRectangle.Center.Y),
-                    0f, 
+                    0f,
                     new Vector2(WaypointTexture.Width / 2, WaypointTexture.Height / 2),
                     new Vector2(1f, 1f),
                     Color.White);
@@ -268,7 +267,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             base.Draw(gameTime);
         }
 
-        sealed class PlayerText
+        private sealed class PlayerText
         {
             public PlayerText(string text, bool textOnRight)
             {

@@ -1,5 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.CnCNet5;
+using ClientCore.Extensions;
+using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
 using ClientGUI;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer;
@@ -9,16 +17,11 @@ using DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers;
 using DTAClient.Online;
 using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -30,19 +33,31 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private const double GAME_BROADCAST_INTERVAL = 20.0;
         private const double INITIAL_GAME_BROADCAST_DELAY = 10.0;
 
+        private readonly TunnelSelectionWindow tunnelSelectionWindow;
+        private readonly FileHashCalculator fileHashCalculator;
+
         public CnCNetGameLoadingLobby(
             WindowManager windowManager,
             TopBar topBar,
             CnCNetManager connectionManager,
             TunnelHandler tunnelHandler,
             GameCollection gameCollection,
-            DiscordHandler discordHandler)
-            : base(windowManager, discordHandler)
+            DiscordHandler discordHandler,
+            ILogger logger,
+            SavedGameManager savedGameManager,
+            StatisticsManager statisticsManager,
+            GameProcessLogic gameProcessLogic,
+            LogFileStatisticsParser logFileStatisticsParser,
+            TunnelSelectionWindow tunnelSelectionWindow,
+            FileHashCalculator fileHashCalculator,
+            IServiceProvider serviceProvider)
+            : base(windowManager, discordHandler, logger, savedGameManager, statisticsManager, gameProcessLogic, logFileStatisticsParser, serviceProvider)
         {
             this.connectionManager = connectionManager;
             this.tunnelHandler = tunnelHandler;
             this.topBar = topBar;
             this.gameCollection = gameCollection;
+            this.tunnelSelectionWindow = tunnelSelectionWindow;
 
             ctcpCommandHandlers = new CommandHandlerBase[]
             {
@@ -57,16 +72,14 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 new IntCommandHandler(CnCNetCommands.PLAYER_READY, (sender, readyStatus) => HandlePlayerReadyRequestAsync(sender, readyStatus).HandleTask()),
                 new StringCommandHandler(CnCNetCommands.CHANGE_TUNNEL_SERVER, HandleTunnelServerChangeMessage)
             };
+            this.fileHashCalculator = fileHashCalculator;
         }
 
         private CommandHandlerBase[] ctcpCommandHandlers;
 
         private CnCNetManager connectionManager;
 
-        private List<GameMode> gameModes;
-
         private TunnelHandler tunnelHandler;
-        private TunnelSelectionWindow tunnelSelectionWindow;
         private XNAClientButton btnChangeTunnel;
 
         private Channel channel;
@@ -103,7 +116,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             connectionManager.ConnectionLost += (_, _) => ClearAsync().HandleTask();
             connectionManager.Disconnected += (_, _) => ClearAsync().HandleTask();
 
-            tunnelSelectionWindow = new TunnelSelectionWindow(WindowManager, tunnelHandler);
             tunnelSelectionWindow.Initialize();
             tunnelSelectionWindow.DrawOrder = 1;
             tunnelSelectionWindow.UpdateOrder = 1;
@@ -205,7 +217,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     return;
             }
 
-            Logger.Log("Unhandled CTCP command: " + e.Message + " from " + e.UserName);
+            logger.LogWarning("Unhandled CTCP command: " + e.Message + " from " + e.UserName);
         }
 
         /// <summary>
@@ -213,8 +225,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// </summary>
         public async ValueTask OnJoinedAsync()
         {
-            FileHashCalculator fhc = new FileHashCalculator();
-            fhc.CalculateHashes(gameModes);
+            fileHashCalculator.CalculateHashes();
 
             if (IsHost)
             {
@@ -227,7 +238,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLower()),
                     QueuedMessageType.SYSTEM_MESSAGE, 50));
 
-                gameFilesHash = fhc.GetCompleteHash();
+                gameFilesHash = fileHashCalculator.GetCompleteHash();
 
                 gameBroadcastTimer.Enabled = true;
                 gameBroadcastTimer.Start();
@@ -235,7 +246,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
             else
             {
-                await channel.SendCTCPMessageAsync(CnCNetCommands.FILE_HASH + " " + fhc.GetCompleteHash(), QueuedMessageType.SYSTEM_MESSAGE, 10);
+                await channel.SendCTCPMessageAsync(CnCNetCommands.FILE_HASH + " " + fileHashCalculator.GetCompleteHash(), QueuedMessageType.SYSTEM_MESSAGE, 10);
 
                 await channel.SendCTCPMessageAsync(CnCNetCommands.TUNNEL_PING + " " + tunnelHandler.CurrentTunnel.PingInMs, QueuedMessageType.SYSTEM_MESSAGE, 10);
 

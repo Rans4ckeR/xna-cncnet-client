@@ -1,17 +1,17 @@
-﻿using ClientCore;
-using DTAClient.Online.EventArguments;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ClientCore;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.DXGUI;
+using DTAClient.Online.EventArguments;
 using Localization;
 
 namespace DTAClient.Online
 {
     internal sealed class Channel : IMessageView
     {
-        const int MESSAGE_LIMIT = 1024;
+        private const int MESSAGE_LIMIT = 1024;
 
         public event EventHandler<ChannelUserEventArgs> UserAdded;
         public event EventHandler<UserNameEventArgs> UserLeft;
@@ -41,7 +41,7 @@ namespace DTAClient.Online
         /// </summary>
         public event EventHandler<MessageEventArgs> TargetChangeTooFast;
 
-        public Channel(string uiName, string channelName, bool persistent, bool isChatChannel, string password, Connection connection)
+        public Channel(string uiName, string channelName, bool persistent, bool isChatChannel, string password, Connection connection, UserINISettings userINISettings)
         {
             if (isChatChannel)
                 users = new SortedUserCollection<ChannelUser>(ChannelUser.ChannelUserComparison);
@@ -58,7 +58,7 @@ namespace DTAClient.Online
             if (persistent)
             {
                 Instance_SettingsSaved(null, EventArgs.Empty);
-                UserINISettings.Instance.SettingsSaved += Instance_SettingsSaved;
+                userINISettings.SettingsSaved += Instance_SettingsSaved;
             }
         }
 
@@ -75,8 +75,7 @@ namespace DTAClient.Online
         public string Password { get; private set; }
 
         private readonly Connection connection;
-
-        string _topic;
+        private string _topic;
         public string Topic
         {
             get { return _topic; }
@@ -89,22 +88,22 @@ namespace DTAClient.Online
             }
         }
 
-        List<ChatMessage> messages = new List<ChatMessage>();
+        private List<ChatMessage> messages = new List<ChatMessage>();
         public List<ChatMessage> Messages => messages;
 
-        IUserCollection<ChannelUser> users;
+        private IUserCollection<ChannelUser> users;
         public IUserCollection<ChannelUser> Users => users;
 
         #endregion
 
-        bool notifyOnUserListChange = true;
+        private bool notifyOnUserListChange = true;
 
         private void Instance_SettingsSaved(object sender, EventArgs e)
         {
 #if YR
             notifyOnUserListChange = false;
 #else
-            notifyOnUserListChange = UserINISettings.Instance.NotifyOnUserListChange;
+            notifyOnUserListChange = userINISettings.NotifyOnUserListChange;
 #endif
         }
 

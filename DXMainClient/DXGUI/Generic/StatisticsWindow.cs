@@ -1,22 +1,36 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using ClientCore;
 using ClientCore.Statistics;
 using ClientGUI;
 using DTAClient.Domain.Multiplayer;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace DTAClient.DXGUI.Generic
 {
-    public class StatisticsWindow : XNAWindow
+    internal sealed class StatisticsWindow : XNAWindow
     {
-        public StatisticsWindow(WindowManager windowManager) : base(windowManager) { }
+        private readonly StatisticsManager sm;
+        private readonly XNAMessageBox xnaMessageBox;
+
+        public StatisticsWindow(
+            WindowManager windowManager,
+            ILogger logger,
+            StatisticsManager statisticsManager,
+            XNAMessageBox xnaMessageBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
+        {
+            sm = statisticsManager;
+            this.xnaMessageBox = xnaMessageBox;
+        }
 
         private XNAPanel panelGameStatistics;
         private XNAPanel panelTotalStatistics;
@@ -67,7 +81,6 @@ namespace DTAClient.DXGUI.Generic
 
         // *****************************
 
-        private StatisticsManager sm;
         private List<int> listedGameIndexes = new List<int>();
 
         private string[] sides;
@@ -76,8 +89,6 @@ namespace DTAClient.DXGUI.Generic
 
         public override void Initialize()
         {
-            sm = StatisticsManager.Instance;
-
             string strLblEconomy = "ECONOMY".L10N("UI:Main:StatisticEconomy");
             string strLblAvgEconomy = "Average economy:".L10N("UI:Main:StatisticEconomyAvg");
             if (ClientConfiguration.Instance.UseBuiltStatistic)
@@ -149,7 +160,7 @@ namespace DTAClient.DXGUI.Generic
             chkIncludeSpectatedGames.ClientRectangle = new Rectangle(
                 Width - chkIncludeSpectatedGames.Width - 12,
                 cmbGameModeFilter.Bottom + 3,
-                chkIncludeSpectatedGames.Width, 
+                chkIncludeSpectatedGames.Width,
                 chkIncludeSpectatedGames.Height);
             chkIncludeSpectatedGames.CheckedChanged += ChkIncludeSpectatedGames_CheckedChanged;
 
@@ -200,9 +211,9 @@ namespace DTAClient.DXGUI.Generic
             panelGameStatistics.AddChild(lbGameList);
             panelGameStatistics.AddChild(lbGameStatistics);
 
-#endregion
+            #endregion
 
-#region Total statistics
+            #region Total statistics
 
             panelTotalStatistics = new XNAPanel(WindowManager);
             panelTotalStatistics.Name = "panelTotalStatistics";
@@ -383,7 +394,7 @@ namespace DTAClient.DXGUI.Generic
             panelTotalStatistics.AddChild(lblFavouriteSideValue);
             panelTotalStatistics.AddChild(lblAverageAILevelValue);
 
-#endregion
+            #endregion
 
             AddChild(tabControl);
             AddChild(lblFilter);
@@ -411,7 +422,7 @@ namespace DTAClient.DXGUI.Generic
             ListGameModes();
             ListGames();
 
-            StatisticsManager.Instance.GameAdded += Instance_GameAdded;
+            sm.GameAdded += Instance_GameAdded;
         }
 
         private void Instance_GameAdded(object sender, EventArgs e)
@@ -514,7 +525,7 @@ namespace DTAClient.DXGUI.Generic
                     items.Add(new XNAListBoxItem("-", textColor));
                 }
                 else
-                { 
+                {
                     if (!ms.SawCompletion)
                     {
                         // The game wasn't completed - we don't know the stats
@@ -575,8 +586,6 @@ namespace DTAClient.DXGUI.Generic
 
         private void ReadStatistics()
         {
-            StatisticsManager sm = StatisticsManager.Instance;
-
             sm.ReadStatistics(ProgramConstants.GamePath);
         }
 
@@ -997,7 +1006,7 @@ namespace DTAClient.DXGUI.Generic
 
         private void ClearAllStatistics()
         {
-            StatisticsManager.Instance.ClearDatabase();
+            sm.ClearDatabase();
             ReadStatistics();
             ListGameModes();
             ListGames();
@@ -1014,12 +1023,14 @@ namespace DTAClient.DXGUI.Generic
 
         private void BtnClearStatistics_LeftClick(object sender, EventArgs e)
         {
-            var msgBox = new XNAMessageBox(WindowManager, "Clear all statistics".L10N("UI:Main:ClearStatisticsTitle"),
-                ("All statistics data will be cleared from the database." +
+            xnaMessageBox.Caption = "Clear all statistics".L10N("UI:Main:ClearStatisticsTitle");
+            xnaMessageBox.Description = ("All statistics data will be cleared from the database." +
                 Environment.NewLine + Environment.NewLine +
-                "Are you sure you want to continue?").L10N("UI:Main:ClearStatisticsText"), XNAMessageBoxButtons.YesNo);
-            msgBox.Show();
-            msgBox.YesClickedAction = ClearStatisticsConfirmation_YesClicked;
+                "Are you sure you want to continue?").L10N("UI:Main:ClearStatisticsText");
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+            xnaMessageBox.YesClickedAction = ClearStatisticsConfirmation_YesClicked;
+
+            xnaMessageBox.Show();
         }
 
         private void ClearStatisticsConfirmation_YesClicked(XNAMessageBox messageBox)

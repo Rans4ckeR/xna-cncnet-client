@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
 
 namespace ClientCore
@@ -9,9 +11,16 @@ namespace ClientCore
     /// <summary>
     /// A class for handling saved multiplayer games.
     /// </summary>
-    public static class SavedGameManager
+    public sealed class SavedGameManager
     {
         private static bool saveRenameInProgress;
+
+        private readonly ILogger logger;
+
+        public SavedGameManager(ILogger logger)
+        {
+            this.logger = logger;
+        }
 
         public static int GetSaveGameCount()
         {
@@ -67,7 +76,7 @@ namespace ClientCore
         /// <summary>
         /// Initializes saved MP games for a match.
         /// </summary>
-        public static bool InitSavedGames()
+        public bool InitSavedGames()
         {
             bool success = EraseSavedGames();
 
@@ -76,26 +85,26 @@ namespace ClientCore
 
             try
             {
-                Logger.Log("Writing spawn.ini for saved game.");
+                logger.LogInformation("Writing spawn.ini for saved game.");
                 SafePath.DeleteFileIfExists(ProgramConstants.GamePath, ProgramConstants.SAVED_GAME_SPAWN_INI);
                 File.Copy(SafePath.CombineFilePath(ProgramConstants.GamePath, ProgramConstants.SPAWNER_SETTINGS), SafePath.CombineFilePath(ProgramConstants.GamePath, ProgramConstants.SAVED_GAME_SPAWN_INI));
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Writing spawn.ini for saved game failed!");
+                logger.LogExceptionDetails(ex, "Writing spawn.ini for saved game failed!");
                 return false;
             }
 
             return true;
         }
 
-        public static async ValueTask RenameSavedGameAsync()
+        public async ValueTask RenameSavedGameAsync()
         {
-            Logger.Log("Renaming saved game.");
+            logger.LogInformation("Renaming saved game.");
 
             if (saveRenameInProgress)
             {
-                Logger.Log("Save renaming in progress!");
+                logger.LogInformation("Save renaming in progress!");
                 return;
             }
 
@@ -103,7 +112,7 @@ namespace ClientCore
 
             if (!SafePath.GetFile(saveGameDirectory, "SAVEGAME.NET").Exists)
             {
-                Logger.Log("SAVEGAME.NET doesn't exist!");
+                logger.LogInformation("SAVEGAME.NET doesn't exist!");
                 return;
             }
 
@@ -123,7 +132,7 @@ namespace ClientCore
             if (saveGameId == 999)
             {
                 if (SafePath.GetFile(saveGameDirectory, "SVGM_999.NET").Exists)
-                    Logger.Log("1000 saved games exceeded! Overwriting previous MP save.");
+                    logger.LogInformation("1000 saved games exceeded! Overwriting previous MP save.");
             }
 
             string sgPath = SafePath.CombineFilePath(saveGameDirectory, string.Format("SVGM_{0}.NET", saveGameId.ToString("D3")));
@@ -139,14 +148,14 @@ namespace ClientCore
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Renaming saved game failed!");
+                    logger.LogExceptionDetails(ex, "Renaming saved game failed!");
                 }
 
                 tryCount++;
 
                 if (tryCount > 40)
                 {
-                    Logger.Log("Renaming saved game failed 40 times! Aborting.");
+                    logger.LogInformation("Renaming saved game failed 40 times! Aborting.");
                     return;
                 }
 
@@ -155,12 +164,12 @@ namespace ClientCore
 
             saveRenameInProgress = false;
 
-            Logger.Log("Saved game SAVEGAME.NET succesfully renamed to " + Path.GetFileName(sgPath));
+            logger.LogInformation("Saved game SAVEGAME.NET succesfully renamed to " + Path.GetFileName(sgPath));
         }
 
-        private static bool EraseSavedGames()
+        private bool EraseSavedGames()
         {
-            Logger.Log("Erasing previous MP saved games.");
+            logger.LogInformation("Erasing previous MP saved games.");
 
             try
             {
@@ -171,11 +180,11 @@ namespace ClientCore
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Erasing previous MP saved games failed!");
+                logger.LogExceptionDetails(ex, "Erasing previous MP saved games failed!");
                 return false;
             }
 
-            Logger.Log("MP saved games succesfully erased.");
+            logger.LogInformation("MP saved games succesfully erased.");
             return true;
         }
     }

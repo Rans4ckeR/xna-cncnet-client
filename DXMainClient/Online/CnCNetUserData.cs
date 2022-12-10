@@ -1,21 +1,25 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using ClientCore;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.Online
 {
-    public sealed class CnCNetUserData
+    internal sealed class CnCNetUserData
     {
         private const string FRIEND_LIST_PATH = "Client/friend_list";
         private const string IGNORE_LIST_PATH = "Client/ignore_list";
         private const string RECENT_LIST_PATH = "Client/recent_list";
 
         private const int RECENT_LIMIT = 50;
+
+        private readonly ILogger logger;
 
         /// <summary>
         /// A list which contains names of friended users. If you manipulate this list
@@ -39,8 +43,10 @@ namespace DTAClient.Online
         public event EventHandler<UserNameEventArgs> UserFriendToggled;
         public event EventHandler<IdentEventArgs> UserIgnoreToggled;
 
-        public CnCNetUserData(WindowManager windowManager)
+        public CnCNetUserData(WindowManager windowManager, ILogger logger)
         {
+            this.logger = logger;
+
             LoadFriendList();
             LoadIgnoreList();
             LoadRecentPlayerList();
@@ -48,7 +54,7 @@ namespace DTAClient.Online
             windowManager.GameClosing += WindowManager_GameClosing;
         }
 
-        private static List<string> LoadTextList(string path)
+        private List<string> LoadTextList(string path)
         {
             try
             {
@@ -57,17 +63,17 @@ namespace DTAClient.Online
                 if (listFile.Exists)
                     return File.ReadAllLines(listFile.FullName).ToList();
 
-                Logger.Log($"Loading {path} failed! File does not exist.");
+                logger.LogInformation($"Loading {path} failed! File does not exist.");
                 return new();
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, $"Loading {path} list failed!");
+                logger.LogExceptionDetails(ex, $"Loading {path} list failed!");
                 return new();
             }
         }
 
-        private static List<T> LoadJsonList<T>(string path)
+        private List<T> LoadJsonList<T>(string path)
         {
             try
             {
@@ -76,19 +82,19 @@ namespace DTAClient.Online
                 if (listFile.Exists)
                     return JsonSerializer.Deserialize<List<T>>(File.ReadAllText(listFile.FullName)) ?? new List<T>();
 
-                Logger.Log($"Loading {path} failed! File does not exist.");
+                logger.LogInformation($"Loading {path} failed! File does not exist.");
                 return new();
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, $"Loading {path} list failed!");
+                logger.LogExceptionDetails(ex, $"Loading {path} list failed!");
                 return new();
             }
         }
 
-        private static void SaveTextList(string path, List<string> textList)
+        private void SaveTextList(string path, List<string> textList)
         {
-            Logger.Log($"Saving {path}.");
+            logger.LogInformation($"Saving {path}.");
 
             try
             {
@@ -99,13 +105,13 @@ namespace DTAClient.Online
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, $"Saving {path} failed!");
+                logger.LogExceptionDetails(ex, $"Saving {path} failed!");
             }
         }
 
-        private static void SaveJsonList<T>(string path, IReadOnlyCollection<T> jsonList)
+        private void SaveJsonList<T>(string path, IReadOnlyCollection<T> jsonList)
         {
-            Logger.Log($"Saving {path}.");
+            logger.LogInformation($"Saving {path}.");
 
             try
             {
@@ -116,7 +122,7 @@ namespace DTAClient.Online
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, $"Saving {path} failed!");
+                logger.LogExceptionDetails(ex, $"Saving {path} failed!");
             }
         }
 

@@ -1,22 +1,22 @@
-﻿using ClientCore;
-using ClientCore.CnCNet5;
-using ClientGUI;
-using DTAClient.Online;
-using DTAClient.Online.EventArguments;
-using Microsoft.Xna.Framework.Graphics;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using Rampastring.XNAUI.XNAControls;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.CnCNet5;
 using ClientCore.Enums;
 using ClientCore.Extensions;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer.CnCNet;
+using DTAClient.Online;
+using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
@@ -37,19 +37,33 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private CnCNetUserData cncnetUserData;
         private readonly PrivateMessageHandler privateMessageHandler;
+        private readonly UserINISettings userIniSettings;
+        private readonly GameProcessLogic gameProcessLogic;
+        private readonly GlobalContextMenu globalContextMenu;
+        private readonly XNAMessageBox xnaMessageBox;
 
         public PrivateMessagingWindow(
             WindowManager windowManager,
             CnCNetManager connectionManager,
             GameCollection gameCollection,
             CnCNetUserData cncnetUserData,
-            PrivateMessageHandler privateMessageHandler
-        ) : base(windowManager)
+            PrivateMessageHandler privateMessageHandler,
+            ILogger logger,
+            UserINISettings userIniSettings,
+            GameProcessLogic gameProcessLogic,
+            GlobalContextMenu globalContextMenu,
+            XNAMessageBox xnaMessageBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.gameCollection = gameCollection;
             this.connectionManager = connectionManager;
             this.cncnetUserData = cncnetUserData;
             this.privateMessageHandler = privateMessageHandler;
+            this.userIniSettings = userIniSettings;
+            this.gameProcessLogic = gameProcessLogic;
+            this.globalContextMenu = globalContextMenu;
+            this.xnaMessageBox = xnaMessageBox;
         }
 
         private XNALabel lblPrivateMessaging;
@@ -65,14 +79,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private XNATextBox tbMessageInput;
 
-        private GlobalContextMenu globalContextMenu;
-
         private CnCNetManager connectionManager;
 
         private GameCollection gameCollection;
 
         private Texture2D unknownGameIcon;
-        private Texture2D adminGameIcon;
 
         private Color personalMessageColor;
         private Color otherUserMessageColor;
@@ -114,10 +125,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             var assembly = Assembly.GetAssembly(typeof(GameCollection));
             using Stream unknownIconStream = assembly.GetManifestResourceStream("ClientCore.Resources.unknownicon.png");
-            using Stream cncnetIconStream = assembly.GetManifestResourceStream("ClientCore.Resources.cncneticon.png");
 
             unknownGameIcon = AssetLoader.TextureFromImage(Image.Load(unknownIconStream));
-            adminGameIcon = AssetLoader.TextureFromImage(Image.Load(cncnetIconStream));
 
             personalMessageColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.SentPMColor);
             otherUserMessageColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.ReceivedPMColor);
@@ -192,7 +201,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             mclbRecentPlayerList.PlayerRightClick += RecentPlayersList_RightClick;
             mclbRecentPlayerList.Disable();
 
-            globalContextMenu = new GlobalContextMenu(WindowManager, connectionManager, cncnetUserData, this);
             globalContextMenu.JoinEvent += PlayerContextMenu_JoinUser;
 
             notificationBox = new PrivateMessageNotificationBox(WindowManager);
@@ -225,9 +233,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             sndPrivateMessageSound = new EnhancedSoundEffect("pm.wav", 0.0, 0.0, ClientConfiguration.Instance.SoundPrivateMessageCooldown);
 
-            sndMessageSound.Enabled = UserINISettings.Instance.MessageSound;
+            sndMessageSound.Enabled = userIniSettings.MessageSound;
 
-            GameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
+            gameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
         }
 
         private void ChatListBox_RightClick(object sender, EventArgs e)
@@ -411,7 +419,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void PlayerContextMenu_JoinUser(object sender, JoinUserEventArgs args)
         {
             if (tabControl.SelectedTab == RECENT_PLAYERS_VIEW_INDEX)
-                JoinUserAction(args.IrcUser, new RecentPlayerMessageView(WindowManager));
+                JoinUserAction(args.IrcUser, new RecentPlayerMessageView(xnaMessageBox));
             else
                 JoinUserAction(args.IrcUser, lbMessages);
         }
@@ -432,7 +440,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void PrivateMessageHandler_PrivateMessageReceived(object sender, PrivateMessageEventArgs e)
         {
-            if (UserINISettings.Instance.AllowPrivateMessagesFromState == (int)AllowPrivateMessagesFromEnum.None)
+            if (userIniSettings.AllowPrivateMessagesFromState == (int)AllowPrivateMessagesFromEnum.None)
                 return;
 
             PrivateMessageUser pmUser = privateMessageUsers.Find(u => u.IrcUser.Name == e.Sender);
@@ -457,7 +465,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 }
             }
 
-            if (UserINISettings.Instance.AllowPrivateMessagesFromState == (int)AllowPrivateMessagesFromEnum.Friends && !cncnetUserData.IsFriend(pmUser.IrcUser.Name))
+            if (userIniSettings.AllowPrivateMessagesFromState == (int)AllowPrivateMessagesFromEnum.Friends && !cncnetUserData.IsFriend(pmUser.IrcUser.Name))
                 return;
 
             ChatMessage message = new ChatMessage(e.Sender, otherUserMessageColor, DateTime.Now, e.Message);
@@ -503,7 +511,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void ShowNotification(IRCUser ircUser, string message)
         {
-            if (!UserINISettings.Instance.DisablePrivateMessagePopups)
+            if (!userIniSettings.DisablePrivateMessagePopups)
                 notificationBox.Show(GetUserTexture(ircUser), ircUser.Name, message);
             else
                 privateMessageHandler.IncrementUnreadMessageCount();
@@ -538,7 +546,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
                 if (iu == null)
                 {
-                    Logger.Log("Null IRCUser in private messaging?");
+                    logger.LogInformation("Null IRCUser in private messaging?");
                     return;
                 }
 
@@ -822,7 +830,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// <summary>
         /// A class for storing a private message in memory.
         /// </summary>
-        class PrivateMessage
+        private class PrivateMessage
         {
             public PrivateMessage(IRCUser user, string message)
             {
@@ -834,17 +842,23 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             public string Message;
         }
 
-        class RecentPlayerMessageView : IMessageView
+        private sealed class RecentPlayerMessageView : IMessageView
         {
-            private readonly WindowManager windowManager;
+            private readonly XNAMessageBox xnaMessageBox;
 
-            public RecentPlayerMessageView(WindowManager windowManager)
+            public RecentPlayerMessageView(XNAMessageBox xnaMessageBox)
             {
-                this.windowManager = windowManager;
+                this.xnaMessageBox = xnaMessageBox;
             }
 
             public void AddMessage(ChatMessage message)
-                => XNAMessageBox.Show(windowManager, "Message".L10N("UI:Main:MessageTitle"), message.Message);
+            {
+                xnaMessageBox.Caption = "Message".L10N("UI:Main:MessageTitle");
+                xnaMessageBox.Description = message.Message;
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
+            }
         }
     }
 }

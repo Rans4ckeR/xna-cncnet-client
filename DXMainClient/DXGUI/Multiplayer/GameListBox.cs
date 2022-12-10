@@ -14,20 +14,21 @@ namespace DTAClient.DXGUI.Multiplayer
     /// <summary>
     /// A list box for listing hosted games.
     /// </summary>
-    public class GameListBox : XNAListBox
+    internal sealed class GameListBox : XNAListBox
     {
         private const int GAME_REFRESH_RATE = 1;
         private const int ICON_MARGIN = 2;
-        private const int FONT_INDEX = 0;
         private const string LOADED_GAME_TEXT = " (Loaded Game)";
 
-        public GameListBox(WindowManager windowManager,
-            string localGameIdentifier, Predicate<GenericHostedGame> gameMatchesFilter)
+        private readonly UserINISettings userIniSettings;
+
+        public GameListBox(
+            WindowManager windowManager,
+            UserINISettings userIniSettings)
             : base(windowManager)
         {
             HostedGames = new List<GenericHostedGame>();
-            this.localGameIdentifier = localGameIdentifier;
-            GameMatchesFilter = gameMatchesFilter;
+            this.userIniSettings = userIniSettings;
         }
 
         private int loadedGameTextWidth;
@@ -39,13 +40,13 @@ namespace DTAClient.DXGUI.Multiplayer
         /// <summary>
         /// A predicate for setting a filter expression for displayed games.
         /// </summary>
-        private Predicate<GenericHostedGame> GameMatchesFilter { get; }
+        public Predicate<GenericHostedGame> GameMatchesFilter { get; set; }
 
         private Texture2D txLockedGame;
         private Texture2D txIncompatibleGame;
         private Texture2D txPasswordedGame;
 
-        private string localGameIdentifier;
+        public string LocalGameIdentifier { get; set; }
 
         private GameInformationPanel panelGameInformation;
 
@@ -79,7 +80,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             return referencedGame.Equals(listedGame);
         };
-        
+
         /// <summary>
         /// Refreshes game information in the game list box.
         /// </summary>
@@ -87,7 +88,7 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             var selectedItem = SelectedItem;
             var hoveredItem = HoveredItem;
-            
+
             Items.Clear();
 
             GetSortedAndFilteredGames()
@@ -125,11 +126,11 @@ namespace DTAClient.DXGUI.Multiplayer
             var sortedGames =
                 HostedGames
                     .OrderBy(hg => hg.Locked)
-                    .ThenBy(hg => string.Equals(hg.Game.InternalName, localGameIdentifier, StringComparison.CurrentCultureIgnoreCase))
+                    .ThenBy(hg => string.Equals(hg.Game.InternalName, LocalGameIdentifier, StringComparison.CurrentCultureIgnoreCase))
                     .ThenBy(hg => hg.GameVersion != ProgramConstants.GAME_VERSION)
                     .ThenBy(hg => hg.Passworded);
-            
-            switch ((SortDirection)UserINISettings.Instance.SortState.Value)
+
+            switch ((SortDirection)userIniSettings.SortState.Value)
             {
                 case SortDirection.Asc:
                     sortedGames = sortedGames.ThenBy(hg => hg.RoomName);
@@ -221,9 +222,9 @@ namespace DTAClient.DXGUI.Multiplayer
         private void AddGameToList(GenericHostedGame hg)
         {
             int lgTextWidth = hg.IsLoadedGame ? loadedGameTextWidth : 0;
-            int maxTextWidth = Width - hg.Game.Texture.Width - 
+            int maxTextWidth = Width - hg.Game.Texture.Width -
                 (hg.Incompatible ? txIncompatibleGame.Width : 0) -
-                (hg.Locked ? txLockedGame.Width : 0) - (hg.Passworded ? txPasswordedGame.Width : 0) - 
+                (hg.Locked ? txLockedGame.Width : 0) - (hg.Passworded ? txPasswordedGame.Width : 0) -
                 (ICON_MARGIN * 3) - GetScrollBarWidth() - lgTextWidth;
 
             var lbItem = new XNAListBoxItem();
@@ -231,7 +232,7 @@ namespace DTAClient.DXGUI.Multiplayer
             lbItem.Text = Renderer.GetStringWithLimitedWidth(Renderer.GetSafeString(
                 hg.RoomName, FontIndex), FontIndex, maxTextWidth);
 
-            if (hg.Game.InternalName != localGameIdentifier.ToLower())
+            if (hg.Game.InternalName != LocalGameIdentifier.ToLower())
                 lbItem.TextColor = UISettings.ActiveSettings.TextColor;
             //else // made unnecessary by new Rampastring.XNAUI
             //    lbItem.TextColor = UISettings.ActiveSettings.AltColor;

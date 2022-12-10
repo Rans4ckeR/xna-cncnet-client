@@ -1,7 +1,8 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using ClientCore;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 
 namespace ClientGUI
@@ -16,14 +17,13 @@ namespace ClientGUI
         private const string GENERIC_WINDOW_SECTION = "GenericWindow";
         private const string EXTRA_CONTROLS = "ExtraControls";
 
-        public XNAWindow(WindowManager windowManager) : base(windowManager)
-        {
-        }
+        protected readonly ILogger logger;
 
-        /// <summary>
-        /// The INI file that was used for theming this window.
-        /// </summary>
-        protected IniFile ThemeIni { get; set; }
+        public XNAWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, serviceProvider)
+        {
+            this.logger = logger;
+        }
 
         public override float Alpha
         {
@@ -33,16 +33,16 @@ namespace ClientGUI
             }
         }
 
-        protected virtual void SetAttributesFromIni()
+        protected void SetAttributesFromIni()
         {
             if (SafePath.GetFile(ProgramConstants.GetResourcePath(), FormattableString.Invariant($"{Name}.ini")).Exists)
-                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetResourcePath(), FormattableString.Invariant($"{Name}.ini"))));
+                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetResourcePath(), FormattableString.Invariant($"{Name}.ini")), logger));
             else if (SafePath.GetFile(ProgramConstants.GetBaseResourcePath(), FormattableString.Invariant($"{Name}.ini")).Exists)
-                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), FormattableString.Invariant($"{Name}.ini"))));
+                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), FormattableString.Invariant($"{Name}.ini")), logger));
             else if (SafePath.GetFile(ProgramConstants.GetResourcePath(), GENERIC_WINDOW_INI).Exists)
-                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetResourcePath(), GENERIC_WINDOW_INI)));
+                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetResourcePath(), GENERIC_WINDOW_INI), logger));
             else
-                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), GENERIC_WINDOW_INI)));
+                GetINIAttributes(new CCIniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), GENERIC_WINDOW_INI), logger));
         }
 
         /// <summary>
@@ -50,8 +50,6 @@ namespace ClientGUI
         /// </summary>
         protected virtual void GetINIAttributes(IniFile iniFile)
         {
-            ThemeIni = iniFile;
-
             List<string> keys = iniFile.GetSectionKeys(Name);
 
             if (keys != null)

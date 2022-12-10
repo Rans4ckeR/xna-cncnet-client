@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
@@ -17,8 +18,15 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
     /// <summary>
     /// Handles sharing maps.
     /// </summary>
-    public static class MapSharer
+    internal sealed class MapSharer
     {
+        private readonly ILogger logger;
+
+        public MapSharer(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
         public static event EventHandler<MapEventArgs> MapUploadFailed;
 
         public static event EventHandler<MapEventArgs> MapUploadComplete;
@@ -44,13 +52,13 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// </summary>
         /// <param name="map">The map.</param>
         /// <param name="myGame">The short name of the game that is being played (DTA, TI, MO, etc).</param>
-        public static void UploadMap(Map map, string myGame)
+        public void UploadMap(Map map, string myGame)
         {
             lock (locker)
             {
                 if (UploadedMaps.Contains(map.SHA1) || MapUploadQueue.Contains(map))
                 {
-                    Logger.Log("MapSharer: Already uploading map " + map.BaseFilePath + " - returning.");
+                    logger.LogInformation("MapSharer: Already uploading map " + map.BaseFilePath + " - returning.");
                     return;
                 }
 
@@ -61,11 +69,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
         }
 
-        private static async ValueTask UploadAsync(Map map, string myGameId)
+        private async ValueTask UploadAsync(Map map, string myGameId)
         {
             MapUploadStarted?.Invoke(null, new MapEventArgs(map));
 
-            Logger.Log("MapSharer: Starting upload of " + map.BaseFilePath);
+            logger.LogInformation("MapSharer: Starting upload of " + map.BaseFilePath);
 
             (string message, bool success) = await MapUploadAsync(map, myGameId);
 
@@ -78,13 +86,13 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     UploadedMaps.Add(map.SHA1);
                 }
 
-                Logger.Log("MapSharer: Uploading map " + map.BaseFilePath + " completed successfully.");
+                logger.LogInformation("MapSharer: Uploading map " + map.BaseFilePath + " completed successfully.");
             }
             else
             {
                 MapUploadFailed?.Invoke(null, new MapEventArgs(map));
 
-                Logger.Log("MapSharer: Uploading map " + map.BaseFilePath + " failed! Returned message: " + message);
+                logger.LogInformation("MapSharer: Uploading map " + map.BaseFilePath + " failed! Returned message: " + message);
             }
 
             lock (locker)
@@ -95,14 +103,14 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 {
                     Map nextMap = MapUploadQueue[0];
 
-                    Logger.Log("MapSharer: There are additional maps in the queue.");
+                    logger.LogInformation("MapSharer: There are additional maps in the queue.");
 
                     UploadAsync(nextMap, myGameId).HandleTask();
                 }
             }
         }
 
-        private static async ValueTask<(string Message, bool Success)> MapUploadAsync(Map map, string gameName)
+        private async ValueTask<(string Message, bool Success)> MapUploadAsync(Map map, string gameName)
         {
             using MemoryStream zipStream = CreateZipFile(map.CompleteFilePath);
 
@@ -121,13 +129,13 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 if (!response.Contains("Upload succeeded!"))
                     return (response, false);
 
-                Logger.Log("MapSharer: Upload response: " + response);
+                logger.LogInformation("MapSharer: Upload response: " + response);
 
                 return (string.Empty, true);
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
                 return (ex.Message, false);
             }
         }
@@ -190,13 +198,13 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             zipArchive.Entries.FirstOrDefault().ExtractToFile(file, true);
         }
 
-        public static void DownloadMap(string sha1, string myGame, string mapName)
+        public void DownloadMap(string sha1, string myGame, string mapName)
         {
             lock (locker)
             {
                 if (MapDownloadQueue.Contains(sha1))
                 {
-                    Logger.Log("MapSharer: Map " + sha1 + " already exists in the download queue.");
+                    logger.LogInformation("MapSharer: Map " + sha1 + " already exists in the download queue.");
                     return;
                 }
 
@@ -207,18 +215,18 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
         }
 
-        private static async ValueTask DownloadAsync(string sha1, string myGameId, string mapName)
+        private async ValueTask DownloadAsync(string sha1, string myGameId, string mapName)
         {
-            Logger.Log("MapSharer: Preparing to download map " + sha1 + " with name: " + mapName);
+            logger.LogInformation("MapSharer: Preparing to download map " + sha1 + " with name: " + mapName);
 
             try
             {
-                Logger.Log("MapSharer: MapDownloadStarted");
+                logger.LogInformation("MapSharer: MapDownloadStarted");
                 MapDownloadStarted?.Invoke(null, new SHA1EventArgs(sha1, mapName));
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "MapSharer ERROR");
+                logger.LogExceptionDetails(ex, "MapSharer ERROR");
             }
 
             (string error, bool success) = await DownloadMainAsync(sha1, myGameId, mapName);
@@ -227,12 +235,12 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             {
                 if (success)
                 {
-                    Logger.Log("MapSharer: Download of map " + sha1 + " completed succesfully.");
+                    logger.LogInformation("MapSharer: Download of map " + sha1 + " completed succesfully.");
                     MapDownloadComplete?.Invoke(null, new SHA1EventArgs(sha1, mapName));
                 }
                 else
                 {
-                    Logger.Log("MapSharer: Download of map " + sha1 + "failed! Reason: " + error);
+                    logger.LogInformation("MapSharer: Download of map " + sha1 + "failed! Reason: " + error);
                     MapDownloadFailed?.Invoke(null, new SHA1EventArgs(sha1, mapName));
                 }
 
@@ -240,7 +248,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
                 if (MapDownloadQueue.Any())
                 {
-                    Logger.Log("MapSharer: Continuing custom map downloads.");
+                    logger.LogInformation("MapSharer: Continuing custom map downloads.");
                     DownloadAsync(MapDownloadQueue[0], myGameId, mapName).HandleTask();
                 }
             }
@@ -249,7 +257,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         public static string GetMapFileName(string sha1, string mapName)
             => FormattableString.Invariant($"{mapName}_{sha1}");
 
-        private static async ValueTask<(string Error, bool Success)> DownloadMainAsync(string sha1, string myGame, string mapName)
+        private async ValueTask<(string Error, bool Success)> DownloadMainAsync(string sha1, string myGame, string mapName)
         {
             string customMapsDirectory = SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "Maps", "Custom");
             string mapFileName = GetMapFileName(sha1, mapName);
@@ -260,12 +268,12 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             try
             {
                 string address = FormattableString.Invariant($"{myGame}/{sha1}.zip");
-                Logger.Log($"MapSharer: Downloading URL: {MAPDB_URL}{address})");
+                logger.LogInformation($"MapSharer: Downloading URL: {MAPDB_URL}{address})");
                 stream = await client.GetStreamAsync(address);
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
 
                 return (ex.Message, false);
             }

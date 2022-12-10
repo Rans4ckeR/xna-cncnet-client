@@ -1,21 +1,23 @@
-﻿using ClientCore;
-using DTAClient.Domain.Multiplayer;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ClientCore;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 using Utilities = Rampastring.Tools.Utilities;
 
 namespace DTAClient.Online
 {
-    public class FileHashCalculator
+    internal sealed class FileHashCalculator
     {
+        private readonly ILogger logger;
+
         private FileHashes fh;
         private const string CONFIGNAME = "FHCConfig.ini";
         private bool calculateGameExeHash = true;
 
-        string[] fileNamesToCheck = new string[]
+        private string[] fileNamesToCheck =
         {
 #if ARES
             "Ares.dll",
@@ -69,9 +71,13 @@ namespace DTAClient.Online
 #endif
         };
 
-        public FileHashCalculator() => ParseConfigFile();
+        public FileHashCalculator(ILogger logger)
+        {
+            this.logger = logger;
+            ParseConfigFile();
+        }
 
-        public void CalculateHashes(List<GameMode> gameModes)
+        public void CalculateHashes()
         {
             fh = new FileHashes
             {
@@ -88,24 +94,24 @@ namespace DTAClient.Online
                 INIHashes = string.Empty
             };
 
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + CONFIGNAME + ": " + fh.FHCConfigHash);
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\GameOptions.ini: " + fh.GameOptionsHash);
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\Windows\\clientdx.dll: " + fh.ClientDXHash);
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\XNA\\clientxna.dll: " + fh.ClientXNAHash);
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\OpenGL\\clientogl.dll: " + fh.ClientOGLHash);
-            Logger.Log("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\UniversalGL\\clientogl.dll: " + fh.ClientUGLHash);
-            Logger.Log("Hash for " + ClientConfiguration.Instance.MPMapsIniPath + ": " + fh.MPMapsHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + CONFIGNAME + ": " + fh.FHCConfigHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\GameOptions.ini: " + fh.GameOptionsHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\Windows\\clientdx.dll: " + fh.ClientDXHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\XNA\\clientxna.dll: " + fh.ClientXNAHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\OpenGL\\clientogl.dll: " + fh.ClientOGLHash);
+            logger.LogInformation("Hash for " + ProgramConstants.BASE_RESOURCE_PATH + "\\Binaries\\UniversalGL\\clientogl.dll: " + fh.ClientUGLHash);
+            logger.LogInformation("Hash for " + ClientConfiguration.Instance.MPMapsIniPath + ": " + fh.MPMapsHash);
 
             if (calculateGameExeHash)
-                Logger.Log("Hash for " + ClientConfiguration.Instance.GetGameExecutableName() + ": " + fh.GameExeHash);
+                logger.LogInformation("Hash for " + ClientConfiguration.Instance.GetGameExecutableName() + ": " + fh.GameExeHash);
 
             if (!string.IsNullOrEmpty(ClientConfiguration.Instance.GameLauncherExecutableName))
-                Logger.Log("Hash for " + ClientConfiguration.Instance.GameLauncherExecutableName + ": " + fh.LauncherExeHash);
+                logger.LogInformation("Hash for " + ClientConfiguration.Instance.GameLauncherExecutableName + ": " + fh.LauncherExeHash);
 
             foreach (string filePath in fileNamesToCheck)
             {
                 fh.INIHashes = AddToStringIfFileExists(fh.INIHashes, filePath);
-                Logger.Log("Hash for " + filePath + ": " +
+                logger.LogInformation("Hash for " + filePath + ": " +
                     Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, filePath)));
             }
 
@@ -129,7 +135,7 @@ namespace DTAClient.Online
                     {
                         string sha1 = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, filename));
                         fh.INIHashes += sha1;
-                        Logger.Log("Hash for " + filename + ": " + sha1);
+                        logger.LogInformation("Hash for " + filename + ": " + sha1);
                     }
                 }
             }
@@ -137,7 +143,7 @@ namespace DTAClient.Online
             fh.INIHashes = Utilities.CalculateSHA1ForString(fh.INIHashes);
         }
 
-        string AddToStringIfFileExists(string str, string path)
+        private string AddToStringIfFileExists(string str, string path)
         {
             if (File.Exists(path))
                 return str + Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, path));
@@ -158,7 +164,7 @@ namespace DTAClient.Online
             str += fh.MPMapsHash;
             str += fh.FHCConfigHash;
 
-            Logger.Log("Complete hash: " + Utilities.CalculateSHA1ForString(str));
+            logger.LogInformation("Complete hash: " + Utilities.CalculateSHA1ForString(str));
 
             return Utilities.CalculateSHA1ForString(str);
         }

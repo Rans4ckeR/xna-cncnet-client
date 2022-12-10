@@ -1,20 +1,20 @@
-﻿using ClientCore;
-using ClientGUI;
-using DTAClient.Domain;
-using Localization;
-using Microsoft.Xna.Framework;
-using Rampastring.XNAUI;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Diagnostics;
+using ClientCore;
+using ClientGUI;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.DXGUI.Generic
 {
-    public class ExtrasWindow : XNAWindow
+    public sealed class ExtrasWindow : XNAWindow
     {
-        public ExtrasWindow(WindowManager windowManager) : base(windowManager)
+        public ExtrasWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
-
         }
 
         public override void Initialize()

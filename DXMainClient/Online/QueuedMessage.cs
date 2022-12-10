@@ -69,6 +69,6 @@ namespace DTAClient.Online
         /// This can be used to replace a message on the queue to help prevent flooding purposes.
         /// This should be used with at least a small delay.
         /// </summary>
-        public bool Replace { get; set; } = false;
+        public bool Replace { get; set; }
     }
 }

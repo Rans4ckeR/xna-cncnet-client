@@ -1,8 +1,8 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using ClientCore;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
-using System;
-using System.Collections.Generic;
 
 namespace DTAClient.Domain.Multiplayer
 {

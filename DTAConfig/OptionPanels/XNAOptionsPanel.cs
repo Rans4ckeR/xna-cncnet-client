@@ -1,11 +1,12 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using ClientCore;
 using ClientGUI;
 using DTAConfig.Settings;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System.Collections.Generic;
 
 namespace DTAConfig.OptionPanels
 {
@@ -14,10 +15,13 @@ namespace DTAConfig.OptionPanels
     /// Handles custom game-specific panel options
     /// defined in INI files.
     /// </summary>
-    internal abstract class XNAOptionsPanel : XNAWindowBase
+    public abstract class XNAOptionsPanel : XNAWindowBase
     {
-        public XNAOptionsPanel(WindowManager windowManager, 
-            UserINISettings iniSettings) : base(windowManager)
+        protected XNAOptionsPanel(
+            WindowManager windowManager,
+            UserINISettings iniSettings,
+            IServiceProvider serviceProvider)
+            : base(windowManager, serviceProvider)
         {
             IniSettings = iniSettings;
         }
@@ -54,11 +58,11 @@ namespace DTAConfig.OptionPanels
                 userSettings.Add(setting);
         }
 
-        protected UserINISettings IniSettings { get; private set; }
+        protected UserINISettings IniSettings { get; }
 
         /// <summary>
         /// Saves the options of this panel.
-        /// <returns>A bool that determines whether the 
+        /// <returns>A bool that determines whether the
         /// client needs to restart for changes to apply.</returns>
         /// </summary>
         public virtual bool Save()
@@ -74,7 +78,7 @@ namespace DTAConfig.OptionPanels
         /// Refreshes the panel's settings to account for possible
         /// changes that could affect the functionality.
         /// </summary>
-        /// <returns>A bool that determines whether the 
+        /// <returns>A bool that determines whether the
         /// setting's value was changed.</returns>
         public virtual bool RefreshPanel()
         {

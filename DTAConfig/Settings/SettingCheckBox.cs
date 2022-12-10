@@ -1,6 +1,4 @@
-﻿using System;
-using ClientCore;
-using ClientGUI;
+﻿using ClientCore;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 
@@ -11,20 +9,16 @@ namespace DTAConfig.Settings
     /// </summary>
     public class SettingCheckBox : SettingCheckBoxBase
     {
-        public SettingCheckBox(WindowManager windowManager) : base(windowManager)
-        {
-        }
+        private readonly UserINISettings userIniSettings;
 
-        public SettingCheckBox(WindowManager windowManager, bool defaultValue, string settingSection, string settingKey,
-            bool writeSettingValue = false, string enabledValue = "", string disabledValue = "", bool restartRequired = false)
-            : base(windowManager, defaultValue, settingSection, settingKey, restartRequired)
+        public SettingCheckBox(WindowManager windowManager, UserINISettings userIniSettings)
+            : base(windowManager)
         {
-            WriteSettingValue = writeSettingValue;
-            EnabledSettingValue = enabledValue;
-            DisabledSettingValue = disabledValue;
+            this.userIniSettings = userIniSettings;
         }
 
         private bool _writeSettingValue;
+
         /// <summary>
         /// If set, use separate enabled / disabled values instead of checkbox's checked state when reading & writing setting to the user settings INI.
         /// </summary>
@@ -68,7 +62,7 @@ namespace DTAConfig.Settings
 
         public override void Load()
         {
-            string value = UserINISettings.Instance.GetValue(SettingSection, SettingKey, string.Empty);
+            string value = userIniSettings.GetValue(SettingSection, SettingKey, string.Empty);
 
             if (WriteSettingValue)
             {
@@ -88,9 +82,9 @@ namespace DTAConfig.Settings
         public override bool Save()
         {
             if (WriteSettingValue)
-                UserINISettings.Instance.SetValue(SettingSection, SettingKey, Checked ? EnabledSettingValue : DisabledSettingValue);
+                userIniSettings.SetValue(SettingSection, SettingKey, Checked ? EnabledSettingValue : DisabledSettingValue);
             else
-                UserINISettings.Instance.SetValue(SettingSection, SettingKey, Checked);
+                userIniSettings.SetValue(SettingSection, SettingKey, Checked);
 
             return RestartRequired && (Checked != originalState);
         }

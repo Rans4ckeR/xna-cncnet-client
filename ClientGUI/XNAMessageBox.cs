@@ -1,32 +1,40 @@
-﻿using Localization;
-using System;
+﻿using System;
+using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using Rampastring.XNAUI.XNAControls;
-using Rampastring.XNAUI;
 using Microsoft.Xna.Framework.Input;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
 
 namespace ClientGUI
 {
     /// <summary>
     /// A generic message box with OK or Yes/No or OK/Cancel buttons.
     /// </summary>
-    public class XNAMessageBox : XNAWindow
+    public sealed class XNAMessageBox : XNAWindow
     {
         /// <summary>
         /// Creates a new message box.
         /// </summary>
-        /// <param name="windowManager">The window manager.</param>
-        /// <param name="caption">The caption of the message box.</param>
-        /// <param name="description">The actual message of the message box.</param>
-        /// <param name="messageBoxButtons">Defines which buttons are available in the dialog.</param>
-        public XNAMessageBox(WindowManager windowManager,
-            string caption, string description, XNAMessageBoxButtons messageBoxButtons)
-            : base(windowManager)
+        public XNAMessageBox(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
-            this.caption = caption;
-            this.description = description;
-            this.messageBoxButtons = messageBoxButtons;
         }
+
+        /// <summary>
+        /// The caption of the message box.
+        /// </summary>
+        public string Caption { get; set; }
+
+        /// <summary>
+        /// The actual message of the message box.
+        /// </summary>
+        public string Description { get; set; }
+
+        /// <summary>
+        /// Defines which buttons are available in the dialog.
+        /// </summary>
+        public XNAMessageBoxButtons MessageBoxButtons { get; set; }
 
         /// <summary>
         /// The method that is called when the user clicks OK on the message box.
@@ -48,18 +56,13 @@ namespace ClientGUI
         /// </summary>
         public Action<XNAMessageBox> CancelClickedAction { get; set; }
 
-
-        private string caption;
-        private string description;
-        private XNAMessageBoxButtons messageBoxButtons;
-
         public override void Initialize()
         {
             Name = "MessageBox";
             BackgroundTexture = AssetLoader.LoadTexture("msgboxform.png");
 
             XNALabel lblCaption = new XNALabel(WindowManager);
-            lblCaption.Text = caption;
+            lblCaption.Text = Caption;
             lblCaption.ClientRectangle = new Rectangle(12, 9, 0, 0);
             lblCaption.FontIndex = 1;
 
@@ -67,7 +70,7 @@ namespace ClientGUI
             line.ClientRectangle = new Rectangle(6, 29, 0, 1);
 
             XNALabel lblDescription = new XNALabel(WindowManager);
-            lblDescription.Text = description;
+            lblDescription.Text = Description;
             lblDescription.ClientRectangle = new Rectangle(12, 39, 0, 0);
 
             AddChild(lblCaption);
@@ -78,18 +81,12 @@ namespace ClientGUI
             ClientRectangle = new Rectangle(0, 0, (int)textDimensions.X + 24, (int)textDimensions.Y + 81);
             line.ClientRectangle = new Rectangle(6, 29, Width - 12, 1);
 
-            if (messageBoxButtons == XNAMessageBoxButtons.OK)
-            {
+            if (MessageBoxButtons == XNAMessageBoxButtons.OK)
                 AddOKButton();
-            }
-            else if (messageBoxButtons == XNAMessageBoxButtons.YesNo)
-            {
+            else if (MessageBoxButtons == XNAMessageBoxButtons.YesNo)
                 AddYesNoButtons();
-            }
-            else // messageBoxButtons == DXMessageBoxButtons.OKCancel
-            {
+            else
                 AddOKCancelButtons();
-            }
 
             base.Initialize();
 
@@ -223,29 +220,30 @@ namespace ClientGUI
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, this);
         }
 
-        #region Static Show methods
-
         /// <summary>
         /// Creates and displays a new message box with the specified caption and description.
         /// </summary>
         /// <param name="game">The game.</param>
         /// <param name="caption">The caption/header of the message box.</param>
         /// <param name="description">The description of the message box.</param>
-        public static void Show(WindowManager windowManager, string caption, string description)
+        public void Show(string caption, string description)
         {
-            var panel = new DarkeningPanel(windowManager);
+            var panel = new DarkeningPanel(WindowManager);
             panel.Focused = true;
-            windowManager.AddAndInitializeControl(panel);
+            WindowManager.AddAndInitializeControl(panel);
 
-            var msgBox = new XNAMessageBox(windowManager,
-                Renderer.GetSafeString(caption, 1), 
-                Renderer.GetSafeString(description, 0), 
-                XNAMessageBoxButtons.OK);
+            Caption = caption;
+            Description = description;
+            MessageBoxButtons = XNAMessageBoxButtons.YesNo;
 
-            panel.AddChild(msgBox);
-            msgBox.OKClickedAction = MsgBox_OKClicked;
-            windowManager.AddAndInitializeControl(msgBox);
-            windowManager.SelectedControl = null;
+            Caption = Renderer.GetSafeString(caption, 1);
+            Description = Renderer.GetSafeString(description, 0);
+            MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+
+            panel.AddChild(this);
+            OKClickedAction = MsgBox_OKClicked;
+            WindowManager.AddAndInitializeControl(this);
+            WindowManager.SelectedControl = null;
         }
 
         private static void MsgBox_OKClicked(XNAMessageBox messageBox)
@@ -262,21 +260,18 @@ namespace ClientGUI
         /// <param name="caption">The caption of the message box.</param>
         /// <param name="description">The description in the message box.</param>
         /// <returns>The XNAMessageBox instance that is created.</returns>
-        public static XNAMessageBox ShowYesNoDialog(WindowManager windowManager, string caption, string description)
+        public void ShowYesNoDialog(string caption, string description)
         {
-            var panel = new DarkeningPanel(windowManager);
-            windowManager.AddAndInitializeControl(panel);
+            var panel = new DarkeningPanel(WindowManager);
+            WindowManager.AddAndInitializeControl(panel);
 
-            var msgBox = new XNAMessageBox(windowManager,
-                Renderer.GetSafeString(caption, 1),
-                Renderer.GetSafeString(description, 0),
-                XNAMessageBoxButtons.YesNo);
+            Caption = Renderer.GetSafeString(caption, 1);
+            Description = Renderer.GetSafeString(description, 0);
+            MessageBoxButtons = XNAMessageBoxButtons.YesNo;
 
-            panel.AddChild(msgBox);
-            msgBox.YesClickedAction = MsgBox_YesClicked;
-            msgBox.NoClickedAction = MsgBox_NoClicked;
-
-            return msgBox;
+            panel.AddChild(this);
+            YesClickedAction = MsgBox_YesClicked;
+            NoClickedAction = MsgBox_NoClicked;
         }
 
         private static void MsgBox_NoClicked(XNAMessageBox messageBox)
@@ -300,8 +295,6 @@ namespace ClientGUI
             darkeningPanel.WindowManager.RemoveControl(darkeningPanel);
             darkeningPanel.Hidden -= Parent_Hidden;
         }
-
-        #endregion
     }
 
     public enum XNAMessageBoxButtons

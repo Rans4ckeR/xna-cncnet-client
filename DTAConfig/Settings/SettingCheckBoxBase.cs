@@ -7,14 +7,9 @@ namespace DTAConfig.Settings
 {
     public abstract class SettingCheckBoxBase : XNAClientCheckBox, IUserSetting
     {
-        public SettingCheckBoxBase(WindowManager windowManager) : base(windowManager) { }
-
-        public SettingCheckBoxBase(WindowManager windowManager, bool defaultValue, string settingSection, string settingKey, bool restartRequired = false) : base(windowManager)
+        public SettingCheckBoxBase(WindowManager windowManager)
+            : base(windowManager)
         {
-            DefaultValue = defaultValue;
-            SettingSection = settingSection;
-            SettingKey = settingKey;
-            RestartRequired = restartRequired;
         }
 
         public bool DefaultValue { get; set; }
@@ -104,7 +99,6 @@ namespace DTAConfig.Settings
 
         public abstract bool Save();
 
-
         private XNAClientCheckBox FindParentCheckBox()
         {
             if (string.IsNullOrEmpty(ParentCheckBoxName))
@@ -148,6 +142,5 @@ namespace DTAConfig.Settings
                 }
             }
         }
-
     }
 }

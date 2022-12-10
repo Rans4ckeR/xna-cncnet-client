@@ -1,23 +1,25 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Rampastring.XNAUI;
-using Rampastring.XNAUI.XNAControls;
-using Microsoft.Xna.Framework;
-using ClientCore;
 using System.IO;
-using Rampastring.Tools;
-using ClientCore.Statistics;
-using DTAClient.DXGUI.Generic;
-using DTAClient.Domain.Multiplayer;
-using ClientGUI;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ClientCore;
 using ClientCore.Extensions;
+using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
+using ClientGUI;
 using DTAClient.Domain;
+using DTAClient.Domain.Multiplayer;
 using DTAClient.Domain.Multiplayer.CnCNet;
-using Microsoft.Xna.Framework.Graphics;
+using DTAClient.DXGUI.Generic;
+using DTAClient.DXGUI.Multiplayer.CnCNet;
 using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
@@ -29,14 +31,30 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private const int MAX_DICE = 10;
         private const int MAX_DIE_SIDES = 100;
 
-        public MultiplayerGameLobby(
+        private readonly SavedGameManager savedGameManager;
+        private readonly XNAMessageBox xnaMessageBox;
+
+        protected MultiplayerGameLobby(
             WindowManager windowManager,
-            string iniName,
             TopBar topBar,
             MapLoader mapLoader,
-            DiscordHandler discordHandler)
-            : base(windowManager, iniName, mapLoader, true, discordHandler)
+            DiscordHandler discordHandler,
+            StatisticsManager statisticsManager,
+            ILogger logger,
+            LogFileStatisticsParser logFileStatisticsParser,
+            GameProcessLogic gameProcessLogic,
+            UserINISettings userIniSettings,
+            SavedGameManager savedGameManager,
+            XNAMessageBox xnaMessageBox,
+            LoadOrSaveGameOptionPresetWindow loadOrSaveGameOptionPresetWindow,
+            GameOptionPresets gameOptionPresets,
+            MapCodeHelper mapCodeHelper,
+            IServiceProvider serviceProvider)
+            : base(windowManager, mapLoader, discordHandler, statisticsManager, logger, logFileStatisticsParser, gameProcessLogic, userIniSettings, xnaMessageBox, loadOrSaveGameOptionPresetWindow, gameOptionPresets, mapCodeHelper, serviceProvider)
         {
+            this.savedGameManager = savedGameManager;
+            this.xnaMessageBox = xnaMessageBox;
+            IsMultiPlayer = true;
             TopBar = topBar;
 
             chatBoxCommands = new List<ChatBoxCommand>
@@ -69,9 +87,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected XNAClientButton btnLockGame;
         protected XNAClientCheckBox chkAutoReady;
 
-        protected bool IsHost = false;
+        protected bool IsHost;
 
-        private bool locked = false;
+        private bool locked;
         protected bool Locked
         {
             get => locked;
@@ -97,12 +115,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected Texture2D[] PingTextures;
 
-        protected TopBar TopBar;
+        public TopBar TopBar;
 
         protected int FrameSendRate { get; set; } = 7;
 
         /// <summary>
-        /// Controls the MaxAhead parameter. The default value of 0 means that 
+        /// Controls the MaxAhead parameter. The default value of 0 means that
         /// the value is not written to spawn.ini, which allows the spawner the
         /// calculate and assign the MaxAhead value.
         /// </summary>
@@ -191,11 +209,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 fsw.EnableRaisingEvents = false;
             }
             else
-                Logger.Log("MultiplayerGameLobby: Saved games are not available!");
+                logger.LogInformation("MultiplayerGameLobby: Saved games are not available!");
         }
 
         /// <summary>
-        /// Performs initialization that is necessary after derived 
+        /// Performs initialization that is necessary after derived
         /// classes have performed their own initialization.
         /// </summary>
         protected void PostInitialize()
@@ -209,13 +227,13 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask FSWEventAsync(FileSystemEventArgs e)
         {
-            Logger.Log("FSW Event: " + e.FullPath);
+            logger.LogInformation("FSW Event: " + e.FullPath);
 
             if (Path.GetFileName(e.FullPath) == "SAVEGAME.NET")
             {
                 if (!gameSaved)
                 {
-                    bool success = SavedGameManager.InitSavedGames();
+                    bool success = savedGameManager.InitSavedGames();
 
                     if (!success)
                         return;
@@ -223,7 +241,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 gameSaved = true;
 
-                await SavedGameManager.RenameSavedGameAsync();
+                await savedGameManager.RenameSavedGameAsync();
             }
         }
 
@@ -275,7 +293,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 UniqueGameID = int.Parse(i.ToString() + s);
 
-                if (StatisticsManager.Instance.GetMatchWithGameID(UniqueGameID) == null)
+                if (statisticsManager.GetMatchWithGameID(UniqueGameID) == null)
                     break;
 
                 i++;
@@ -342,7 +360,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     sb.Append(Environment.NewLine);
                     sb.Append($"{chatBoxCommand.Command}: {chatBoxCommand.Description}");
                 }
-                XNAMessageBox.Show(WindowManager, "Chat Box Command Help".L10N("UI:Main:ChatboxCommandTipTitle"), sb.ToString());
+
+                xnaMessageBox.Caption = "Chat Box Command Help".L10N("UI:Main:ChatboxCommandTipTitle");
+                xnaMessageBox.Description = sb.ToString();
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
                 return;
             }
 
@@ -1010,7 +1033,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 else
                 {
                     // StatusIndicators[pId].SwitchTexture(
-                    //     (IsPlayerSpectator(Players[pId]) && DisableSpectatorReadyChecking) 
+                    //     (IsPlayerSpectator(Players[pId]) && DisableSpectatorReadyChecking)
                     //     ? "okDisabled" : "ok");
                     StatusIndicators[pId].SwitchTexture(Players[pId].Ready ? PlayerSlotState.Ready : PlayerSlotState.NotReady);
                 }
@@ -1018,7 +1041,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 else
                 {
                     // StatusIndicators[pId].SwitchTexture(
-                    //     (IsPlayerSpectator(Players[pId]) && DisableSpectatorReadyChecking) 
+                    //     (IsPlayerSpectator(Players[pId]) && DisableSpectatorReadyChecking)
                     //     ? "offDisabled" : "off");
 
                 }
@@ -1132,9 +1155,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected override int GetDefaultMapRankIndex(GameModeMap gameModeMap)
         {
             if (gameModeMap.Map.MaxPlayers > 3)
-                return StatisticsManager.Instance.GetCoopRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
+                return statisticsManager.GetCoopRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
 
-            if (StatisticsManager.Instance.HasWonMapInPvP(gameModeMap.Map.Name, gameModeMap.GameMode.UIName, gameModeMap.Map.MaxPlayers))
+            if (statisticsManager.HasWonMapInPvP(gameModeMap.Map.Name, gameModeMap.GameMode.UIName, gameModeMap.Map.MaxPlayers))
                 return 2;
 
             return -1;

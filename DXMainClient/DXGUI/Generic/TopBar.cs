@@ -1,20 +1,19 @@
-﻿using Rampastring.XNAUI.XNAControls;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Rampastring.XNAUI;
-using Microsoft.Xna.Framework;
-using Rampastring.XNAUI.Input;
-using Microsoft.Xna.Framework.Input;
-using DTAClient.Online;
-using ClientGUI;
-using ClientCore;
-using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
 using ClientCore.Extensions;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer.CnCNet;
+using DTAClient.Online;
 using DTAClient.Online.EventArguments;
 using DTAConfig;
 using Localization;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.Input;
+using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Generic
 {
@@ -27,25 +26,26 @@ namespace DTAClient.DXGUI.Generic
         /// The number of seconds that the top bar will stay down after it has
         /// lost input focus.
         /// </summary>
-        const double DOWN_TIME_WAIT_SECONDS = 1.0;
-        const double EVENT_DOWN_TIME_WAIT_SECONDS = 2.0;
-        const double STARTUP_DOWN_TIME_WAIT_SECONDS = 3.5;
-
-        const double DOWN_MOVEMENT_RATE = 1.7;
-        const double UP_MOVEMENT_RATE = 1.7;
-        const int APPEAR_CURSOR_THRESHOLD_Y = 8;
+        private const double DOWN_TIME_WAIT_SECONDS = 1.0;
+        private const double EVENT_DOWN_TIME_WAIT_SECONDS = 2.0;
+        private const double STARTUP_DOWN_TIME_WAIT_SECONDS = 3.5;
+        private const double DOWN_MOVEMENT_RATE = 1.7;
+        private const double UP_MOVEMENT_RATE = 1.7;
+        private const int APPEAR_CURSOR_THRESHOLD_Y = 8;
 
         private readonly string DEFAULT_PM_BTN_LABEL = "Private Messages (F4)".L10N("UI:Main:PMButtonF4");
+        private readonly CnCNetPlayerCountTask cncNetPlayerCountTask;
 
         public TopBar(
             WindowManager windowManager,
             CnCNetManager connectionManager,
-            PrivateMessageHandler privateMessageHandler
-        ) : base(windowManager)
+            PrivateMessageHandler privateMessageHandler,
+            CnCNetPlayerCountTask cncNetPlayerCountTask) : base(windowManager)
         {
             downTimeWaitTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS);
             this.connectionManager = connectionManager;
             this.privateMessageHandler = privateMessageHandler;
+            this.cncNetPlayerCountTask = cncNetPlayerCountTask;
         }
 
         public SwitchType LastSwitchType { get; private set; }
@@ -70,7 +70,6 @@ namespace DTAClient.DXGUI.Generic
         private CnCNetManager connectionManager;
         private readonly PrivateMessageHandler privateMessageHandler;
 
-        private CancellationTokenSource cncnetPlayerCountCancellationSource;
         private static readonly object locker = new object();
 
         private TimeSpan downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - STARTUP_DOWN_TIME_WAIT_SECONDS);
@@ -118,12 +117,6 @@ namespace DTAClient.DXGUI.Generic
 
             if (optionsWindow != null)
                 optionsWindow.ToggleMainMenuOnlyOptions(primarySwitches.Count == 1 && !lanMode);
-        }
-
-        public void Clean()
-        {
-            if (cncnetPlayerCountCancellationSource != null)
-                cncnetPlayerCountCancellationSource.Cancel();
         }
 
         public override void Initialize()
@@ -210,9 +203,7 @@ namespace DTAClient.DXGUI.Generic
                 lblCnCNetStatus.ClientRectangle = new Rectangle(lblCnCNetPlayerCount.X - lblCnCNetStatus.Width - 6, 11, lblCnCNetStatus.Width, lblCnCNetStatus.Height);
                 AddChild(lblCnCNetStatus);
                 AddChild(lblCnCNetPlayerCount);
-                CnCNetPlayerCountTask.CnCNetGameCountUpdated += CnCNetInfoController_CnCNetGameCountUpdated;
-                cncnetPlayerCountCancellationSource = new CancellationTokenSource();
-                CnCNetPlayerCountTask.InitializeService(cncnetPlayerCountCancellationSource);
+                cncNetPlayerCountTask.CnCNetGameCountUpdated += CnCNetInfoController_CnCNetGameCountUpdated;
             }
 
             lblConnectionStatus.CenterOnParent();
@@ -376,7 +367,7 @@ namespace DTAClient.DXGUI.Generic
             base.OnMouseOnControl();
         }
 
-        void BringDown()
+        private void BringDown()
         {
             isDown = true;
             downTime = TimeSpan.Zero;

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using Rampastring.XNAUI;
-using System.Linq;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using Rampastring.Tools;
+using Rampastring.XNAUI;
 using SixLabors.ImageSharp;
 
 namespace ClientCore.CnCNet5
@@ -12,14 +12,9 @@ namespace ClientCore.CnCNet5
     /// <summary>
     /// A class for storing the collection of supported CnCNet games.
     /// </summary>
-    public class GameCollection
+    public sealed class GameCollection
     {
         public List<CnCNetGame> GameList { get; private set; }
-
-        public GameCollection()
-        {
-            Initialize();
-        }
 
         public void Initialize()
         {
@@ -333,7 +328,7 @@ namespace ClientCore.CnCNet5
     /// An exception that is thrown when configuration for a game to add to game collection
     /// contains invalid or unexpected settings / data or required settings / data are missing.
     /// </summary>
-    class GameCollectionConfigurationException : Exception
+    internal class GameCollectionConfigurationException : Exception
     {
         public GameCollectionConfigurationException(string message) : base(message)
         {

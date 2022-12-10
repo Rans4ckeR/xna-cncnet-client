@@ -1,7 +1,4 @@
-﻿using ClientCore;
-using Localization;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
@@ -12,8 +9,12 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
 using ClientCore.Extensions;
 using DTAClient.Domain.Multiplayer.CnCNet;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace DTAClient.Online
 {
@@ -30,12 +31,44 @@ namespace DTAClient.Online
         private const int ConnectTimeout = 3000;
         private const int PingInterval = 120000;
 
-        public Connection(IConnectionManager connectionManager)
+        private readonly ILogger logger;
+
+        public Connection(ILogger logger)
         {
-            this.connectionManager = connectionManager;
+            this.logger = logger;
         }
 
-        private readonly IConnectionManager connectionManager;
+        public event EventHandler<string> OnAttemptedServerChanged;
+        public event EventHandler OnConnected;
+        public event EventHandler OnConnectAttemptFailed;
+        public event EventHandler<string> OnConnectionLost;
+        public event EventHandler OnDisconnected;
+        public event EventHandler OnReconnectAttempt;
+        public event EventHandler<(int CandidateCount, int CloserCount)> OnServerLatencyTested;
+        public event EventHandler<string> OnWelcomeMessageReceived;
+        public event EventHandler<string> OnGenericServerMessageReceived;
+        public event EventHandler<(string ChannelName, string Message)> OnTargetChangeTooFast;
+        public event EventHandler<(string UserName, string Reason)> OnAwayMessageReceived;
+        public event EventHandler<(string ChannelName, string Topic)> OnChannelTopicReceived;
+        public event EventHandler<(string ChannelName, string[] UserList)> OnUserListReceived;
+        public event EventHandler<(string Ident, string HostName, string UserName, string ExtraInfo)> OnWhoReplyReceived;
+        public event EventHandler OnNameAlreadyInUse;
+        public event EventHandler<string> OnChannelFull;
+        public event EventHandler<string> OnChannelInviteOnly;
+        public event EventHandler<string> OnBannedFromChannel;
+        public event EventHandler<string> OnIncorrectChannelPassword;
+        public event EventHandler<(string ChannelName, string UserName, string Message)> OnCTCPParsed;
+        public event EventHandler<(string Notice, string UserName)> OnNoticeMessageParsed;
+        public event EventHandler<(string ChannelName, string Host, string UserName, string Ident)> OnUserJoinedChannel;
+        public event EventHandler<(string ChannelName, string UserName)> OnUserLeftChannel;
+        public event EventHandler<string> OnUserQuitIRC;
+        public event EventHandler<(string Receiver, string SenderName, string Ident, string Message)> OnChatMessageReceived;
+        public event EventHandler<(string Sender, string Message)> OnPrivateMessageReceived;
+        public event EventHandler<(string UserName, string ChannelName, string ModeString, List<string> ModeParameters)> OnChannelModesChanged;
+        public event EventHandler<(string ChannelName, string UserName)> OnUserKicked;
+        public event EventHandler<string> OnErrorReceived;
+        public event EventHandler<(string UserName, string ChannelName, string Topic)> OnChannelTopicChanged;
+        public event EventHandler<(string OldNickname, string NewNickname)> OnUserNicknameChange;
 
         /// <summary>
         /// The list of CnCNet / GameSurge IRC servers to connect to.
@@ -136,13 +169,13 @@ namespace DTAClient.Online
                     {
                         foreach (int port in server.Ports)
                         {
-                            connectionManager.OnAttemptedServerChanged(server.Name);
+                            OnAttemptedServerChanged(this, server.Name);
 
                             var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
                             using var timeoutCancellationTokenSource = new CancellationTokenSource(ConnectTimeout);
                             using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
-                            Logger.Log("Attempting connection to " + server.Host + ":" + port);
+                            logger.LogInformation("Attempting connection to " + server.Host + ":" + port);
 
                             try
                             {
@@ -152,16 +185,16 @@ namespace DTAClient.Online
                             }
                             catch (OperationCanceledException) when (timeoutCancellationTokenSource.Token.IsCancellationRequested)
                             {
-                                Logger.Log("Connecting to " + server.Host + " port " + port + " timed out!");
+                                logger.LogInformation("Connecting to " + server.Host + " port " + port + " timed out!");
                                 continue; // Start all over again, using the next port
                             }
 
-                            Logger.Log("Successfully connected to " + server.Host + " on port " + port);
+                            logger.LogInformation("Successfully connected to " + server.Host + " on port " + port);
 
                             IsConnected = true;
                             AttemptingConnection = false;
 
-                            connectionManager.OnConnected();
+                            OnConnected(this, EventArgs.Empty);
                             sendQueueCancellationTokenSource?.Dispose();
 
                             sendQueueCancellationTokenSource = new CancellationTokenSource();
@@ -185,15 +218,15 @@ namespace DTAClient.Online
                     }
                     catch (Exception ex)
                     {
-                        ProgramConstants.LogException(ex, "Unable to connect to the server.");
+                        logger.LogExceptionDetails(ex, "Unable to connect to the server.");
                     }
                 }
 
-                Logger.Log("Connecting to CnCNet failed!");
+                logger.LogInformation("Connecting to CnCNet failed!");
                 // Clear the failed server list in case connecting to all servers has failed
                 failedServerIPs.Clear();
                 AttemptingConnection = false;
-                connectionManager.OnConnectAttemptFailed();
+                OnConnectAttemptFailed(this, EventArgs.Empty);
             }
             catch (OperationCanceledException)
             {
@@ -231,7 +264,7 @@ namespace DTAClient.Online
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Disconnected from CnCNet due to a socket error.");
+                    logger.LogExceptionDetails(ex, "Disconnected from CnCNet due to a socket error.");
 
                     errorTimes++;
 
@@ -239,9 +272,9 @@ namespace DTAClient.Online
                     {
                         const string errorMessage = "Disconnected from CnCNet after reaching the maximum number of connection retries.";
 
-                        Logger.Log(errorMessage);
+                        logger.LogInformation(errorMessage);
                         failedServerIPs.Add(currentConnectedServerIP);
-                        connectionManager.OnConnectionLost(errorMessage.L10N("UI:Main:ClientDisconnectedAfterRetries"));
+                        OnConnectionLost(this, errorMessage.L10N("UI:Main:ClientDisconnectedAfterRetries"));
                         break;
                     }
 
@@ -254,7 +287,7 @@ namespace DTAClient.Online
                 string msg = Encoding.UTF8.GetString(message.Span[..bytesRead]);
 
 #if !DEBUG
-                Logger.Log("Message received: " + msg);
+                logger.LogInformation("Message received: " + msg);
 #endif
                 await HandleMessageAsync(msg);
 
@@ -263,7 +296,7 @@ namespace DTAClient.Online
 
             if (cancellationToken.IsCancellationRequested)
             {
-                connectionManager.OnDisconnected();
+                OnDisconnected(this, EventArgs.Empty);
 
                 connectionCut = false; // This disconnect is intentional
             }
@@ -287,7 +320,7 @@ namespace DTAClient.Online
 
                 if (reconnectCount > MAX_RECONNECT_COUNT)
                 {
-                    Logger.Log("Reconnect attempt count exceeded!");
+                    logger.LogInformation("Reconnect attempt count exceeded!");
                     return;
                 }
 
@@ -295,12 +328,12 @@ namespace DTAClient.Online
 
                 if (IsConnected || AttemptingConnection)
                 {
-                    Logger.Log("Cancelling reconnection attempt because the user has attempted to reconnect manually.");
+                    logger.LogInformation("Cancelling reconnection attempt because the user has attempted to reconnect manually.");
                     return;
                 }
 
-                Logger.Log("Attempting to reconnect to CnCNet.");
-                connectionManager.OnReconnectAttempt();
+                logger.LogInformation("Attempting to reconnect to CnCNet.");
+                OnReconnectAttempt(this, EventArgs.Empty);
             }
         }
 
@@ -342,15 +375,15 @@ namespace DTAClient.Online
                 string serverNames = string.Join(", ", name);
                 string serverPorts = string.Join(", ", ports.Select(port => port.ToString()));
 
-                Logger.Log($"Got a Lobby server. IP: {serverIPAddress}; Name: {serverNames}; Ports: {serverPorts}.");
+                logger.LogInformation($"Got a Lobby server. IP: {serverIPAddress}; Name: {serverNames}; Ports: {serverPorts}.");
             }
 
-            Logger.Log($"The number of Lobby servers is {serverInfos.Length}.");
+            logger.LogInformation($"The number of Lobby servers is {serverInfos.Length}.");
 
             // Test the latency.
             foreach ((IPAddress ipAddress, string name, int[] _) in serverInfos.Where(q => failedServerIPs.Contains(q.IpAddress.ToString())))
             {
-                Logger.Log($"Skipped a failed server {name} ({ipAddress}).");
+                logger.LogInformation($"Skipped a failed server {name} ({ipAddress}).");
             }
 
             (Server Server, IPAddress IpAddress, long Result)[] serverAndLatencyResults =
@@ -380,22 +413,22 @@ namespace DTAClient.Online
             {
                 string serverLatencyString = serverLatencyValue <= MAXIMUM_LATENCY ? serverLatencyValue.ToString() : "DNF";
 
-                Logger.Log($"Lobby server IP: {ipAddress}, latency: {serverLatencyString}.");
+                logger.LogInformation($"Lobby server IP: {ipAddress}, latency: {serverLatencyString}.");
             }
 
             int candidateCount = sortedServerAndLatencyResults.Length;
             int closerCount = sortedServerAndLatencyResults.Count(
                 serverAndLatencyResult => serverAndLatencyResult.Result <= MAXIMUM_LATENCY);
 
-            Logger.Log($"Lobby servers: {candidateCount} available, {closerCount} fast.");
-            connectionManager.OnServerLatencyTested(candidateCount, closerCount);
+            logger.LogInformation($"Lobby servers: {candidateCount} available, {closerCount} fast.");
+            OnServerLatencyTested(this, (candidateCount, closerCount));
 
             return sortedServerAndLatencyResults.Select(taskResult => taskResult.Server).ToList();
         }
 
-        private static async Task<(Server Server, IPAddress IpAddress, long Result)> PingServerAsync((IPAddress IpAddress, string Name, int[] Ports) serverInfo)
+        private async Task<(Server Server, IPAddress IpAddress, long Result)> PingServerAsync((IPAddress IpAddress, string Name, int[] Ports) serverInfo)
         {
-            Logger.Log($"Attempting to ping {serverInfo.Name} ({serverInfo.IpAddress}).");
+            logger.LogInformation($"Attempting to ping {serverInfo.Name} ({serverInfo.IpAddress}).");
             var server = new Server(serverInfo.IpAddress.ToString(), serverInfo.Name, serverInfo.Ports);
             using var ping = new Ping();
 
@@ -406,27 +439,27 @@ namespace DTAClient.Online
                 if (pingReply.Status == IPStatus.Success)
                 {
                     long pingInMs = pingReply.RoundtripTime;
-                    Logger.Log($"The latency in milliseconds to the server {serverInfo.Name} ({serverInfo.IpAddress}): {pingInMs}.");
+                    logger.LogInformation($"The latency in milliseconds to the server {serverInfo.Name} ({serverInfo.IpAddress}): {pingInMs}.");
 
                     return (server, serverInfo.IpAddress, pingInMs);
                 }
 
-                Logger.Log($"Failed to ping the server {serverInfo.Name} ({serverInfo.IpAddress}): " +
+                logger.LogInformation($"Failed to ping the server {serverInfo.Name} ({serverInfo.IpAddress}): " +
                     $"{Enum.GetName(typeof(IPStatus), pingReply.Status)}.");
 
                 return (server, serverInfo.IpAddress, long.MaxValue);
             }
             catch (PingException ex)
             {
-                ProgramConstants.LogException(ex, $"Caught an exception when pinging {serverInfo.Name} ({serverInfo.IpAddress}) Lobby server.");
+                logger.LogExceptionDetails(ex, $"Caught an exception when pinging {serverInfo.Name} ({serverInfo.IpAddress}) Lobby server.");
 
                 return (server, serverInfo.IpAddress, long.MaxValue);
             }
         }
 
-        private static async Task<IEnumerable<(IPAddress IpAddress, string Name, int[] Ports)>> ResolveServerAsync(Server server)
+        private async Task<IEnumerable<(IPAddress IpAddress, string Name, int[] Ports)>> ResolveServerAsync(Server server)
         {
-            Logger.Log($"Attempting to DNS resolve {server.Name} ({server.Host}).");
+            logger.LogInformation($"Attempting to DNS resolve {server.Name} ({server.Host}).");
 
             try
             {
@@ -435,7 +468,7 @@ namespace DTAClient.Online
                     .Where(IPAddress => IPAddress.AddressFamily is AddressFamily.InterNetworkV6 or AddressFamily.InterNetwork)
                     .ToArray();
 
-                Logger.Log($"DNS resolved {server.Name} ({server.Host}): " +
+                logger.LogInformation($"DNS resolved {server.Name} ({server.Host}): " +
                     $"{string.Join(", ", serverIPAddresses.Select(item => item.ToString()))}");
 
                 // Store each IPAddress in a different tuple.
@@ -443,7 +476,7 @@ namespace DTAClient.Online
             }
             catch (SocketException ex)
             {
-                ProgramConstants.LogException(ex, $"Caught an exception when DNS resolving {server.Name} ({server.Host}) Lobby server.");
+                logger.LogExceptionDetails(ex, $"Caught an exception when DNS resolving {server.Name} ({server.Host}) Lobby server.");
             }
 
             return Array.Empty<(IPAddress IpAddress, string Name, int[] Ports)>();
@@ -503,7 +536,7 @@ namespace DTAClient.Online
             string paramString = string.Empty;
             foreach (string param in parameters) { paramString = paramString + param + ","; }
 #if !DEBUG
-            Logger.Log("RMP: " + prefix + " " + command + " " + paramString);
+            logger.LogInformation("RMP: " + prefix + " " + command + " " + paramString);
 #endif
 
             try
@@ -521,7 +554,7 @@ namespace DTAClient.Online
                         case 001: // Welcome message
                             message = serverMessagePart + parameters[1];
                             welcomeMessageReceived = true;
-                            connectionManager.OnWelcomeMessageReceived(message);
+                            OnWelcomeMessageReceived(this, message);
                             reconnectCount = 0;
                             break;
                         case 002: // "Your host is x, running version y"
@@ -542,15 +575,15 @@ namespace DTAClient.Online
                                 displayedMessage.Append(' ');
                                 displayedMessage.Append(parameters[i]);
                             }
-                            connectionManager.OnGenericServerMessageReceived(displayedMessage.ToString());
+                            OnGenericServerMessageReceived(this, displayedMessage.ToString());
                             break;
                         case 439: // Attempt to send messages too fast
-                            connectionManager.OnTargetChangeTooFast(parameters[1], parameters[2]);
+                            OnTargetChangeTooFast(this, (parameters[1], parameters[2]));
                             break;
                         case 252: // Number of operators online
                         case 254: // Number of channels formed
                             message = serverMessagePart + parameters[1] + " " + parameters[2];
-                            connectionManager.OnGenericServerMessageReceived(message);
+                            OnGenericServerMessageReceived(this, message);
                             break;
                         case 301: // AWAY message
                             string awayTarget = parameters[0];
@@ -558,13 +591,13 @@ namespace DTAClient.Online
                                 break;
                             string awayPlayer = parameters[1];
                             string awayReason = parameters[2];
-                            connectionManager.OnAwayMessageReceived(awayPlayer, awayReason);
+                            OnAwayMessageReceived(this, (awayPlayer, awayReason));
                             break;
                         case 332: // Channel topic message
                             string _target = parameters[0];
                             if (_target != ProgramConstants.PLAYERNAME)
                                 break;
-                            connectionManager.OnChannelTopicReceived(parameters[1], parameters[2]);
+                            OnChannelTopicReceived(this, (parameters[1], parameters[2]));
                             break;
                         case 353: // User list (reply to NAMES)
                             string target = parameters[0];
@@ -572,38 +605,38 @@ namespace DTAClient.Online
                                 break;
                             string channelName = parameters[2];
                             string[] users = parameters[3].Split(new char[1] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                            connectionManager.OnUserListReceived(channelName, users);
+                            OnUserListReceived(this, (channelName, users));
                             break;
                         case 352: // Reply to WHO query
                             string ident = parameters[2];
                             string host = parameters[3];
                             string wUserName = parameters[5];
                             string extraInfo = parameters[7];
-                            connectionManager.OnWhoReplyReceived(ident, host, wUserName, extraInfo);
+                            OnWhoReplyReceived(this, (ident, host, wUserName, extraInfo));
                             break;
                         case 311: // Reply to WHOIS NAME query
-                            connectionManager.OnWhoReplyReceived(parameters[2], parameters[3], parameters[1], string.Empty);
+                            OnWhoReplyReceived(this, (parameters[2], parameters[3], parameters[1], string.Empty));
                             break;
                         case 433: // Name already in use
                             message = serverMessagePart + parameters[1] + ": " + parameters[2];
                             //connectionManager.OnGenericServerMessageReceived(message);
-                            connectionManager.OnNameAlreadyInUse();
+                            OnNameAlreadyInUse(this, EventArgs.Empty);
                             break;
                         case 451: // Not registered
                             await RegisterAsync();
-                            connectionManager.OnGenericServerMessageReceived(message);
+                            OnGenericServerMessageReceived(this, message);
                             break;
                         case 471: // Returned when attempting to join a channel that is full (basically, player limit met)
-                            connectionManager.OnChannelFull(parameters[1]);
+                            OnChannelFull(this, parameters[1]);
                             break;
                         case 473: // Returned when attempting to join an invite-only channel (locked games)
-                            connectionManager.OnChannelInviteOnly(parameters[1]);
+                            OnChannelInviteOnly(this, parameters[1]);
                             break;
                         case 474: // Returned when attempting to join a channel a user is banned from
-                            connectionManager.OnBannedFromChannel(parameters[1]);
+                            OnBannedFromChannel(this, parameters[1]);
                             break;
                         case 475: // Returned when attempting to join a key-locked channel either without a key or with the wrong key
-                            connectionManager.OnIncorrectChannelPassword(parameters[1]);
+                            OnIncorrectChannelPassword(this, parameters[1]);
                             break;
                     }
 
@@ -623,20 +656,20 @@ namespace DTAClient.Online
                                 string ctcpMessage = parameters[1];
                                 ctcpMessage = ctcpMessage.Remove(0, 1).Remove(ctcpMessage.Length - 2);
                                 string ctcpSender = prefix[..noticeExclamIndex];
-                                connectionManager.OnCTCPParsed(channelName, ctcpSender, ctcpMessage);
+                                OnCTCPParsed(this, (channelName, ctcpSender, ctcpMessage));
 
                                 return;
                             }
 
                             string noticeUserName = prefix[..noticeExclamIndex];
                             string notice = parameters[parameters.Count - 1];
-                            connectionManager.OnNoticeMessageParsed(notice, noticeUserName);
+                            OnNoticeMessageParsed(this, (notice, noticeUserName));
                             break;
                         }
                         string noticeParamString = string.Empty;
                         foreach (string param in parameters)
                             noticeParamString = noticeParamString + param + " ";
-                        connectionManager.OnGenericServerMessageReceived(prefix + " " + noticeParamString);
+                        OnGenericServerMessageReceived(this, prefix + " " + noticeParamString);
                         break;
                     case IRCCommands.JOIN:
                         string channel = parameters[0];
@@ -645,16 +678,16 @@ namespace DTAClient.Online
                         string userName = prefix[..exclamIndex];
                         string ident = prefix.Substring(exclamIndex + 1, atIndex - (exclamIndex + 1));
                         string host = prefix[(atIndex + 1)..];
-                        connectionManager.OnUserJoinedChannel(channel, host, userName, ident);
+                        OnUserJoinedChannel(this, (channel, host, userName, ident));
                         break;
                     case IRCCommands.PART:
                         string pChannel = parameters[0];
                         string pUserName = prefix[..prefix.IndexOf('!')];
-                        connectionManager.OnUserLeftChannel(pChannel, pUserName);
+                        OnUserLeftChannel(this, (pChannel, pUserName));
                         break;
                     case IRCCommands.QUIT:
                         string qUserName = prefix[..prefix.IndexOf('!')];
-                        connectionManager.OnUserQuitIRC(qUserName);
+                        OnUserQuitIRC(this, qUserName);
                         break;
                     case IRCCommands.PRIVMSG:
                         if (parameters.Count > 1 && Convert.ToInt32(parameters[1][0]) == 1 && !parameters[1].Contains(IRCCommands.PRIVMSG_ACTION))
@@ -672,9 +705,9 @@ namespace DTAClient.Online
                         foreach (string recipient in recipients)
                         {
                             if (recipient.StartsWith("#"))
-                                connectionManager.OnChatMessageReceived(recipient, pmsgUserName, pmsgIdent, privmsg);
+                                OnChatMessageReceived(this, (recipient, pmsgUserName, pmsgIdent, privmsg));
                             else if (recipient == ProgramConstants.PLAYERNAME)
-                                connectionManager.OnPrivateMessageReceived(pmsgUserName, privmsg);
+                                OnPrivateMessageReceived(this, (pmsgUserName, privmsg));
                         }
                         break;
                     case IRCCommands.MODE:
@@ -683,34 +716,33 @@ namespace DTAClient.Online
                         string modeString = parameters[1];
                         List<string> modeParameters =
                             parameters.Count > 2 ? parameters.GetRange(2, parameters.Count - 2) : new List<string>();
-                        connectionManager.OnChannelModesChanged(modeUserName, modeChannelName, modeString, modeParameters);
+                        OnChannelModesChanged(this, (modeUserName, modeChannelName, modeString, modeParameters));
                         break;
                     case IRCCommands.KICK:
                         string kickChannelName = parameters[0];
                         string kickUserName = parameters[1];
-                        connectionManager.OnUserKicked(kickChannelName, kickUserName);
+                        OnUserKicked(this, (kickChannelName, kickUserName));
                         break;
                     case IRCCommands.ERROR:
-                        connectionManager.OnErrorReceived(message);
+                        OnErrorReceived(this, message);
                         break;
                     case IRCCommands.PING:
                         if (parameters.Count > 0)
                         {
                             await QueueMessageAsync(new QueuedMessage(IRCCommands.PONG + " " + parameters[0], QueuedMessageType.SYSTEM_MESSAGE, 5000));
-                            Logger.Log(IRCCommands.PONG + " " + parameters[0]);
+                            logger.LogInformation(IRCCommands.PONG + " " + parameters[0]);
                         }
                         else
                         {
                             await QueueMessageAsync(new QueuedMessage(IRCCommands.PONG, QueuedMessageType.SYSTEM_MESSAGE, 5000));
-                            Logger.Log(IRCCommands.PONG);
+                            logger.LogInformation(IRCCommands.PONG);
                         }
                         break;
                     case IRCCommands.TOPIC:
                         if (parameters.Count < 2)
                             break;
 
-                        connectionManager.OnChannelTopicChanged(prefix[..prefix.IndexOf('!')],
-                            parameters[0], parameters[1]);
+                        OnChannelTopicChanged(this, (prefix[..prefix.IndexOf('!')], parameters[0], parameters[1]));
                         break;
                     case IRCCommands.NICK:
                         int nickExclamIndex = prefix.IndexOf('!');
@@ -718,15 +750,15 @@ namespace DTAClient.Online
                         {
                             string oldNick = prefix[..nickExclamIndex];
                             string newNick = parameters[0];
-                            Logger.Log("Nick change - " + oldNick + " -> " + newNick);
-                            connectionManager.OnUserNicknameChange(oldNick, newNick);
+                            logger.LogInformation("Nick change - " + oldNick + " -> " + newNick);
+                            OnUserNicknameChange(this, (oldNick, newNick));
                         }
                         break;
                 }
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Warning: Failed to parse command " + message);
+                logger.LogExceptionDetails(ex, "Warning: Failed to parse command " + message);
             }
         }
 
@@ -780,7 +812,7 @@ namespace DTAClient.Online
             if (commandAndParameters.Length == 0)
             {
                 command = string.Empty;
-                Logger.Log("Nonexistant command!");
+                logger.LogInformation("Nonexistant command!");
                 return;
             }
 
@@ -828,7 +860,7 @@ namespace DTAClient.Online
                                 {
                                     message = qm.Command;
 
-                                    Logger.Log("Delayed message sent: " + qm.ID);
+                                    logger.LogInformation("Delayed message sent: " + qm.ID);
 
                                     messageQueue.RemoveAt(i);
                                     break;
@@ -891,7 +923,7 @@ namespace DTAClient.Online
             if (welcomeMessageReceived)
                 return;
 
-            Logger.Log("Registering.");
+            logger.LogInformation("Registering.");
 
             string defaultGame = ClientConfiguration.Instance.LocalGame;
             string realName = ProgramConstants.GAME_VERSION + " " + defaultGame + " CnCNet";
@@ -915,7 +947,7 @@ namespace DTAClient.Online
         {
             QueuedMessage qm = new QueuedMessage(message, type, priority, delay);
             await QueueMessageAsync(qm);
-            Logger.Log("Setting delay to " + delay + "ms for " + qm.ID);
+            logger.LogInformation("Setting delay to " + delay + "ms for " + qm.ID);
         }
 
         /// <summary>
@@ -927,7 +959,7 @@ namespace DTAClient.Online
             if (!socket?.Connected ?? false)
                 return;
 
-            Logger.Log("SRM: " + message);
+            logger.LogInformation("SRM: " + message);
 
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
@@ -945,7 +977,7 @@ namespace DTAClient.Online
             }
             catch (IOException ex)
             {
-                ProgramConstants.LogException(ex, "Sending message to the server failed!");
+                logger.LogExceptionDetails(ex, "Sending message to the server failed!");
             }
         }
 
@@ -1013,7 +1045,7 @@ namespace DTAClient.Online
                     default:
                         int placeInQueue = messageQueue.FindIndex(m => m.Priority < qm.Priority);
                         if (ProgramConstants.LOG_LEVEL > 1)
-                            Logger.Log("QM Undefined: " + qm.Command + " " + placeInQueue);
+                            logger.LogInformation("QM Undefined: " + qm.Command + " " + placeInQueue);
                         if (placeInQueue == -1)
                             messageQueue.Add(qm);
                         else
@@ -1041,14 +1073,14 @@ namespace DTAClient.Online
             if (broadcastingMessageIndex > -1)
             {
                 if (ProgramConstants.LOG_LEVEL > 1)
-                    Logger.Log("QM Replace: " + qm.Command + " " + broadcastingMessageIndex);
+                    logger.LogInformation("QM Replace: " + qm.Command + " " + broadcastingMessageIndex);
                 messageQueue[broadcastingMessageIndex] = qm;
             }
             else
             {
                 int placeInQueue = messageQueue.FindIndex(m => m.Priority < qm.Priority);
                 if (ProgramConstants.LOG_LEVEL > 1)
-                    Logger.Log("QM: " + qm.Command + " " + placeInQueue);
+                    logger.LogInformation("QM: " + qm.Command + " " + placeInQueue);
                 if (placeInQueue == -1)
                     messageQueue.Add(qm);
                 else

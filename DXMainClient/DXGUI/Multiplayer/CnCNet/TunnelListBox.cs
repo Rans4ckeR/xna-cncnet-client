@@ -1,18 +1,18 @@
-﻿using DTAClient.Domain.Multiplayer.CnCNet;
+﻿using System;
+using System.Collections.Generic;
+using DTAClient.Domain.Multiplayer.CnCNet;
 using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
     /// <summary>
     /// A list box for listing CnCNet tunnel servers.
     /// </summary>
-    class TunnelListBox : XNAMultiColumnListBox
+    internal class TunnelListBox : XNAMultiColumnListBox
     {
         public TunnelListBox(WindowManager windowManager, TunnelHandler tunnelHandler)
             : base(windowManager)

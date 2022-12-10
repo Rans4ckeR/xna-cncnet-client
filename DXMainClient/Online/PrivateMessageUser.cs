@@ -2,7 +2,7 @@
 
 namespace DTAClient.Online
 {
-    class PrivateMessageUser
+    internal class PrivateMessageUser
     {
         public PrivateMessageUser(IRCUser user)
         {

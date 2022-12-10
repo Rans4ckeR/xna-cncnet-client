@@ -82,7 +82,7 @@ namespace DTAClient.DXGUI.Multiplayer
             AddChild(lblGameInformation);
 
             lblGameInformation.CenterOnParent();
-            lblGameInformation.ClientRectangle = new Rectangle( lblGameInformation.X, 6,
+            lblGameInformation.ClientRectangle = new Rectangle(lblGameInformation.X, 6,
                 lblGameInformation.Width, lblGameInformation.Height);
 
             base.Initialize();
@@ -96,7 +96,7 @@ namespace DTAClient.DXGUI.Multiplayer
             lblMap.Text = Renderer.GetStringWithLimitedWidth("Map:".L10N("UI:Main:GameInfoMap") + " " + Renderer.GetSafeString(game.Map, lblMap.FontIndex),
                 lblMap.FontIndex, Width - lblMap.X * 2);
             lblMap.Visible = true;
-            lblGameVersion.Text = "Game version:".L10N("UI:Main:GameInfoGameVersion")+ " " + Renderer.GetSafeString(game.GameVersion, lblGameVersion.FontIndex);
+            lblGameVersion.Text = "Game version:".L10N("UI:Main:GameInfoGameVersion") + " " + Renderer.GetSafeString(game.GameVersion, lblGameVersion.FontIndex);
             lblGameVersion.Visible = true;
             lblHost.Text = "Host:".L10N("UI:Main:GameInfoHost") + " " + Renderer.GetSafeString(game.HostName, lblHost.FontIndex);
             lblHost.Visible = true;

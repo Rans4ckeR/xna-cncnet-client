@@ -1,17 +1,18 @@
-﻿using ClientCore;
-using ClientCore.CnCNet5;
-using DTAClient.Online.EventArguments;
-using Localization;
-using Microsoft.Xna.Framework;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.CnCNet5;
 using ClientCore.Extensions;
 using DTAClient.Domain.Multiplayer.CnCNet;
+using DTAClient.Online.EventArguments;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.Online
 {
@@ -19,14 +20,16 @@ namespace DTAClient.Online
     /// Acts as an interface between the CnCNet connection class
     /// and the user-interface's classes.
     /// </summary>
-    internal sealed class CnCNetManager : IConnectionManager
+    internal sealed class CnCNetManager
     {
-        // When implementing IConnectionManager functions, pay special attention
+        // When implementing functions, pay special attention
         // to thread-safety.
-        // The functions in IConnectionManager are usually called from the networking
-        // thread, so if they affect anything in the UI or affect data that the 
+        // The functions are usually called from the networking
+        // thread, so if they affect anything in the UI or affect data that the
         // UI thread might be reading, use WindowManager.AddCallback to execute a function
         // on the UI thread instead of modifying the data or raising events directly.
+        private readonly UserINISettings userINISettings;
+        private readonly ILogger logger;
 
         public event EventHandler<ServerMessageEventArgs> WelcomeMessageReceived;
         public event EventHandler<UserAwayEventArgs> AwayMessageReceived;
@@ -47,11 +50,19 @@ namespace DTAClient.Online
         public event EventHandler<UserNameIndexEventArgs> UserRemoved;
         public event EventHandler MultipleUsersAdded;
 
-        public CnCNetManager(WindowManager wm, GameCollection gc, CnCNetUserData cncNetUserData)
+        public CnCNetManager(
+            WindowManager wm,
+            GameCollection gc,
+            CnCNetUserData cncNetUserData,
+            UserINISettings userINISettings,
+            ILogger logger,
+            Connection connection)
         {
             gameCollection = gc;
             this.cncNetUserData = cncNetUserData;
-            connection = new Connection(this);
+            this.userINISettings = userINISettings;
+            this.logger = logger;
+            this.connection = connection;
 
             this.wm = wm;
 
@@ -76,6 +87,38 @@ namespace DTAClient.Online
                 new IRCColor("Gray".L10N("UI:Main:ColorLightGray"), true, Color.LightGray, 14),
                 new IRCColor("Gray #2".L10N("UI:Main:ColorGray2"), false, Color.Gray, 15)
             };
+
+            connection.OnAttemptedServerChanged += (_, serverName) => OnAttemptedServerChanged(serverName);
+            connection.OnConnected += (_, _) => OnConnected();
+            connection.OnConnectAttemptFailed += (_, _) => OnConnectAttemptFailed();
+            connection.OnConnectionLost += (_, reason) => OnConnectionLost(reason);
+            connection.OnDisconnected += (_, _) => OnDisconnected();
+            connection.OnReconnectAttempt += (_, _) => OnReconnectAttempt();
+            connection.OnServerLatencyTested += (_, e) => OnServerLatencyTested(e.CandidateCount, e.CloserCount);
+            connection.OnWelcomeMessageReceived += (_, message) => OnWelcomeMessageReceived(message);
+            connection.OnGenericServerMessageReceived += (_, message) => OnGenericServerMessageReceived(message);
+            connection.OnTargetChangeTooFast += (_, e) => OnTargetChangeTooFast(e.ChannelName, e.Message);
+            connection.OnAwayMessageReceived += (_, e) => OnAwayMessageReceived(e.UserName, e.Reason);
+            connection.OnChannelTopicReceived += (_, e) => OnChannelTopicReceived(e.ChannelName, e.Topic);
+            connection.OnUserListReceived += (_, e) => OnUserListReceived(e.ChannelName, e.UserList);
+            connection.OnWhoReplyReceived += (_, e) => OnWhoReplyReceived(e.Ident, e.HostName, e.UserName, e.ExtraInfo);
+            connection.OnNameAlreadyInUse += (_, _) => OnNameAlreadyInUse();
+            connection.OnChannelFull += (_, channelName) => OnChannelFull(channelName);
+            connection.OnChannelInviteOnly += (_, channelName) => OnChannelInviteOnly(channelName);
+            connection.OnBannedFromChannel += (_, channelName) => OnBannedFromChannel(channelName);
+            connection.OnIncorrectChannelPassword += (_, channelName) => OnIncorrectChannelPassword(channelName);
+            connection.OnCTCPParsed += (_, e) => OnCTCPParsed(e.ChannelName, e.UserName, e.Message);
+            connection.OnNoticeMessageParsed += (_, _) => OnNoticeMessageParsed();
+            connection.OnUserJoinedChannel += (_, e) => OnUserJoinedChannel(e.ChannelName, e.Host, e.UserName, e.Ident);
+            connection.OnUserLeftChannel += (_, e) => OnUserLeftChannel(e.ChannelName, e.UserName);
+            connection.OnUserQuitIRC += (_, userName) => OnUserQuitIRC(userName);
+            connection.OnChatMessageReceived += (_, e) => OnChatMessageReceived(e.Receiver, e.SenderName, e.Ident, e.Message);
+            connection.OnPrivateMessageReceived += (_, e) => OnPrivateMessageReceived(e.Sender, e.Message);
+            connection.OnChannelModesChanged += (_, e) => OnChannelModesChanged(e.UserName, e.ChannelName, e.ModeString, e.ModeParameters);
+            connection.OnUserKicked += (_, e) => OnUserKicked(e.ChannelName, e.UserName);
+            connection.OnErrorReceived += (_, errorMessage) => OnErrorReceived(errorMessage);
+            connection.OnChannelTopicChanged += (_, e) => OnChannelTopicChanged(e.ChannelName, e.Topic);
+            connection.OnUserNicknameChange += (_, e) => OnUserNicknameChange(e.OldNickname, e.NewNickname);
         }
 
         public Channel MainChannel { get; private set; }
@@ -83,7 +126,7 @@ namespace DTAClient.Online
         private bool connected;
 
         /// <summary>
-        /// Gets a value that determines whether the client is 
+        /// Gets a value that determines whether the client is
         /// currently connected to CnCNet.
         /// </summary>
         public bool IsConnected
@@ -118,14 +161,14 @@ namespace DTAClient.Online
         /// </summary>
         /// <param name="uiName">The user-interface name of the channel.</param>
         /// <param name="channelName">The name of the channel.</param>
-        /// <param name="persistent">Determines whether the channel's information 
+        /// <param name="persistent">Determines whether the channel's information
         /// should remain in memory even after a disconnect.</param>
         /// <param name="password">The password for the channel. Use null for none.</param>
         /// <returns>A channel.</returns>
         public Channel CreateChannel(string uiName, string channelName,
             bool persistent, bool isChatChannel, string password)
         {
-            return new Channel(uiName, channelName, persistent, isChatChannel, password, connection);
+            return new Channel(uiName, channelName, persistent, isChatChannel, password, connection, userINISettings);
         }
 
         public void AddChannel(Channel channel)
@@ -289,7 +332,7 @@ namespace DTAClient.Online
             channel.Topic = topic;
         }
 
-        public void OnChannelTopicChanged(string userName, string channelName, string topic)
+        public void OnChannelTopicChanged(string channelName, string topic)
         {
             wm.AddCallback(() => DoChannelTopicReceived(channelName, topic));
         }
@@ -511,7 +554,7 @@ namespace DTAClient.Online
                 channel.OnInvalidJoinPassword();
         }
 
-        public void OnNoticeMessageParsed(string notice, string userName)
+        public void OnNoticeMessageParsed()
         {
             // TODO Parse as private message
         }
@@ -853,7 +896,7 @@ namespace DTAClient.Online
                 {
                     MainChannel.AddMessage(new ChatMessage(Color.White,
                         "Your nickname is invalid or already in use. Please change your nickname in the login screen.".L10N("UI:Main:PickAnotherNickName")));
-                    UserINISettings.Instance.SkipConnectDialog.Value = false;
+                    userINISettings.SkipConnectDialog.Value = false;
                     await DisconnectAsync();
                     return;
                 }
@@ -890,7 +933,7 @@ namespace DTAClient.Online
             IRCUser user = UserList.Find(u => u.Name.ToUpper() == oldNickname.ToUpper());
             if (user == null)
             {
-                Logger.Log("DoUserNicknameChange: Failed to find user with nickname " + oldNickname);
+                logger.LogInformation("DoUserNicknameChange: Failed to find user with nickname " + oldNickname);
                 return;
             }
             string realOldNickname = user.Name; // To make sure that case matches

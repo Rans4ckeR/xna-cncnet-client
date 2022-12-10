@@ -1,9 +1,9 @@
-﻿using Localization;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Reflection;
+using System.Text;
+using Localization;
 using Rampastring.Tools;
 
 namespace ClientCore
@@ -102,91 +102,5 @@ namespace ClientCore
         public static List<string> AI_PLAYER_NAMES => new List<string> { "Easy AI".L10N("UI:Main:EasyAIName"), "Medium AI".L10N("UI:Main:MediumAIName"), "Hard AI".L10N("UI:Main:HardAIName") };
 
         public static string LogFileName { get; set; }
-
-        /// <summary>
-        /// Gets or sets the action to perform to notify the user of an error.
-        /// </summary>
-        public static Action<string, string, bool> DisplayErrorAction { get; set; } = (title, error, exit) =>
-        {
-            Logger.Log(FormattableString.Invariant($"{(title is null ? null : title + Environment.NewLine + Environment.NewLine)}{error}"));
-            ProcessLauncher.StartShellProcess(LogFileName);
-
-            if (exit)
-                Environment.Exit(1);
-        };
-
-        /// <summary>
-        /// Logs all details of an exception to the logfile without further action.
-        /// </summary>
-        /// <param name="ex">The <see cref="Exception"/> to log.</param>
-        /// /// <param name="message">Optional message to accompany the error.</param>
-        public static void LogException(Exception ex, string message = null)
-        {
-            LogExceptionRecursive(ex, message);
-        }
-
-        private static void LogExceptionRecursive(Exception ex, string message = null, bool innerException = false)
-        {
-            if (!innerException)
-                Logger.Log(message);
-            else
-                Logger.Log("InnerException info:");
-
-            Logger.Log("Type: " + ex.GetType());
-            Logger.Log("Message: " + ex.Message);
-            Logger.Log("Source: " + ex.Source);
-            Logger.Log("TargetSite.Name: " + ex.TargetSite?.Name);
-            Logger.Log("Stacktrace: " + ex.StackTrace);
-
-            if (ex is AggregateException aggregateException)
-            {
-                foreach (Exception aggregateExceptionInnerException in aggregateException.InnerExceptions)
-                {
-                    LogExceptionRecursive(aggregateExceptionInnerException, null, true);
-                }
-            }
-            else if (ex.InnerException is not null)
-            {
-                LogExceptionRecursive(ex.InnerException, null, true);
-            }
-        }
-
-        /// <summary>
-        /// Logs all details of an exception to the logfile, notifies the user, and exits the application.
-        /// </summary>
-        /// <param name="ex">The <see cref="Exception"/> to log.</param>
-        public static void HandleException(Exception ex)
-        {
-            LogExceptionRecursive(ex, "KABOOOOOOM!!! Info:");
-
-            string errorLogPath = SafePath.CombineFilePath(ClientUserFilesPath, "ClientCrashLogs", FormattableString.Invariant($"ClientCrashLog{DateTime.Now.ToString("_yyyy_MM_dd_HH_mm")}.txt"));
-            bool crashLogCopied = false;
-
-            try
-            {
-                DirectoryInfo crashLogsDirectoryInfo = SafePath.GetDirectory(ClientUserFilesPath, "ClientCrashLogs");
-
-                if (!crashLogsDirectoryInfo.Exists)
-                    crashLogsDirectoryInfo.Create();
-
-                File.Copy(SafePath.CombineFilePath(ClientUserFilesPath, "client.log"), errorLogPath, true);
-                crashLogCopied = true;
-            }
-            catch
-            {
-            }
-
-            string error = string.Format("{0} has crashed. Error message:".L10N("UI:Main:FatalErrorText1") + Environment.NewLine + Environment.NewLine +
-                ex.Message + Environment.NewLine + Environment.NewLine + (crashLogCopied ?
-                "A crash log has been saved to the following file:".L10N("UI:Main:FatalErrorText2") + " " + Environment.NewLine + Environment.NewLine +
-                errorLogPath + Environment.NewLine + Environment.NewLine : "") +
-                (crashLogCopied ? "If the issue is repeatable, contact the {1} staff at {2} and provide the crash log file.".L10N("UI:Main:FatalErrorText3") :
-                "If the issue is repeatable, contact the {1} staff at {2}.".L10N("UI:Main:FatalErrorText4")),
-                GAME_NAME_LONG,
-                GAME_NAME_SHORT,
-                SUPPORT_URL_SHORT);
-
-            DisplayErrorAction("KABOOOOOOOM".L10N("UI:Main:FatalErrorTitle"), error, true);
-        }
     }
 }

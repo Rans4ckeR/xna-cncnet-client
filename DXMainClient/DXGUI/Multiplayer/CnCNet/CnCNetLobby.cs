@@ -1,46 +1,74 @@
-﻿using ClientCore;
-using ClientCore.CnCNet5;
-using ClientGUI;
-using DTAClient.Domain.Multiplayer;
-using DTAClient.Domain.Multiplayer.CnCNet;
-using DTAClient.DXGUI.Generic;
-using DTAClient.DXGUI.Multiplayer.GameLobby;
-using DTAClient.Online;
-using DTAClient.Online.EventArguments;
-using DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers;
-using Microsoft.Xna.Framework.Graphics;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using Rampastring.XNAUI.XNAControls;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.CnCNet5;
 using ClientCore.Enums;
 using ClientCore.Extensions;
+using ClientGUI;
+using DTAClient.Domain.Multiplayer;
+using DTAClient.Domain.Multiplayer.CnCNet;
+using DTAClient.DXGUI.Generic;
+using DTAClient.DXGUI.Multiplayer.GameLobby;
+using DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers;
+using DTAClient.Online;
+using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
-    using UserChannelPair = Tuple<string, string>;
-    using InvitationIndex = Dictionary<Tuple<string, string>, WeakReference>;
-
     internal sealed class CnCNetLobby : XNAWindow, ISwitchable
     {
+        private readonly CnCNetPlayerCountTask cncNetPlayerCountTask;
+        private readonly UserINISettings userIniSettings;
+        private readonly GameProcessLogic gameProcessLogic;
+        private readonly XNAMessageBox xnaMessageBox;
+        private readonly CnCNetLoginWindow loginWindow;
+        private readonly GameFiltersPanel panelGameFilters;
+        private readonly GameCreationWindow gcw;
+        private readonly CnCNetGameCheck cncNetGameCheck;
+        private readonly GameListBox lbGameList;
+        private readonly PasswordRequestWindow passwordRequestWindow;
+        private readonly GlobalContextMenu globalContextMenu;
+
         public event EventHandler UpdateCheck;
 
-        public CnCNetLobby(WindowManager windowManager, CnCNetManager connectionManager,
-            CnCNetGameLobby gameLobby, CnCNetGameLoadingLobby gameLoadingLobby,
-            TopBar topBar, PrivateMessagingWindow pmWindow, TunnelHandler tunnelHandler,
-            GameCollection gameCollection, CnCNetUserData cncnetUserData)
-            : base(windowManager)
+        public CnCNetLobby(
+            WindowManager windowManager,
+            CnCNetManager connectionManager,
+            CnCNetGameLobby gameLobby,
+            CnCNetGameLoadingLobby gameLoadingLobby,
+            TopBar topBar,
+            PrivateMessagingWindow pmWindow,
+            TunnelHandler tunnelHandler,
+            GameCollection gameCollection,
+            CnCNetUserData cncnetUserData,
+            ILogger logger,
+            CnCNetPlayerCountTask cncNetPlayerCountTask,
+            UserINISettings userIniSettings,
+            GameProcessLogic gameProcessLogic,
+            XNAMessageBox xnaMessageBox,
+            CnCNetLoginWindow cncNetLoginWindow,
+            GameFiltersPanel gameFiltersPanel,
+            GameCreationWindow gameCreationWindow,
+            CnCNetGameCheck cncNetGameCheck,
+            GameListBox gameListBox,
+            PasswordRequestWindow passwordRequestWindow,
+            GlobalContextMenu globalContextMenu,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.connectionManager = connectionManager;
             this.gameLobby = gameLobby;
@@ -50,6 +78,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             this.pmWindow = pmWindow;
             this.gameCollection = gameCollection;
             this.cncnetUserData = cncnetUserData;
+            this.cncNetPlayerCountTask = cncNetPlayerCountTask;
+            this.userIniSettings = userIniSettings;
+            this.gameProcessLogic = gameProcessLogic;
+            this.xnaMessageBox = xnaMessageBox;
+            lbGameList = gameListBox;
+            loginWindow = cncNetLoginWindow;
+            this.passwordRequestWindow = passwordRequestWindow;
 
             ctcpCommandHandlers = new CommandHandlerBase[]
             {
@@ -58,6 +93,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             };
 
             topBar.LogoutEvent += LogoutEvent;
+            panelGameFilters = gameFiltersPanel;
+            gcw = gameCreationWindow;
+            this.cncNetGameCheck = cncNetGameCheck;
+            this.globalContextMenu = globalContextMenu;
         }
 
         private readonly CnCNetManager connectionManager;
@@ -65,8 +104,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private PlayerListBox lbPlayerList;
         private ChatListBox lbChatMessages;
-        private GameListBox lbGameList;
-        private GlobalContextMenu globalContextMenu;
 
         private XNAClientButton btnLogout;
         private XNAClientButton btnNewGame;
@@ -104,13 +141,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private readonly TunnelHandler tunnelHandler;
 
-        private CnCNetLoginWindow loginWindow;
-
         private readonly TopBar topBar;
 
         private readonly PrivateMessagingWindow pmWindow;
-
-        private PasswordRequestWindow passwordRequestWindow;
 
         private bool isInGameRoom;
         private bool updateDenied;
@@ -127,9 +160,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private readonly CommandHandlerBase[] ctcpCommandHandlers;
 
-        private InvitationIndex invitationIndex;
-
-        private GameFiltersPanel panelGameFilters;
+        private Dictionary<Tuple<string, string>, WeakReference> invitationIndex;
 
         private EventHandler<ChannelUserEventArgs> gameChannel_UserAddedFunc;
         private EventHandler gameChannel_InvalidPasswordEntered_LoadedGameFunc;
@@ -151,7 +182,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         public override void Initialize()
         {
-            invitationIndex = new InvitationIndex();
+            invitationIndex = new();
 
             ClientRectangle = new Rectangle(0, 0, WindowManager.RenderResolutionX - 64,
                 WindowManager.RenderResolutionY - 64);
@@ -187,11 +218,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 btnNewGame.X, 41,
                 btnJoinGame.Right - btnNewGame.X, btnNewGame.Y - 47);
 
-            panelGameFilters = new GameFiltersPanel(WindowManager);
             panelGameFilters.ClientRectangle = gameListRectangle;
             panelGameFilters.Disable();
 
-            lbGameList = new GameListBox(WindowManager, localGameID, HostedGameMatches);
+            lbGameList.LocalGameIdentifier = localGameID;
+            lbGameList.GameMatchesFilter = HostedGameMatches;
             lbGameList.Name = nameof(lbGameList);
             lbGameList.ClientRectangle = gameListRectangle;
             lbGameList.PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
@@ -211,7 +242,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             lbPlayerList.DoubleLeftClick += LbPlayerList_DoubleLeftClick;
             lbPlayerList.RightClick += LbPlayerList_RightClick;
 
-            globalContextMenu = new GlobalContextMenu(WindowManager, connectionManager, cncnetUserData, pmWindow);
             globalContextMenu.JoinEvent += (_, args) => JoinUserAsync(args.IrcUser, connectionManager.MainChannel).HandleTask();
 
             lbChatMessages = new ChatListBox(WindowManager);
@@ -258,7 +288,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 ddColor.AddItem(ddItem);
             }
 
-            int selectedColor = UserINISettings.Instance.ChatColor;
+            int selectedColor = userIniSettings.ChatColor;
 
             ddColor.SelectedIndex = selectedColor >= ddColor.Items.Count || selectedColor < 0
                 ? ClientConfiguration.Instance.DefaultPersonalChatColorIndex :
@@ -353,7 +383,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             panelGameFilters.VisibleChanged += GameFiltersPanel_VisibleChanged;
 
-            CnCNetPlayerCountTask.CnCNetGameCountUpdated += OnCnCNetGameCountUpdated;
+            cncNetPlayerCountTask.CnCNetGameCountUpdated += OnCnCNetGameCountUpdated;
 
             gameChannel_UserAddedFunc = (sender, e) => GameChannel_UserAddedAsync(sender, e).HandleTask();
             gameChannel_InvalidPasswordEntered_LoadedGameFunc = (sender, _) => GameChannel_InvalidPasswordEntered_LoadedGameAsync(sender).HandleTask();
@@ -374,11 +404,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void BtnGameSortAlpha_LeftClick(object sender, EventArgs e)
         {
-            UserINISettings.Instance.SortState.Value = (int)btnGameSortAlpha.GetState();
+            userIniSettings.SortState.Value = (int)btnGameSortAlpha.GetState();
 
             RefreshGameSortAlphaBtn();
             SortAndRefreshHostedGames();
-            UserINISettings.Instance.SaveSettings();
+            userIniSettings.SaveSettings();
         }
 
         private void SortAndRefreshHostedGames()
@@ -396,13 +426,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void RefreshGameSortAlphaBtn()
         {
-            if (Enum.IsDefined(typeof(SortDirection), UserINISettings.Instance.SortState.Value))
-                btnGameSortAlpha.SetState((SortDirection)UserINISettings.Instance.SortState.Value);
+            if (Enum.IsDefined(typeof(SortDirection), userIniSettings.SortState.Value))
+                btnGameSortAlpha.SetState((SortDirection)userIniSettings.SortState.Value);
         }
 
         private void RefreshGameFiltersBtn()
         {
-            btnGameFilterOptions.Checked = UserINISettings.Instance.IsGameFiltersApplied();
+            btnGameFilterOptions.Checked = userIniSettings.IsGameFiltersApplied();
         }
 
         private void GameFiltersPanel_VisibleChanged(object sender, EventArgs e)
@@ -423,19 +453,19 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private bool HostedGameMatches(GenericHostedGame hg)
         {
             // friends list takes priority over other filters below
-            if (UserINISettings.Instance.ShowFriendGamesOnly)
+            if (userIniSettings.ShowFriendGamesOnly)
                 return hg.Players.Any(p => cncnetUserData.IsFriend(p));
 
-            if (UserINISettings.Instance.HideLockedGames.Value && hg.Locked)
+            if (userIniSettings.HideLockedGames.Value && hg.Locked)
                 return false;
 
-            if (UserINISettings.Instance.HideIncompatibleGames.Value && hg.Incompatible)
+            if (userIniSettings.HideIncompatibleGames.Value && hg.Incompatible)
                 return false;
 
-            if (UserINISettings.Instance.HidePasswordedGames.Value && hg.Passworded)
+            if (userIniSettings.HidePasswordedGames.Value && hg.Passworded)
                 return false;
 
-            if (hg.MaxPlayers > UserINISettings.Instance.MaxPlayerCount.Value)
+            if (hg.MaxPlayers > userIniSettings.MaxPlayerCount.Value)
                 return false;
 
             return
@@ -534,7 +564,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             gameCreationPanel = new DarkeningPanel(WindowManager);
             AddChild(gameCreationPanel);
 
-            GameCreationWindow gcw = new GameCreationWindow(WindowManager, tunnelHandler);
             gameCreationPanel.AddChild(gcw);
             gameCreationPanel.Tag = gcw;
             gcw.Cancelled += Gcw_Cancelled;
@@ -549,7 +578,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             connectionManager.BannedFromChannel += (_, e) => ConnectionManager_BannedFromChannelAsync(e).HandleTask();
 
-            loginWindow = new CnCNetLoginWindow(WindowManager);
             loginWindow.Connect += LoginWindow_Connect;
             loginWindow.Cancelled += LoginWindow_Cancelled;
 
@@ -560,7 +588,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             loginWindowPanel.AddChild(loginWindow);
             loginWindow.Disable();
 
-            passwordRequestWindow = new PasswordRequestWindow(WindowManager, pmWindow);
             passwordRequestWindow.PasswordEntered += (_, hostedGame) => JoinGameAsync(hostedGame.HostedGame, hostedGame.Password).HandleTask();
 
             var passwordRequestWindowPanel = new DarkeningPanel(WindowManager);
@@ -572,9 +599,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             gameLobby.GameLeft += GameLobby_GameLeft;
             gameLoadingLobby.GameLeft += GameLoadingLobby_GameLeft;
 
-            UserINISettings.Instance.SettingsSaved += (_, _) => Instance_SettingsSavedAsync().HandleTask();
-            GameProcessLogic.GameProcessStarted += () => SharedUILogic_GameProcessStartedAsync().HandleTask();
-            GameProcessLogic.GameProcessExited += () => SharedUILogic_GameProcessExitedAsync().HandleTask();
+            userIniSettings.SettingsSaved += (_, _) => Instance_SettingsSavedAsync().HandleTask();
+            gameProcessLogic.GameProcessStarted += () => SharedUILogic_GameProcessStartedAsync().HandleTask();
+            gameProcessLogic.GameProcessExited += () => SharedUILogic_GameProcessExitedAsync().HandleTask();
         }
 
         /// <summary>
@@ -629,13 +656,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     continue;
 
                 if (followedGames.Contains(game.InternalName) &&
-                    !UserINISettings.Instance.IsGameFollowed(game.InternalName.ToUpper()))
+                    !userIniSettings.IsGameFollowed(game.InternalName.ToUpper()))
                 {
                     await connectionManager.FindChannel(game.GameBroadcastChannel).LeaveAsync();
                     followedGames.Remove(game.InternalName);
                 }
                 else if (!followedGames.Contains(game.InternalName) &&
-                    UserINISettings.Instance.IsGameFollowed(game.InternalName.ToUpper()))
+                    userIniSettings.IsGameFollowed(game.InternalName.ToUpper()))
                 {
                     await connectionManager.FindChannel(game.GameBroadcastChannel).JoinAsync();
                     followedGames.Add(game.InternalName);
@@ -735,7 +762,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return;
             }
 
-            if (UserINISettings.Instance.PersistentMode)
+            if (userIniSettings.PersistentMode)
             {
                 btnLogout.Text = "Main Menu".L10N("UI:Main:MainMenu");
                 return;
@@ -1081,13 +1108,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             tbChatInput.TextColor = selectedColor.XnaColor;
             gameLobby.ChangeChatColor(selectedColor);
             gameLoadingLobby.ChangeChatColor(selectedColor);
-            UserINISettings.Instance.ChatColor.Value = ddColor.SelectedIndex;
+            userIniSettings.ChatColor.Value = ddColor.SelectedIndex;
         }
 
         private void DdColor_SelectedIndexChanged(object sender, EventArgs e)
         {
             SetChatColor();
-            UserINISettings.Instance.SaveSettings();
+            userIniSettings.SaveSettings();
         }
 
         private void ConnectionManager_Disconnected(object sender, EventArgs e)
@@ -1138,7 +1165,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
                 if (game.InternalName.ToUpper() != localGameID)
                 {
-                    if (UserINISettings.Instance.IsGameFollowed(game.InternalName.ToUpper()))
+                    if (userIniSettings.IsGameFollowed(game.InternalName.ToUpper()))
                     {
                         await connectionManager.FindChannel(game.GameBroadcastChannel).JoinAsync();
                         followedGames.Add(game.InternalName);
@@ -1147,7 +1174,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             gameCheckCancellation = new CancellationTokenSource();
-            CnCNetGameCheck.RunServiceAsync(gameCheckCancellation.Token).HandleTask();
+            cncNetGameCheck.RunServiceAsync(gameCheckCancellation.Token).HandleTask();
         }
 
         private void ConnectionManager_PrivateCTCPReceived(object sender, PrivateCTCPEventArgs e)
@@ -1158,7 +1185,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     return;
             }
 
-            Logger.Log("Unhandled private CTCP command: " + e.Message + " from " + e.Sender);
+            logger.LogInformation("Unhandled private CTCP command: " + e.Message + " from " + e.Sender);
         }
 
         private async ValueTask HandleGameInviteCommandAsync(string sender, string argumentsString)
@@ -1183,7 +1210,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             // this is kept separate from CanReceiveInvitationMessagesFrom() as we still
             // want to let the host know that we couldn't receive the invitation
             if (!string.IsNullOrEmpty(GetJoinGameErrorByIndex(gameIndex)) ||
-                (UserINISettings.Instance.AllowGameInvitesFromFriendsOnly &&
+                (userIniSettings.AllowGameInvitesFromFriendsOnly &&
                 !cncnetUserData.IsFriend(sender)))
             {
                 // let the host know that we can't accept
@@ -1199,7 +1226,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             // we don't want to display another
             // we won't bother telling the host though, since their old invitation is still
             // available to us
-            var invitationIdentity = new UserChannelPair(sender, channelName);
+            var invitationIdentity = new Tuple<string, string>(sender, channelName);
 
             if (invitationIndex.ContainsKey(invitationIdentity))
             {
@@ -1230,7 +1257,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             sndGameInviteReceived.Play();
         }
 
-        private async ValueTask AffirmativeClickedActionAsync(string channelName, string password, string sender, UserChannelPair invitationIdentity)
+        private async ValueTask AffirmativeClickedActionAsync(string channelName, string password, string sender, Tuple<string, string> invitationIdentity)
         {
             // if we're currently in a game lobby, first leave that channel
             if (isInGameRoom)
@@ -1241,9 +1268,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             // JoinGameByIndex does bounds checking so we're safe to pass -1 if the game doesn't exist
             if (!await JoinGameByIndexAsync(lbGameList.HostedGames.FindIndex(hg => ((HostedCnCNetGame)hg).ChannelName == channelName), password))
             {
-                XNAMessageBox.Show(WindowManager,
-                    "Failed to join".L10N("UI:Main:JoinFailedTitle"),
-                    string.Format("Unable to join {0}'s game. The game may be locked or closed.".L10N("UI:Main:JoinFailedText"), sender));
+                xnaMessageBox.Caption = "Failed to join".L10N("UI:Main:JoinFailedTitle");
+                xnaMessageBox.Description = string.Format("Unable to join {0}'s game. The game may be locked or closed.".L10N("UI:Main:JoinFailedText"), sender);
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
             }
 
             // clean up the index as this invitation no longer exists
@@ -1414,10 +1443,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 string version = e.Message[7..];
                 if (version != ProgramConstants.GAME_VERSION)
                 {
-                    var updateMessageBox = XNAMessageBox.ShowYesNoDialog(WindowManager, "Update available".L10N("UI:Main:UpdateAvailableTitle"),
-                        "An update is available. Do you want to perform the update now?".L10N("UI:Main:UpdateAvailableText"));
-                    updateMessageBox.NoClickedAction = UpdateMessageBox_NoClicked;
-                    updateMessageBox.YesClickedAction = UpdateMessageBox_YesClicked;
+                    xnaMessageBox.Caption = "Update available".L10N("UI:Main:UpdateAvailableTitle");
+                    xnaMessageBox.Description = "An update is available. Do you want to perform the update now?".L10N("UI:Main:UpdateAvailableText");
+                    xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+                    xnaMessageBox.YesClickedAction = UpdateMessageBox_YesClicked;
+                    xnaMessageBox.NoClickedAction = UpdateMessageBox_NoClicked;
+
+                    xnaMessageBox.Show();
                 }
             }
 
@@ -1429,7 +1461,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             if (splitMessage.Length != 11)
             {
-                Logger.Log("Ignoring CTCP game message because of an invalid amount of parameters.");
+                logger.LogInformation("Ignoring CTCP game message because of an invalid amount of parameters.");
                 return;
             }
 
@@ -1507,7 +1539,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 }
                 else
                 {
-                    if (UserINISettings.Instance.PlaySoundOnGameHosted &&
+                    if (userIniSettings.PlaySoundOnGameHosted &&
                         cncnetGame.InternalName == localGameID.ToLower() &&
                         !ProgramConstants.IsInGame && !game.Locked)
                     {
@@ -1521,7 +1553,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Game parsing error");
+                logger.LogExceptionDetails(ex, "Game parsing error");
             }
         }
 
@@ -1539,7 +1571,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             if (connectionManager.IsConnected &&
-                !UserINISettings.Instance.PersistentMode)
+                !userIniSettings.PersistentMode)
             {
                 await connectionManager.DisconnectAsync();
             }
@@ -1599,9 +1631,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void DismissInvalidInvitations()
         {
-            var toDismiss = new List<UserChannelPair>();
+            var toDismiss = new List<Tuple<string, string>>();
 
-            foreach (KeyValuePair<UserChannelPair, WeakReference> invitation in invitationIndex)
+            foreach (KeyValuePair<Tuple<string, string>, WeakReference> invitation in invitationIndex)
             {
                 var gameIndex =
                     lbGameList.HostedGames.FindIndex(hg =>
@@ -1614,13 +1646,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 }
             }
 
-            foreach (UserChannelPair invitationIdentity in toDismiss)
+            foreach (Tuple<string, string> invitationIdentity in toDismiss)
             {
                 DismissInvitation(invitationIdentity);
             }
         }
 
-        private void DismissInvitation(UserChannelPair invitationIdentity)
+        private void DismissInvitation(Tuple<string, string> invitationIdentity)
         {
             if (invitationIndex.TryGetValue(invitationIdentity, out WeakReference _))
             {

@@ -1,25 +1,32 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using ClientCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace ClientGUI
 {
-    public class INItializableWindow : XNAPanel
+    public abstract class INItializableWindow : XNAPanel
     {
-        public INItializableWindow(WindowManager windowManager) : base(windowManager)
+        private readonly ILogger logger;
+        private readonly IServiceProvider serviceProvider;
+
+        protected INItializableWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager)
         {
+            this.logger = logger;
+            this.serviceProvider = serviceProvider;
         }
 
         protected CCIniFile ConfigIni { get; private set; }
 
-        private bool hasCloseButton = false;
-        private bool _initialized = false;
+        private bool hasCloseButton;
+        private bool _initialized;
 
         /// <summary>
         /// If not null, the client will read an INI file with this name
@@ -27,7 +34,7 @@ namespace ClientGUI
         /// </summary>
         protected string IniNameOverride { get; set; }
 
-        public T FindChild<T>(string childName, bool optional = false) where T : XNAControl
+        protected T FindChild<T>(string childName, bool optional = false) where T : XNAControl
         {
             T child = FindChild<T>(Children, childName);
             if (child == null && !optional)
@@ -56,7 +63,7 @@ namespace ClientGUI
         /// Only return a config path if it exists.
         /// </summary>
         /// <returns>The ini config file path</returns>
-        protected string GetConfigPath()
+        private string GetConfigPath()
         {
             string iniFileName = string.IsNullOrWhiteSpace(IniNameOverride) ? Name : IniNameOverride;
 
@@ -98,7 +105,7 @@ namespace ClientGUI
                 return;
             }
 
-            ConfigIni = new CCIniFile(configIniPath);
+            ConfigIni = new CCIniFile(configIniPath, logger);
 
             if (Parser.Instance == null)
                 new Parser(WindowManager);
@@ -263,7 +270,20 @@ namespace ClientGUI
             if (string.IsNullOrEmpty(childName))
                 throw new INIConfigException("Empty name in child control definition for " + parent.Name);
 
-            XNAControl childControl = ClientGUICreator.GetXnaControl(parts[1]);
+            // todo DI
+            string[] assemblyNames =
+                {
+                    "Rampastring.XNAUI",
+                    "ClientGUI",
+                    "clientogl",
+                    "clientodx",
+                    "clientoxna",
+                };
+            Type type = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(q => assemblyNames.Any(r => q.FullName.StartsWith(r, StringComparison.OrdinalIgnoreCase)))
+                .SelectMany(x => x.GetTypes())
+                .Single(q => q.Name.Equals(parts[1], StringComparison.OrdinalIgnoreCase));
+            XNAControl childControl = (XNAControl)serviceProvider.GetService(type); //ClientGUICreator.GetXnaControl(parts[1]);
 
             if (Array.Exists(childName.ToCharArray(), c => !char.IsLetterOrDigit(c) && c != '_'))
                 throw new INIConfigException("Names of INItializableWindow child controls must consist of letters, digits and underscores only. Offending name: " + parts[0]);

@@ -1,17 +1,17 @@
-﻿using Localization;
+﻿using System;
 using ClientCore;
 using ClientGUI;
+using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAConfig.OptionPanels
 {
-    class AudioOptionsPanel : XNAOptionsPanel
+    public sealed class AudioOptionsPanel : XNAOptionsPanel
     {
-        public AudioOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
-            : base(windowManager, iniSettings)
+        public AudioOptionsPanel(WindowManager windowManager, UserINISettings iniSettings, IServiceProvider serviceProvider)
+            : base(windowManager, iniSettings, serviceProvider)
         {
         }
 

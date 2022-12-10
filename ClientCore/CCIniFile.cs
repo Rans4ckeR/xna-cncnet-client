@@ -1,12 +1,18 @@
-﻿using Rampastring.Tools;
-using System.IO;
+﻿using System.IO;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace ClientCore
 {
-    public class CCIniFile : IniFile
+    public sealed class CCIniFile : IniFile
     {
-        public CCIniFile(string path) : base(path)
+        private readonly ILogger logger;
+
+        public CCIniFile(string path, ILogger logger)
+            : base(path)
         {
+            this.logger = logger;
+
             foreach (IniSection section in Sections)
             {
                 string baseSectionName = section.GetStringValue("$BaseSection", null);
@@ -17,7 +23,7 @@ namespace ClientCore
                 var baseSection = Sections.Find(s => s.SectionName == baseSectionName);
                 if (baseSection == null)
                 {
-                    Logger.Log($"Base section not found in INI file {path}, section {section.SectionName}, base section name: {baseSectionName}");
+                    logger.LogInformation($"Base section not found in INI file {path}, section {section.SectionName}, base section name: {baseSectionName}");
                     continue;
                 }
 
@@ -58,9 +64,9 @@ namespace ClientCore
 
             // Consolidate with the INI file that this INI file is based on
             if (!baseIniFile.Exists)
-                Logger.Log(FileName + ": Base INI file not found! " + baseIniFile.FullName);
+                logger.LogInformation(FileName + ": Base INI file not found! " + baseIniFile.FullName);
 
-            CCIniFile baseIni = new CCIniFile(baseIniFile.FullName);
+            CCIniFile baseIni = new CCIniFile(baseIniFile.FullName, logger);
             ConsolidateIniFiles(baseIni, this);
             Sections = baseIni.Sections;
         }

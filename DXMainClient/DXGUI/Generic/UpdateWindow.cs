@@ -1,22 +1,23 @@
-﻿using ClientGUI;
-using DTAClient.Domain;
+﻿using System;
+using System.Globalization;
+using ClientCore;
+using ClientGUI;
 using Localization;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using ClientCore;
 #if WINFORMS
 using System.Runtime.InteropServices;
 #endif
 using ClientUpdater;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.DXGUI.Generic
 {
     /// <summary>
     /// The update window, displaying the update progress to the user.
     /// </summary>
-    public class UpdateWindow : XNAWindow
+    internal sealed class UpdateWindow : XNAWindow
     {
         public delegate void UpdateCancelEventHandler(object sender, EventArgs e);
         public event UpdateCancelEventHandler UpdateCancelled;
@@ -30,9 +31,12 @@ namespace DTAClient.DXGUI.Generic
         private const double DOT_TIME = 0.66;
         private const int MAX_DOTS = 5;
 
-        public UpdateWindow(WindowManager windowManager)
-            : base(windowManager)
+        private readonly XNAMessageBox xnaMessageBox;
+
+        public UpdateWindow(WindowManager windowManager, ILogger logger, XNAMessageBox xnaMessageBox, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
+            this.xnaMessageBox = xnaMessageBox;
         }
 
         private XNALabel lblDescription;
@@ -48,14 +52,12 @@ namespace DTAClient.DXGUI.Generic
 #endif
 
         private bool isStartingForceUpdate;
-
-        bool infoUpdated = false;
-
-        string currFileName = string.Empty;
-        int currFilePercentage = 0;
-        int totalPercentage = 0;
-        int dotCount = 0;
-        double currentDotTime = 0.0;
+        private bool infoUpdated;
+        private string currFileName = string.Empty;
+        private int currFilePercentage;
+        private int totalPercentage;
+        private int dotCount;
+        private double currentDotTime;
 
         private static readonly object locker = new object();
 
@@ -152,7 +154,12 @@ namespace DTAClient.DXGUI.Generic
 
             if (Updater.VersionState == VersionState.UNKNOWN)
             {
-                XNAMessageBox.Show(WindowManager, "Force Update Failure".L10N("UI:Main:ForceUpdateFailureTitle"), "Checking for updates failed.".L10N("UI:Main:ForceUpdateFailureText"));
+                xnaMessageBox.Caption = "Force Update Failure".L10N("UI:Main:ForceUpdateFailureTitle");
+                xnaMessageBox.Description = "Checking for updates failed.".L10N("UI:Main:ForceUpdateFailureText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
+
                 AddCallback(CloseWindow);
                 return;
             }
@@ -230,7 +237,7 @@ namespace DTAClient.DXGUI.Generic
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
             }
 #endif
         }
@@ -242,7 +249,7 @@ namespace DTAClient.DXGUI.Generic
 
         private void HandleFileDownloadCompleted(string archiveName)
         {
-            lblUpdaterStatus.Text = "Unpacking archive".L10N("UI:Main:UnpackingArchive");
+            lblUpdaterStatus.Text = string.Format(CultureInfo.CurrentCulture, "Unpacking archive {0}".L10N("UI:Main:UnpackingArchive"), archiveName);
         }
 
         private void Updater_OnUpdateCompleted()
@@ -347,7 +354,7 @@ namespace DTAClient.DXGUI.Generic
             this.reason = reason;
         }
 
-        string reason = String.Empty;
+        private string reason = String.Empty;
 
         /// <summary>
         /// The returned error message from the update failure.

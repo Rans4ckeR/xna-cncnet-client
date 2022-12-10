@@ -11,6 +11,8 @@ using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.CnCNet5;
 using ClientCore.Extensions;
+using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
 using ClientGUI;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer;
@@ -21,6 +23,7 @@ using DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers;
 using DTAClient.Online;
 using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -49,7 +52,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private readonly List<CommandHandlerBase> ctcpCommandHandlers;
     private readonly GameCollection gameCollection;
     private readonly CnCNetUserData cncnetUserData;
-    private readonly PrivateMessagingWindow pmWindow;
+    private readonly MapSharer mapSharer;
+    private readonly TunnelSelectionWindow tunnelSelectionWindow;
+    private readonly FileHashCalculator fileHashCalculator;
+    private readonly GlobalContextMenu globalContextMenu;
+    private readonly UPnPHandler uPnPHandler;
     private readonly List<uint> gamePlayerIds = new();
     private readonly List<string> hostUploadedMaps = new();
     private readonly List<string> chatCommandDownloadedMaps = new();
@@ -57,10 +64,8 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private readonly List<(List<string> RemotePlayerNames, V3GameTunnelHandler Tunnel)> v3GameTunnelHandlers = new();
     private readonly List<P2PPlayer> p2pPlayers = new();
 
-    private TunnelSelectionWindow tunnelSelectionWindow;
     private XNAClientButton btnChangeTunnel;
     private Channel channel;
-    private GlobalContextMenu globalContextMenu;
     private string hostName;
     private IRCColor chatColor;
     private XNATimerControl gameBroadcastTimer;
@@ -115,22 +120,42 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         CnCNetUserData cncnetUserData,
         MapLoader mapLoader,
         DiscordHandler discordHandler,
-        PrivateMessagingWindow pmWindow)
-        : base(windowManager, "MultiplayerGameLobby", topBar, mapLoader, discordHandler)
+        MapSharer mapSharer,
+        StatisticsManager statisticsManager,
+        ILogger logger,
+        LogFileStatisticsParser logFileStatisticsParser,
+        GameProcessLogic gameProcessLogic,
+        UserINISettings userIniSettings,
+        TunnelSelectionWindow tunnelSelectionWindow,
+        FileHashCalculator fileHashCalculator,
+        SavedGameManager savedGameManager,
+        XNAMessageBox xnaMessageBox,
+        LoadOrSaveGameOptionPresetWindow loadOrSaveGameOptionPresetWindow,
+        GameOptionPresets gameOptionPresets,
+        MapCodeHelper mapCodeHelper,
+        GlobalContextMenu globalContextMenu,
+        IServiceProvider serviceProvider,
+        UPnPHandler uPnPHandler)
+        : base(windowManager, topBar, mapLoader, discordHandler, statisticsManager, logger, logFileStatisticsParser, gameProcessLogic, userIniSettings, savedGameManager, xnaMessageBox, loadOrSaveGameOptionPresetWindow, gameOptionPresets, mapCodeHelper, serviceProvider)
     {
+        Name = "MultiplayerGameLobby";
         this.connectionManager = connectionManager;
         localGame = ClientConfiguration.Instance.LocalGame;
         this.tunnelHandler = tunnelHandler;
         this.gameCollection = gameCollection;
         this.cncnetUserData = cncnetUserData;
-        this.pmWindow = pmWindow;
+        this.mapSharer = mapSharer;
+        this.tunnelSelectionWindow = tunnelSelectionWindow;
+        this.fileHashCalculator = fileHashCalculator;
+        this.globalContextMenu = globalContextMenu;
+        this.uPnPHandler = uPnPHandler;
 
         ctcpCommandHandlers = new()
         {
             new IntCommandHandler(CnCNetCommands.OPTIONS_REQUEST, (playerName, options) => HandleOptionsRequestAsync(playerName, options).HandleTask()),
             new IntCommandHandler(CnCNetCommands.READY_REQUEST, (playerName, options) => HandleReadyRequestAsync(playerName, options).HandleTask()),
             new StringCommandHandler(CnCNetCommands.PLAYER_OPTIONS, ApplyPlayerOptions),
-            new StringCommandHandler(CnCNetCommands.PLAYER_EXTRA_OPTIONS, ApplyPlayerExtraOptions),
+            new StringCommandHandler(CnCNetCommands.PLAYER_EXTRA_OPTIONS, (_, message) => ApplyPlayerExtraOptions(message)),
             new StringCommandHandler(CnCNetCommands.GAME_OPTIONS, (playerName, message) => ApplyGameOptionsAsync(playerName, message).HandleTask()),
             new StringCommandHandler(CnCNetCommands.GAME_START_V2, (playerName, message) => ClientLaunchGameV2Async(playerName, message).HandleTask()),
             new StringCommandHandler(CnCNetCommands.GAME_START_V3, ClientLaunchGameV3Async),
@@ -222,8 +247,6 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         };
         gameStartTimer.TimeElapsed += GameStartTimer_TimeElapsed;
 
-        tunnelSelectionWindow = new(WindowManager, tunnelHandler);
-
         tunnelSelectionWindow.Initialize();
 
         tunnelSelectionWindow.DrawOrder = 1;
@@ -242,9 +265,6 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         mapSharingConfirmationPanel.MapDownloadConfirmed += MapSharingConfirmationPanel_MapDownloadConfirmed;
 
         WindowManager.AddAndInitializeControl(gameBroadcastTimer);
-
-        globalContextMenu = new(WindowManager, connectionManager, cncnetUserData, pmWindow);
-
         AddChild(globalContextMenu);
         AddChild(gameStartTimer);
 
@@ -320,8 +340,8 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         this.hostName = hostName;
         this.playerLimit = playerLimit;
         this.isCustomPassword = isCustomPassword;
-        dynamicTunnelsEnabled = UserINISettings.Instance.UseDynamicTunnels;
-        p2pEnabled = UserINISettings.Instance.UseP2P;
+        dynamicTunnelsEnabled = userIniSettings.UseDynamicTunnels;
+        p2pEnabled = userIniSettings.UseP2P;
         channel.MessageAdded += Channel_MessageAdded;
         channel.CTCPReceived += Channel_CTCPReceived;
         channel.UserKicked += channel_UserKickedFunc;
@@ -367,11 +387,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     public async ValueTask OnJoinedAsync()
     {
-        var fhc = new FileHashCalculator();
+        fileHashCalculator.CalculateHashes();
 
-        fhc.CalculateHashes(GameModeMaps.GameModes);
-
-        gameFilesHash = fhc.GetCompleteHash();
+        gameFilesHash = fileHashCalculator.GetCompleteHash();
         pinnedTunnels = tunnelHandler.Tunnels
             .Where(q => !q.RequiresPassword && q.PingInMs > -1 && q.Clients < q.MaxClients - 8 && q.Version == Constants.TUNNEL_VERSION_3)
             .OrderBy(q => q.PingInMs)
@@ -545,7 +563,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         }
         catch (Exception ex)
         {
-            ProgramConstants.LogException(ex, "Could not close P2P IPV4 ports.");
+            logger.LogExceptionDetails(ex, "Could not close P2P IPV4 ports.");
         }
         finally
         {
@@ -559,7 +577,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         }
         catch (Exception ex)
         {
-            ProgramConstants.LogException(ex, "Could not close P2P IPV6 ports.");
+            logger.LogExceptionDetails(ex, "Could not close P2P IPV6 ports.");
         }
         finally
         {
@@ -587,7 +605,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void Channel_UserNameChanged(object sender, UserNameChangedEventArgs e)
     {
-        Logger.Log("CnCNetGameLobby: Nickname change: " + e.OldUserName + " to " + e.User.Name);
+        logger.LogInformation("CnCNetGameLobby: Nickname change: " + e.OldUserName + " to " + e.User.Name);
 
         int index = Players.FindIndex(p => p.Name.Equals(e.OldUserName, StringComparison.OrdinalIgnoreCase));
 
@@ -790,7 +808,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void Channel_CTCPReceived(object sender, ChannelCTCPEventArgs e)
     {
-        Logger.Log("CnCNetGameLobby_CTCPReceived");
+        logger.LogInformation("CnCNetGameLobby_CTCPReceived");
 
         foreach (CommandHandlerBase cmdHandler in ctcpCommandHandlers)
         {
@@ -801,7 +819,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             }
         }
 
-        Logger.Log("Unhandled CTCP command: " + e.Message + " from " + e.UserName);
+        logger.LogInformation("Unhandled CTCP command: " + e.Message + " from " + e.UserName);
     }
 
     private void Channel_MessageAdded(object sender, IRCMessageEventArgs e)
@@ -841,7 +859,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return;
         }
 
-        Logger.Log("One player MP -- starting!");
+        logger.LogInformation("One player MP -- starting!");
         Players.ForEach(pInfo => pInfo.IsInGame = true);
         CopyPlayerDataToUI();
         cncnetUserData.AddRecentPlayers(Players.Select(p => p.Name), channel.UIName);
@@ -966,7 +984,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         if (!dynamicTunnelsEnabled)
         {
-            var gameTunnelHandler = new V3GameTunnelHandler();
+            var gameTunnelHandler = new V3GameTunnelHandler(logger);
 
             gameTunnelHandler.RaiseRemoteHostConnectedEvent += (_, _) => AddCallback(() => GameTunnelHandler_Connected_CallbackAsync().HandleTask());
             gameTunnelHandler.RaiseRemoteHostConnectionFailedEvent += (_, _) => AddCallback(() => GameTunnelHandler_ConnectionFailed_CallbackAsync().HandleTask());
@@ -999,7 +1017,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
                         var tunnelClientPlayerNames = allPlayerNames.Where(q => !q.Equals(remotePlayerName, StringComparison.OrdinalIgnoreCase)).ToList();
                         ushort localPort = p2pPorts[6 - remotePlayerNames.FindIndex(q => q.Equals(remotePlayerName, StringComparison.OrdinalIgnoreCase))];
                         ushort remotePort = remotePorts[6 - tunnelClientPlayerNames.FindIndex(q => q.Equals(localPlayerName, StringComparison.OrdinalIgnoreCase))];
-                        var p2pLocalTunnelHandler = new V3GameTunnelHandler();
+                        var p2pLocalTunnelHandler = new V3GameTunnelHandler(logger);
 
                         p2pLocalTunnelHandler.RaiseRemoteHostConnectedEvent += (_, _) => AddCallback(() => GameTunnelHandler_Connected_CallbackAsync().HandleTask());
                         p2pLocalTunnelHandler.RaiseRemoteHostConnectionFailedEvent += (_, _) => AddCallback(() => GameTunnelHandler_ConnectionFailed_CallbackAsync().HandleTask());
@@ -1014,7 +1032,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
             foreach (IGrouping<CnCNetTunnel, (string Name, CnCNetTunnel Tunnel, int CombinedPing)> tunnelGrouping in playerTunnels.Where(q => !p2pPlayerTunnels.Contains(q.RemotePlayerName, StringComparer.OrdinalIgnoreCase)).GroupBy(q => q.Tunnel))
             {
-                var gameTunnelHandler = new V3GameTunnelHandler();
+                var gameTunnelHandler = new V3GameTunnelHandler(logger);
 
                 gameTunnelHandler.RaiseRemoteHostConnectedEvent += (_, _) => AddCallback(() => GameTunnelHandler_Connected_CallbackAsync().HandleTask());
                 gameTunnelHandler.RaiseRemoteHostConnectionFailedEvent += (_, _) => AddCallback(() => GameTunnelHandler_ConnectionFailed_CallbackAsync().HandleTask());
@@ -1058,7 +1076,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void HandleTunnelFail(string playerName)
     {
-        Logger.Log(playerName + " failed to connect - aborting game launch.");
+        logger.LogInformation(playerName + " failed to connect - aborting game launch.");
         AddNotice(string.Format(CultureInfo.InvariantCulture, "{0} failed to connect. Please retry, disable P2P or pick " +
             "another tunnel server by typing /{1} in the chat input box.".L10N("UI:Main:PlayerConnectFailed"), playerName, CnCNetLobbyCommands.CHANGETUNNEL));
         AbortGameStart();
@@ -1073,7 +1091,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         if (index == -1)
         {
-            Logger.Log("HandleTunnelConnected: Couldn't find player " + playerName + "!");
+            logger.LogInformation("HandleTunnelConnected: Couldn't find player " + playerName + "!");
             AbortGameStart();
             return;
         }
@@ -1086,7 +1104,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private async ValueTask LaunchGameV3Async()
     {
-        Logger.Log("All players are connected, starting game!");
+        logger.LogInformation("All players are connected, starting game!");
         AddNotice("All players have connected...".L10N("UI:Main:PlayersConnected"));
 
         List<ushort> usedPorts = new(p2pPorts);
@@ -1338,11 +1356,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
             try
             {
-                (internetGatewayDevice, p2pPorts, p2pIpV6PortIds, publicIpV6Address, publicIpV4Address) = await UPnPHandler.SetupPortsAsync(internetGatewayDevice, p2pPorts);
+                (internetGatewayDevice, p2pPorts, p2pIpV6PortIds, publicIpV6Address, publicIpV4Address) = await uPnPHandler.SetupPortsAsync(internetGatewayDevice, p2pPorts);
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Could not open UPnP P2P ports.");
+                logger.LogExceptionDetails(ex, "Could not open UPnP P2P ports.");
                 AddNotice(string.Format(CultureInfo.CurrentCulture, "Could not open P2P ports. Check that UPnP port mapping is enabled for this device on your router/modem.".L10N("UI:Main:UPnPP2PFailed")), Color.Orange);
 
                 return;
@@ -1736,7 +1754,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private async ValueTask RequestMapAsync()
     {
-        if (UserINISettings.Instance.EnableMapSharing)
+        if (userIniSettings.EnableMapSharing)
         {
             AddNotice("The game host has selected a map that doesn't exist on your installation.".L10N("UI:Main:MapNotExist"));
             mapSharingConfirmationPanel.ShowForMapDownload();
@@ -1760,10 +1778,10 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void MapSharingConfirmationPanel_MapDownloadConfirmed(object sender, EventArgs e)
     {
-        Logger.Log("Map sharing confirmed.");
+        logger.LogInformation("Map sharing confirmed.");
         AddNotice("Attempting to download map.".L10N("UI:Main:DownloadingMap"));
         mapSharingConfirmationPanel.SetDownloadingStatus();
-        MapSharer.DownloadMap(lastMapHash, localGame, lastMapName);
+        mapSharer.DownloadMap(lastMapHash, localGame, lastMapName);
     }
 
     protected override ValueTask ChangeMapAsync(GameModeMap gameModeMap)
@@ -1856,13 +1874,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         isStartingGame = false;
 
-        var fhc = new FileHashCalculator();
+        fileHashCalculator.CalculateHashes();
 
-        fhc.CalculateHashes(GameModeMaps.GameModes);
-
-        if (gameFilesHash != fhc.GetCompleteHash())
+        if (gameFilesHash != fileHashCalculator.GetCompleteHash())
         {
-            Logger.Log("Game files modified during client session!");
+            logger.LogInformation("Game files modified during client session!");
             await channel.SendCTCPMessageAsync(CnCNetCommands.CHEAT_DETECTED, QueuedMessageType.INSTANT_MESSAGE, 0);
             HandleCheatDetectedMessage(ProgramConstants.PLAYERNAME);
         }
@@ -2330,7 +2346,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private async ValueTask MapSharer_HandleMapDownloadCompleteAsync(SHA1EventArgs e)
     {
         string mapFileName = MapSharer.GetMapFileName(e.SHA1, e.MapName);
-        Logger.Log("Map " + mapFileName + " downloaded, parsing.");
+        logger.LogInformation("Map " + mapFileName + " downloaded, parsing.");
         string mapPath = "Maps/Custom/" + mapFileName;
         Map map = MapLoader.LoadCustomMap(mapPath, out string returnMessage);
 
@@ -2397,7 +2413,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         if (hostUploadedMaps.Contains(mapHash))
         {
-            Logger.Log("HandleMapUploadRequest: Map " + mapHash + " is already uploaded!");
+            logger.LogInformation("HandleMapUploadRequest: Map " + mapHash + " is already uploaded!");
             return;
         }
 
@@ -2413,13 +2429,13 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         if (map == null)
         {
-            Logger.Log("Unknown map upload request from " + sender + ": " + mapHash);
+            logger.LogInformation("Unknown map upload request from " + sender + ": " + mapHash);
             return;
         }
 
         if (map.Official)
         {
-            Logger.Log("HandleMapUploadRequest: Map is official, so skip request");
+            logger.LogInformation("HandleMapUploadRequest: Map is official, so skip request");
             AddNotice(
                 string.Format(("{0} doesn't have the map '{1}' on their local installation. " +
                 "The map needs to be changed or {0} is unable to participate in the match.").L10N("UI:Main:PlayerMissingMap"),
@@ -2437,7 +2453,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             "Attempting to upload the map to the CnCNet map database.").L10N("UI:Main:UpdateMapToDBPrompt"),
             sender,
             map.Name));
-        MapSharer.UploadMap(map, localGame);
+        mapSharer.UploadMap(map, localGame);
     }
 
     /// <summary>
@@ -2484,8 +2500,8 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         if (lastMapHash == sha1 && Map == null)
         {
-            Logger.Log("The game host has uploaded the map into the database. Re-attempting download...");
-            MapSharer.DownloadMap(sha1, localGame, lastMapName);
+            logger.LogInformation("The game host has uploaded the map into the database. Re-attempting download...");
+            mapSharer.DownloadMap(sha1, localGame, lastMapName);
         }
     }
 
@@ -2553,7 +2569,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
                 sha1,
                 loadedMap.Map.BaseFilePath);
             AddNotice(message, Color.Yellow);
-            Logger.Log(message);
+            logger.LogInformation(message);
             return;
         }
 
@@ -2568,10 +2584,10 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         message = string.Format("Attempting to download map via chat command: sha1={0}, mapName={1}".L10N("UI:Main:DownloadMapCommandStartingDownload"), sha1, mapName);
 
-        Logger.Log(message);
+        logger.LogInformation(message);
         AddNotice(message);
 
-        MapSharer.DownloadMap(sha1, localGame, safeMapName);
+        mapSharer.DownloadMap(sha1, localGame, safeMapName);
     }
 
     /// <summary>

@@ -1,19 +1,18 @@
-﻿using ClientCore;
-using Microsoft.Xna.Framework.Graphics;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json.Serialization;
+using ClientCore;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework.Graphics;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
-using Exception = System.Exception;
 using Point = Microsoft.Xna.Framework.Point;
-using Utilities = Rampastring.Tools.Utilities;
-using static System.Collections.Specialized.BitVector32;
 
 namespace DTAClient.Domain.Multiplayer
 {
@@ -36,12 +35,21 @@ namespace DTAClient.Domain.Multiplayer
     /// <summary>
     /// A multiplayer map.
     /// </summary>
-    public class Map
+    internal sealed class Map
     {
+        [JsonIgnore]
         private const int MAX_PLAYERS = 8;
+
+        [JsonIgnore]
+        private readonly ILogger logger;
+
+        [JsonIgnore]
+        private readonly MapPreviewExtractor mapPreviewExtractor;
 
         public Map(string baseFilePath, string customMapFilePath = null)
         {
+            //this.logger = logger; todo DI
+            //this.mapPreviewExtractor = mapPreviewExtractor;
             BaseFilePath = baseFilePath;
             this.customMapFilePath = customMapFilePath;
             Official = string.IsNullOrEmpty(this.customMapFilePath);
@@ -313,7 +321,7 @@ namespace DTAClient.Domain.Multiplayer
 
                     if (parts.Length is < 3 or > 5)
                     {
-                        Logger.Log($"Invalid format for ExtraTexture{i} in map " + BaseFilePath);
+                        logger.LogInformation($"Invalid format for ExtraTexture{i} in map " + BaseFilePath);
                         continue;
                     }
 
@@ -406,7 +414,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Setting info for " + BaseFilePath + " failed!");
+                logger.LogExceptionDetails(ex, "Setting info for " + BaseFilePath + " failed!");
                 return false;
             }
         }
@@ -434,7 +442,7 @@ namespace DTAClient.Domain.Multiplayer
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, $"Unable to parse team start mappings. Map: \"{Name}\".");
+                    logger.LogExceptionDetails(ex, $"Unable to parse team start mappings. Map: \"{Name}\".");
                     TeamStartMappingPresets = new List<TeamStartMappingPreset>();
                 }
             }
@@ -518,7 +526,7 @@ namespace DTAClient.Domain.Multiplayer
 
                 if (GameModes.Length == 0)
                 {
-                    Logger.Log("Custom map " + customMapFilePath + " has no game modes!");
+                    logger.LogInformation("Custom map " + customMapFilePath + " has no game modes!");
                     return false;
                 }
 
@@ -608,7 +616,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Loading custom map " + customMapFilePath + " failed!");
+                logger.LogExceptionDetails(ex, "Loading custom map " + customMapFilePath + " failed!");
                 return false;
             }
         }
@@ -619,7 +627,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (keys == null)
             {
-                Logger.Log("Invalid ForcedOptions section \"" + forcedOptionsSection + "\" in map " + BaseFilePath);
+                logger.LogInformation("Invalid ForcedOptions section \"" + forcedOptionsSection + "\" in map " + BaseFilePath);
                 return;
             }
 
@@ -660,7 +668,7 @@ namespace DTAClient.Domain.Multiplayer
             if (!Official)
             {
                 // Extract preview from the map itself
-                using Image preview = MapPreviewExtractor.ExtractMapPreview(GetCustomMapIniFile());
+                using Image preview = mapPreviewExtractor.ExtractMapPreview(GetCustomMapIniFile());
 
                 if (preview != null)
                 {
@@ -865,8 +873,8 @@ namespace DTAClient.Domain.Multiplayer
             int pixelPosX = rx * ProgramConstants.MAP_CELL_SIZE_X / 2;
             int pixelPosY = ry * ProgramConstants.MAP_CELL_SIZE_Y / 2 - level * ProgramConstants.MAP_CELL_SIZE_Y / 2;
 
-            pixelPosX = pixelPosX - (Convert.ToInt32(localSizeValues[0], CultureInfo.InvariantCulture) * ProgramConstants.MAP_CELL_SIZE_X);
-            pixelPosY = pixelPosY - (Convert.ToInt32(localSizeValues[1], CultureInfo.InvariantCulture) * ProgramConstants.MAP_CELL_SIZE_Y);
+            pixelPosX -= (Convert.ToInt32(localSizeValues[0], CultureInfo.InvariantCulture) * ProgramConstants.MAP_CELL_SIZE_X);
+            pixelPosY -= (Convert.ToInt32(localSizeValues[1], CultureInfo.InvariantCulture) * ProgramConstants.MAP_CELL_SIZE_Y);
 
             // Calculate map size
             int mapSizeX = Convert.ToInt32(localSizeValues[2], CultureInfo.InvariantCulture) * ProgramConstants.MAP_CELL_SIZE_X;
@@ -880,8 +888,6 @@ namespace DTAClient.Domain.Multiplayer
 
             return new Point(pixelX, pixelY);
         }
-
-        protected bool Equals(Map other) => string.Equals(SHA1, other?.SHA1, StringComparison.InvariantCultureIgnoreCase);
 
         public override int GetHashCode() => SHA1 != null ? SHA1.GetHashCode() : 0;
     }

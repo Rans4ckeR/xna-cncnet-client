@@ -1,5 +1,5 @@
-﻿using Rampastring.Tools;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
 {

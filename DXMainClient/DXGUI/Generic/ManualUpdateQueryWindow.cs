@@ -2,6 +2,7 @@
 using ClientCore;
 using ClientGUI;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -11,12 +12,15 @@ namespace DTAClient.DXGUI.Generic
     /// <summary>
     /// A window that redirects users to manually download an update.
     /// </summary>
-    public class ManualUpdateQueryWindow : XNAWindow
+    internal sealed class ManualUpdateQueryWindow : XNAWindow
     {
         public delegate void ClosedEventHandler(object sender, EventArgs e);
         public event ClosedEventHandler Closed;
 
-        public ManualUpdateQueryWindow(WindowManager windowManager) : base(windowManager) { }
+        public ManualUpdateQueryWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
+        {
+        }
 
         private XNALabel lblDescription;
 

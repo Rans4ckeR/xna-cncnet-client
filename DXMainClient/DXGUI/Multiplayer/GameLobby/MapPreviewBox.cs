@@ -1,21 +1,21 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using ClientCore;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer;
+using Localization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ClientGUI;
-using Localization;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
-    struct ExtraMapPreviewTexture
+    internal struct ExtraMapPreviewTexture
     {
         public Texture2D Texture;
         public Point Point;
@@ -36,14 +36,18 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     {
         private const int MAX_STARTING_LOCATIONS = 8;
 
+        private readonly UserINISettings userIniSettings;
+
         public event EventHandler<LocalStartingLocationEventArgs> LocalStartingLocationSelected;
 
         public event EventHandler StartingLocationApplied;
 
-        public MapPreviewBox(WindowManager windowManager) : base(windowManager)
+        public MapPreviewBox(WindowManager windowManager, UserINISettings userIniSettings)
+            : base(windowManager)
         {
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
             FontIndex = 1;
+            this.userIniSettings = userIniSettings;
         }
 
         public void SetFields(List<PlayerInfo> players, List<PlayerInfo> aiPlayers, List<MultiplayerColor> mpColors, string[] sides, IniFile gameOptionsIni)
@@ -93,7 +97,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             ClientRectangleUpdated += (s, e) => UpdateMap();
         }
-
 
         private GameModeMap _gameModeMap;
         public GameModeMap GameModeMap
@@ -147,7 +150,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private bool disposeTextures = true;
 
-        private bool useNearestNeighbour = false;
+        private bool useNearestNeighbour;
 
         private IniFile gameOptionsIni;
 
@@ -166,7 +169,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1);
 #if !GL
 
-            disposeTextures = !UserINISettings.Instance.PreloadMapPreviews;
+            disposeTextures = !userIniSettings.PreloadMapPreviews;
 #endif
 
             mainContextMenu = new XNAContextMenu(WindowManager);
@@ -233,7 +236,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
 
             toggleFavoriteMapItem.Text = GameModeMap.IsFavorite ? "Remove Favorite".L10N("UI:Main:RemoveFavorite") : "Add Favorite".L10N("UI:Main:AddFavorite");
-            toggleExtraTexturesItem.Text = UserINISettings.Instance.DisplayToggleableExtraTextures ?
+            toggleExtraTexturesItem.Text = userIniSettings.DisplayToggleableExtraTextures ?
                 "Hide Extra Icons".L10N("UI:Main:HideExtraIcons") : "Show Extra Icons".L10N("UI:Main:ShowExtraIcons");
 
             mapContextMenu.Open(GetCursorPoint());
@@ -246,8 +249,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private void ToggleExtraTextures()
         {
-            UserINISettings.Instance.DisplayToggleableExtraTextures.Value =
-                !UserINISettings.Instance.DisplayToggleableExtraTextures;
+            userIniSettings.DisplayToggleableExtraTextures.Value =
+                !userIniSettings.DisplayToggleableExtraTextures;
 
             RefreshExtraTexturesBtn();
         }
@@ -375,7 +378,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         /// <summary>
         /// Updates the map preview texture's position inside
-        /// this control's display rectangle and the 
+        /// this control's display rectangle and the
         /// starting location indicators' positions.
         /// </summary>
         private void UpdateMap()
@@ -469,10 +472,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 startingLocationIndicators[i].Disable();
             }
 
-
             foreach (var mapExtraTexture in GameModeMap.Map.GetExtraMapPreviewTextures())
             {
-                // LoadTexture makes use of a texture cache 
+                // LoadTexture makes use of a texture cache
                 // so we don't need to cache the textures manually
                 Texture2D extraTexture = AssetLoader.LoadTexture(mapExtraTexture.TextureName);
                 Point location = PreviewTexturePointToControlAreaPoint(
@@ -505,7 +507,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         public void RefreshFavoriteBtn()
         {
-            bool isFav = UserINISettings.Instance.IsFavoriteMap(GameModeMap?.Map.Name, GameModeMap?.GameMode.Name);
+            bool isFav = userIniSettings.IsFavoriteMap(GameModeMap?.Map.Name, GameModeMap?.GameMode.Name);
             var textureName = isFav ? "favActive.png" : "favInactive.png";
             var hoverTextureName = isFav ? "favActive_c.png" : "favInactive_c.png";
             var hoverTexture = AssetLoader.AssetExists(hoverTextureName) ? AssetLoader.LoadTexture(hoverTextureName) : null;
@@ -516,8 +518,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         public void RefreshExtraTexturesBtn()
         {
-            var textureName = UserINISettings.Instance.DisplayToggleableExtraTextures ? "pvTexturesActive.png" : "pvTexturesInactive.png";
-            var hoverTextureName = UserINISettings.Instance.DisplayToggleableExtraTextures ? "pvTexturesActive_c.png" : "pvTexturesInactive_c.png";
+            var textureName = userIniSettings.DisplayToggleableExtraTextures ? "pvTexturesActive.png" : "pvTexturesInactive.png";
+            var hoverTextureName = userIniSettings.DisplayToggleableExtraTextures ? "pvTexturesActive_c.png" : "pvTexturesInactive_c.png";
             var hoverTexture = AssetLoader.AssetExists(hoverTextureName) ? AssetLoader.LoadTexture(hoverTextureName) : null;
             btnToggleExtraTextures.IdleTexture = AssetLoader.LoadTexture(textureName);
             btnToggleExtraTextures.HoverTexture = hoverTexture;
@@ -650,7 +652,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 foreach (var extraTexture in extraTextures)
                 {
-                    if (!extraTexture.Toggleable || UserINISettings.Instance.DisplayToggleableExtraTextures)
+                    if (!extraTexture.Toggleable || userIniSettings.DisplayToggleableExtraTextures)
                     {
                         Renderer.DrawTexture(extraTexture.Texture,
                             new Rectangle(renderPoint.X + extraTexture.Point.X,

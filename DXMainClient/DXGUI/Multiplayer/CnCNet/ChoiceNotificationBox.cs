@@ -1,13 +1,13 @@
-﻿using ClientGUI;
+﻿using System;
+using System.IO;
+using System.Reflection;
+using ClientCore.CnCNet5;
+using ClientGUI;
 using Localization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.IO;
-using System.Reflection;
-using ClientCore.CnCNet5;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
@@ -43,7 +43,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private TimeSpan downTimeWaitTime;
 
-        private bool isDown = false;
+        private bool isDown;
 
         private const int boxHeight = 101;
 

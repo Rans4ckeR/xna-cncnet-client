@@ -1,11 +1,13 @@
-﻿using Rampastring.XNAUI.XNAControls;
-using Rampastring.Tools;
-using System;
-using ClientCore;
-using Rampastring.XNAUI;
-using ClientGUI;
+﻿using System;
 using System.IO;
+using ClientCore;
+using ClientCore.Extensions;
+using ClientGUI;
 using Localization;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
+using Rampastring.XNAUI.XNAControls;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 #if ARES
@@ -23,22 +25,40 @@ namespace DTAClient.DXGUI
     /// Also enables power-saving (lowers FPS) while a game is in progress,
     /// and performs various operations on game start and exit.
     /// </summary>
-    public class GameInProgressWindow : XNAPanel
+    internal sealed class GameInProgressWindow : XNAPanel
     {
         private const double POWER_SAVING_FPS = 5.0;
 
-        public GameInProgressWindow(WindowManager windowManager) : base(windowManager)
+        private readonly ILogger logger;
+        private readonly GameClass gameClass;
+        private readonly UserINISettings userIniSettings;
+        private readonly GameProcessLogic gameProcessLogic;
+        private readonly XNAWindow xnaWindow;
+
+        public GameInProgressWindow(
+            WindowManager windowManager,
+            ILogger logger,
+            GameClass gameClass,
+            UserINISettings userIniSettings,
+            GameProcessLogic gameProcessLogic,
+            XNAWindow xnaWindow)
+            : base(windowManager)
         {
+            this.logger = logger;
+            this.gameClass = gameClass;
+            this.userIniSettings = userIniSettings;
+            this.gameProcessLogic = gameProcessLogic;
+            this.xnaWindow = xnaWindow;
         }
 
-        private bool initialized = false;
-        private bool nativeCursorUsed = false;
+        private bool initialized;
+        private bool nativeCursorUsed;
 
 #if ARES
         private List<string> debugSnapshotDirectories;
         private DateTime debugLogLastWriteTime;
 #else
-        private bool deletingLogFilesFailed = false;
+        private bool deletingLogFilesFailed;
 #endif
 
         public override void Initialize()
@@ -53,29 +73,27 @@ namespace DTAClient.DXGUI
             DrawBorders = false;
             ClientRectangle = new Rectangle(0, 0, WindowManager.RenderResolutionX, WindowManager.RenderResolutionY);
 
-            XNAWindow window = new XNAWindow(WindowManager);
-
-            window.Name = "GameInProgressWindow";
-            window.BackgroundTexture = AssetLoader.LoadTexture("gameinprogresswindowbg.png");
-            window.ClientRectangle = new Rectangle(0, 0, 200, 100);
+            xnaWindow.Name = "GameInProgressWindow";
+            xnaWindow.BackgroundTexture = AssetLoader.LoadTexture("gameinprogresswindowbg.png");
+            xnaWindow.ClientRectangle = new Rectangle(0, 0, 200, 100);
 
             XNALabel explanation = new XNALabel(WindowManager);
             explanation.Text = "A game is in progress.".L10N("UI:Main:GameInProgress");
 
-            AddChild(window);
+            AddChild(xnaWindow);
 
-            window.AddChild(explanation);
+            xnaWindow.AddChild(explanation);
 
             base.Initialize();
 
-            GameProcessLogic.GameProcessStarted += SharedUILogic_GameProcessStarted;
-            GameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
+            gameProcessLogic.GameProcessStarted += SharedUILogic_GameProcessStarted;
+            gameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
 
             explanation.CenterOnParent();
 
-            window.CenterOnParent();
+            xnaWindow.CenterOnParent();
 
-            Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / UserINISettings.Instance.ClientFPS);
+            Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / userIniSettings.ClientFPS);
 
             Visible = false;
             Enabled = false;
@@ -90,7 +108,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
             }
 #endif
         }
@@ -112,7 +130,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Exception when deleting error log files!");
+                logger.LogExceptionDetails(ex, "Exception when deleting error log files!");
                 deletingLogFilesFailed = true;
             }
 #endif
@@ -126,7 +144,7 @@ namespace DTAClient.DXGUI
             Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / POWER_SAVING_FPS);
 #if WINFORMS
 
-            if (UserINISettings.Instance.MinimizeWindowsOnGameStart)
+            if (userIniSettings.MinimizeWindowsOnGameStart)
                 WindowManager.MinimizeWindow();
 #endif
         }
@@ -145,16 +163,16 @@ namespace DTAClient.DXGUI
             else
                 WindowManager.Cursor.Visible = true;
             ProgramConstants.IsInGame = false;
-            Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / UserINISettings.Instance.ClientFPS);
+            Game.TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0 / userIniSettings.ClientFPS);
 
 #if WINFORMS
-            if (UserINISettings.Instance.MinimizeWindowsOnGameStart)
+            if (userIniSettings.MinimizeWindowsOnGameStart)
                 WindowManager.MaximizeWindow();
 
 #endif
-            UserINISettings.Instance.ReloadSettings();
+            userIniSettings.ReloadSettings();
 
-            if (UserINISettings.Instance.BorderlessWindowedClient)
+            if (userIniSettings.BorderlessWindowedClient)
             {
                 // Hack: Re-set graphics mode
                 // Windows resizes our window if we're in fullscreen mode and
@@ -164,7 +182,7 @@ namespace DTAClient.DXGUI
                 // stretched and also messes up input handling since the window manager
                 // still thinks it's using the original resolution.
                 // Re-setting the graphics mode fixes it.
-                GameClass.SetGraphicsMode(WindowManager);
+                gameClass.SetGraphicsMode(WindowManager);
             }
 
             DateTime dtn = DateTime.Now;
@@ -237,7 +255,7 @@ namespace DTAClient.DXGUI
                     if (!errorLogDirectoryInfo.Exists)
                         errorLogDirectoryInfo.Create();
 
-                    Logger.Log("The game crashed! Copying " + filename + " file.");
+                    logger.LogInformation("The game crashed! Copying " + filename + " file.");
 
                     string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
 
@@ -250,7 +268,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "An error occurred while checking for " + filename + " file.");
+                logger.LogExceptionDetails(ex, "An error occurred while checking for " + filename + " file.");
             }
 
             return copied;
@@ -280,7 +298,7 @@ namespace DTAClient.DXGUI
                         if (!syncErrorLogDirectoryInfo.Exists)
                             syncErrorLogDirectoryInfo.Create();
 
-                        Logger.Log("There was a sync error! Copying file " + filename);
+                        logger.LogInformation("There was a sync error! Copying file " + filename);
 
                         string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
 
@@ -295,7 +313,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "An error occured while checking for SYNCX.TXT files.");
+                logger.LogExceptionDetails(ex, "An error occured while checking for SYNCX.TXT files.");
             }
 
             return copied;
@@ -327,7 +345,7 @@ namespace DTAClient.DXGUI
                         }
                         catch (Exception ex)
                         {
-                            ProgramConstants.LogException(ex);
+                            logger.LogExceptionDetails(ex);
                         }
                     }
                 }
@@ -350,7 +368,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
             }
 
             return directories;
@@ -372,7 +390,7 @@ namespace DTAClient.DXGUI
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "ProcessScreenshots: An error occured trying to create Screenshots directory.");
+                    logger.LogExceptionDetails(ex, "ProcessScreenshots: An error occured trying to create Screenshots directory.");
                     return;
                 }
             }
@@ -390,11 +408,11 @@ namespace DTAClient.DXGUI
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(file.FullName) + ".png.");
+                    logger.LogExceptionDetails(ex, "ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(file.FullName) + ".png.");
                     continue;
                 }
 
-                Logger.Log("ProcessScreenshots: " + Path.GetFileNameWithoutExtension(file.FullName) + ".png has been saved to Screenshots directory.");
+                logger.LogInformation("ProcessScreenshots: " + Path.GetFileNameWithoutExtension(file.FullName) + ".png has been saved to Screenshots directory.");
                 file.Delete();
             }
         }

@@ -1,12 +1,13 @@
-﻿using ClientGUI;
-using System;
+﻿using System;
+using System.IO;
+using ClientCore;
+using ClientGUI;
+using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using Microsoft.Xna.Framework;
-using ClientCore;
-using System.IO;
-using Rampastring.Tools;
-using Localization;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -14,9 +15,10 @@ namespace DTAClient.DXGUI.Multiplayer
     /// A window that makes it possible for a LAN player who's hosting a game
     /// to pick between hosting a new game and hosting a loaded game.
     /// </summary>
-    class LANGameCreationWindow : XNAWindow
+    internal sealed class LANGameCreationWindow : XNAWindow
     {
-        public LANGameCreationWindow(WindowManager windowManager) : base(windowManager)
+        public LANGameCreationWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
         }
 

@@ -5,7 +5,7 @@ using DTAClient.Domain.Multiplayer;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
-    public class GameModeMapFilter
+    internal sealed class GameModeMapFilter
     {
         public Func<List<GameModeMap>> GetGameModeMaps;
 

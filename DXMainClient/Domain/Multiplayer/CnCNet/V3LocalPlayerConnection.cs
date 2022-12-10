@@ -4,8 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ClientCore;
-using Rampastring.Tools;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
@@ -23,10 +23,17 @@ internal sealed class V3LocalPlayerConnection : IDisposable
     private const int MinimumPacketSize = 8;
     private const int MaximumPacketSize = 1024;
 
+    private readonly ILogger logger;
+
     private Socket localGameSocket;
     private EndPoint remotePlayerEndPoint;
     private CancellationToken cancellationToken;
     private uint playerId;
+
+    public V3LocalPlayerConnection(ILogger logger)
+    {
+        this.logger = logger;
+    }
 
     /// <summary>
     /// Creates a local game socket and returns the port.
@@ -70,9 +77,9 @@ internal sealed class V3LocalPlayerConnection : IDisposable
         int receiveTimeout = GameStartReceiveTimeout;
 
 #if DEBUG
-        Logger.Log($"Start listening for local game {remotePlayerEndPoint} on {localGameSocket.LocalEndPoint} for player {playerId}.");
+        logger.LogTrace($"Start listening for local game {remotePlayerEndPoint} on {localGameSocket.LocalEndPoint} for player {playerId}.");
 #else
-        Logger.Log($"Start listening for local game for player {playerId}.");
+        logger.LogInformation($"Start listening for local game for player {playerId}.");
 #endif
 
         while (!cancellationToken.IsCancellationRequested)
@@ -89,15 +96,15 @@ internal sealed class V3LocalPlayerConnection : IDisposable
                 data = buffer[..socketReceiveFromResult.ReceivedBytes];
 
 #if DEBUG
-                Logger.Log($"Received data from local game {socketReceiveFromResult.RemoteEndPoint} on {localGameSocket.LocalEndPoint} for player {playerId}.");
+                logger.LogTrace($"Received data from local game {socketReceiveFromResult.RemoteEndPoint} on {localGameSocket.LocalEndPoint} for player {playerId}.");
 #endif
             }
             catch (SocketException ex)
             {
 #if DEBUG
-                ProgramConstants.LogException(ex, $"Socket exception in {remotePlayerEndPoint} receive loop for player {playerId}.");
+                logger.LogExceptionDetails(ex, $"Socket exception in {remotePlayerEndPoint} receive loop for player {playerId}.");
 #else
-                ProgramConstants.LogException(ex, $"Socket exception in receive loop for player {playerId}.");
+                logger.LogExceptionDetails(ex, $"Socket exception in receive loop for player {playerId}.");
 #endif
                 OnRaiseConnectionCutEvent(EventArgs.Empty);
 
@@ -114,9 +121,9 @@ internal sealed class V3LocalPlayerConnection : IDisposable
             catch (OperationCanceledException)
             {
 #if DEBUG
-                Logger.Log($"Local game connection {localGameSocket.LocalEndPoint} timed out for player {playerId} when receiving data.");
+                logger.LogTrace($"Local game connection {localGameSocket.LocalEndPoint} timed out for player {playerId} when receiving data.");
 #else
-                Logger.Log($"Local game connection timed out for player {playerId} when receiving data.");
+                logger.LogInformation($"Local game connection timed out for player {playerId} when receiving data.");
 #endif
                 OnRaiseConnectionCutEvent(EventArgs.Empty);
 
@@ -136,7 +143,7 @@ internal sealed class V3LocalPlayerConnection : IDisposable
     public async ValueTask SendDataAsync(ReadOnlyMemory<byte> data)
     {
 #if DEBUG
-        Logger.Log($"Sending data from {localGameSocket.LocalEndPoint} to local game {remotePlayerEndPoint} for player {playerId}.");
+        logger.LogTrace($"Sending data from {localGameSocket.LocalEndPoint} to local game {remotePlayerEndPoint} for player {playerId}.");
 
 #endif
         if (remotePlayerEndPoint is null || data.Length < MinimumPacketSize)
@@ -152,9 +159,9 @@ internal sealed class V3LocalPlayerConnection : IDisposable
         catch (SocketException ex)
         {
 #if DEBUG
-            ProgramConstants.LogException(ex, $"Socket exception sending data to {remotePlayerEndPoint} for player {playerId}.");
+            logger.LogExceptionDetails(ex, $"Socket exception sending data to {remotePlayerEndPoint} for player {playerId}.");
 #else
-            ProgramConstants.LogException(ex, $"Socket exception sending data for player {playerId}.");
+            logger.LogExceptionDetails(ex, $"Socket exception sending data for player {playerId}.");
 #endif
             OnRaiseConnectionCutEvent(EventArgs.Empty);
         }
@@ -167,9 +174,9 @@ internal sealed class V3LocalPlayerConnection : IDisposable
         catch (OperationCanceledException)
         {
 #if DEBUG
-            Logger.Log($"Local game connection {localGameSocket.LocalEndPoint} timed out for player {playerId} when sending data.");
+            logger.LogTrace($"Local game connection {localGameSocket.LocalEndPoint} timed out for player {playerId} when sending data.");
 #else
-            Logger.Log($"Local game connection timed out for player {playerId} when sending data.");
+            logger.LogInformation($"Local game connection timed out for player {playerId} when sending data.");
 #endif
             OnRaiseConnectionCutEvent(EventArgs.Empty);
         }
@@ -178,9 +185,9 @@ internal sealed class V3LocalPlayerConnection : IDisposable
     public void Dispose()
     {
 #if DEBUG
-        Logger.Log($"Connection to local game {remotePlayerEndPoint} closed for player {playerId}.");
+        logger.LogTrace($"Connection to local game {remotePlayerEndPoint} closed for player {playerId}.");
 #else
-        Logger.Log($"Connection to local game closed for player {playerId}.");
+        logger.LogInformation($"Connection to local game closed for player {playerId}.");
 #endif
         localGameSocket.Close();
     }

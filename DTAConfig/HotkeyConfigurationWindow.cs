@@ -1,27 +1,35 @@
-﻿using Localization;
+﻿using System;
+using System.Collections.Generic;
 using ClientCore;
 using ClientGUI;
+using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
 
 namespace DTAConfig
 {
     /// <summary>
     /// A window for configuring in-game hotkeys.
     /// </summary>
-    public class HotkeyConfigurationWindow : XNAWindow
+    public sealed class HotkeyConfigurationWindow : XNAWindow
     {
-        private readonly string HOTKEY_TIP_TEXT = "Press a key...".L10N("UI:DTAConfig:PressAKey");
-        private const string HOTKEY_INI_SECTION = "Hotkey";
         private const string KEYBOARD_COMMANDS_INI = "KeyboardCommands.ini";
 
-        public HotkeyConfigurationWindow(WindowManager windowManager) : base(windowManager)
+        private readonly string HOTKEY_TIP_TEXT = "Press a key...".L10N("UI:DTAConfig:PressAKey");
+        private readonly GameProcessLogic gameProcessLogic;
+
+        public HotkeyConfigurationWindow(
+            WindowManager windowManager,
+            ILogger logger,
+            GameProcessLogic gameProcessLogic,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
+            this.gameProcessLogic = gameProcessLogic;
         }
 
         /// <summary>
@@ -212,9 +220,9 @@ namespace DTAConfig
                 ddCategory.SelectedIndex = 0;
             }
             else
-                Logger.Log("No keyboard game commands exist!");
+                logger.LogInformation("No keyboard game commands exist!");
 
-            GameProcessLogic.GameProcessExited += GameProcessLogic_GameProcessExited;
+            gameProcessLogic.GameProcessExited += GameProcessLogic_GameProcessExited;
 
             base.Initialize();
 
@@ -509,7 +517,7 @@ namespace DTAConfig
         /// <summary>
         /// A game command that can be assigned into a key on the keyboard.
         /// </summary>
-        class GameCommand
+        private class GameCommand
         {
             public GameCommand(string uiName, string category, string description, string iniName)
             {
@@ -566,7 +574,7 @@ namespace DTAConfig
         /// <summary>
         /// Represents a keyboard key with modifiers.
         /// </summary>
-        struct Hotkey
+        private struct Hotkey
         {
             /// <summary>
             /// Creates a new hotkey by decoding a Tiberian Sun / Red Alert 2

@@ -1,10 +1,10 @@
 ﻿using System;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
-using ClientGUI;
 using System.Collections.Generic;
 using System.Linq;
+using ClientGUI;
 using DTAClient.Domain.Multiplayer;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
@@ -30,9 +30,15 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     /// <summary>
     /// A game option check box for the game lobby.
     /// </summary>
-    public class GameLobbyCheckBox : XNAClientCheckBox
+    internal sealed class GameLobbyCheckBox : XNAClientCheckBox
     {
-        public GameLobbyCheckBox(WindowManager windowManager) : base (windowManager) { }
+        private readonly MapCodeHelper mapCodeHelper;
+
+        public GameLobbyCheckBox(WindowManager windowManager, MapCodeHelper mapCodeHelper)
+            : base(windowManager)
+        {
+            this.mapCodeHelper = mapCodeHelper;
+        }
 
         public bool IsMultiplayer { get; set; }
 
@@ -66,11 +72,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private bool reversed;
 
-        private bool defaultValue;
-
         private string enabledSpawnIniValue = "True";
         private string disabledSpawnIniValue = "False";
-
 
         public override void Initialize()
         {
@@ -121,7 +124,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 case "Checked":
                     bool checkedValue = Conversions.BooleanFromString(value, false);
                     Checked = checkedValue;
-                    defaultValue = checkedValue;
                     HostChecked = checkedValue;
                     UserChecked = checkedValue;
                     return;
@@ -167,7 +169,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (Checked == reversed || String.IsNullOrEmpty(customIniPath))
                 return;
 
-            MapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
+            mapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
         }
 
         /// <summary>

@@ -14,12 +14,12 @@ using System.ServiceModel.Description;
 using System.Text;
 using System.Xml;
 using System.ServiceModel.Channels;
-using ClientCore;
-using Rampastring.Tools;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
-internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string Server, string CacheControl, string Ext, string SearchTarget, string UniqueServiceName, UPnPDescription UPnPDescription, Uri PreferredLocation)
+internal sealed class InternetGatewayDevice
 {
     private const int ReceiveTimeout = 10000;
     private const string UPnPWanConnectionDevice = "urn:schemas-upnp-org:device:WANConnectionDevice";
@@ -31,6 +31,8 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
     private const string PortMappingDescription = "CnCNet";
 
     private static readonly HttpClient HttpClient;
+
+    private readonly ILogger logger;
 
     public const string UPnPInternetGatewayDevice = "urn:schemas-upnp-org:device:InternetGatewayDevice";
 
@@ -51,9 +53,30 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
         };
     }
 
+    public InternetGatewayDevice(ILogger logger)
+    {
+        this.logger = logger;
+    }
+
+    public IEnumerable<Uri> Locations { get; init; }
+
+    public string Server { get; init; }
+
+    public string CacheControl { get; init; }
+
+    public string Ext { get; init; }
+
+    public string SearchTarget { get; init; }
+
+    public string UniqueServiceName { get; init; }
+
+    public UPnPDescription UPnPDescription { get; init; }
+
+    public Uri PreferredLocation { get; init; }
+
     public async ValueTask<ushort> OpenIpV4PortAsync(IPAddress ipAddress, ushort port, CancellationToken cancellationToken)
     {
-        Logger.Log($"Opening IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opening IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         int uPnPVersion = GetDeviceUPnPVersion();
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters($"{UPnPWanIpConnection}:{uPnPVersion}", AddressFamily.InterNetwork);
@@ -81,14 +104,14 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
                 throw new ArgumentException($"UPNP version {uPnPVersion} is not supported.");
         }
 
-        Logger.Log($"Opened IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opened IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         return port;
     }
 
     public async ValueTask CloseIpV4PortAsync(ushort port, CancellationToken cancellationToken = default)
     {
-        Logger.Log($"Deleting IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Deleting IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         int uPnPVersion = GetDeviceUPnPVersion();
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters($"{UPnPWanIpConnection}:{uPnPVersion}");
@@ -114,12 +137,12 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
                 throw new ArgumentException($"UPNP version {uPnPVersion} is not supported.");
         }
 
-        Logger.Log($"Deleted IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Deleted IPV4 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
     }
 
     public async ValueTask<IPAddress> GetExternalIpV4AddressAsync(CancellationToken cancellationToken)
     {
-        Logger.Log($"Requesting external IP address from UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Requesting external IP address from UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         int uPnPVersion = GetDeviceUPnPVersion();
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters($"{UPnPWanIpConnection}:{uPnPVersion}");
@@ -145,14 +168,14 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
                 throw new ArgumentException($"UPNP version {uPnPVersion} is not supported.");
         }
 
-        Logger.Log($"Received external IP address {ipAddress} from UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Received external IP address {ipAddress} from UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         return ipAddress;
     }
 
     public async ValueTask<bool> GetNatRsipStatusAsync(CancellationToken cancellationToken)
     {
-        Logger.Log($"Checking NAT status on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Checking NAT status on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         int uPnPVersion = GetDeviceUPnPVersion();
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters($"{UPnPWanIpConnection}:{uPnPVersion}");
@@ -178,28 +201,28 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
                 throw new ArgumentException($"UPNP version {uPnPVersion} is not supported.");
         }
 
-        Logger.Log($"Received NAT status {natEnabled} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Received NAT status {natEnabled} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         return natEnabled;
     }
 
     public async ValueTask<(bool FirewallEnabled, bool InboundPinholeAllowed)> GetIpV6FirewallStatusAsync(CancellationToken cancellationToken)
     {
-        Logger.Log($"Checking IPV6 firewall status on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Checking IPV6 firewall status on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters("WANIPv6FirewallControl:1");
         string serviceAction = $"\"{service.ServiceType}#GetFirewallStatus\"";
         GetFirewallStatusResponse response = await ExecuteSoapAction<GetFirewallStatusRequest, GetFirewallStatusResponse>(
             serviceUri, serviceAction, serviceType, default, cancellationToken);
 
-        Logger.Log($"Received IPV6 firewall status {response.FirewallEnabled} and port mapping allowed {response.InboundPinholeAllowed} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Received IPV6 firewall status {response.FirewallEnabled} and port mapping allowed {response.InboundPinholeAllowed} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         return (response.FirewallEnabled, response.InboundPinholeAllowed);
     }
 
     public async ValueTask<ushort> OpenIpV6PortAsync(IPAddress ipAddress, ushort port, CancellationToken cancellationToken)
     {
-        Logger.Log($"Opening IPV6 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opening IPV6 UDP port {port} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters("WANIPv6FirewallControl:1");
         string serviceAction = $"\"{service.ServiceType}#AddPinhole\"";
@@ -207,14 +230,14 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
         AddPinholeResponse response = await ExecuteSoapAction<AddPinholeRequest, AddPinholeResponse>(
             serviceUri, serviceAction, serviceType, request, cancellationToken);
 
-        Logger.Log($"Opened IPV6 UDP port {port} with ID {response.UniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opened IPV6 UDP port {port} with ID {response.UniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         return response.UniqueId;
     }
 
     public async ValueTask CloseIpV6PortAsync(ushort uniqueId, CancellationToken cancellationToken = default)
     {
-        Logger.Log($"Opening IPV6 UDP port with ID {uniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opening IPV6 UDP port with ID {uniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
 
         (ServiceListItem service, string serviceUri, string serviceType) = GetSoapActionParameters("WANIPv6FirewallControl:1");
         string serviceAction = $"\"{service.ServiceType}#DeletePinhole\"";
@@ -222,10 +245,10 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
         await ExecuteSoapAction<DeletePinholeRequest, DeletePinholeResponse>(
              serviceUri, serviceAction, serviceType, request, cancellationToken);
 
-        Logger.Log($"Opened IPV6 UDP port with ID {uniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
+        logger.LogInformation($"Opened IPV6 UDP port with ID {uniqueId} on UPnP device {UPnPDescription.Device.FriendlyName}.");
     }
 
-    private static async ValueTask<TResponse> ExecuteSoapAction<TRequest, TResponse>(string serviceUri, string soapAction, string defaultNamespace, TRequest request, CancellationToken cancellationToken)
+    private async ValueTask<TResponse> ExecuteSoapAction<TRequest, TResponse>(string serviceUri, string soapAction, string defaultNamespace, TRequest request, CancellationToken cancellationToken)
     {
         HttpClient.DefaultRequestHeaders.Remove("SOAPAction");
         HttpClient.DefaultRequestHeaders.Add("SOAPAction", soapAction);
@@ -264,10 +287,7 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
         }
         catch (HttpRequestException ex)
         {
-            using var reader = new StreamReader(stream);
-            string error = await reader.ReadToEndAsync(CancellationToken.None);
-
-            ProgramConstants.LogException(ex, $"UPNP error {ex.StatusCode}:{error}.");
+            await logger.LogExceptionDetailsAsync(ex, "UPNP error.", httpResponseMessage);
 
             throw;
         }
@@ -300,5 +320,17 @@ internal sealed record InternetGatewayDevice(IEnumerable<Uri> Locations, string 
     {
         return $"{UPnPInternetGatewayDevice}:2".Equals(UPnPDescription.Device.DeviceType, StringComparison.OrdinalIgnoreCase) ? 2
             : ($"{UPnPInternetGatewayDevice}:1".Equals(UPnPDescription.Device.DeviceType, StringComparison.OrdinalIgnoreCase) ? 1 : 0);
+    }
+
+    public void Deconstruct(out IEnumerable<Uri> Locations, out string Server, out string CacheControl, out string Ext, out string SearchTarget, out string UniqueServiceName, out UPnPDescription UPnPDescription, out Uri PreferredLocation)
+    {
+        Locations = this.Locations;
+        Server = this.Server;
+        CacheControl = this.CacheControl;
+        Ext = this.Ext;
+        SearchTarget = this.SearchTarget;
+        UniqueServiceName = this.UniqueServiceName;
+        UPnPDescription = this.UPnPDescription;
+        PreferredLocation = this.PreferredLocation;
     }
 }

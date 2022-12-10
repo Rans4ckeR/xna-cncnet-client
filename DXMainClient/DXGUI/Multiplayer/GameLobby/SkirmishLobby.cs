@@ -1,18 +1,22 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Rampastring.XNAUI;
-using ClientCore;
-using ClientCore.Statistics;
-using DTAClient.DXGUI.Generic;
-using DTAClient.Domain.Multiplayer;
-using ClientGUI;
-using Rampastring.Tools;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.Extensions;
+using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
+using ClientGUI;
 using DTAClient.Domain;
-using Microsoft.Xna.Framework;
+using DTAClient.Domain.Multiplayer;
+using DTAClient.DXGUI.Generic;
+using DTAClient.DXGUI.Multiplayer.CnCNet;
 using Localization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
+using Rampastring.Tools;
+using Rampastring.XNAUI;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
@@ -20,15 +24,33 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     {
         private const string SETTINGS_PATH = "Client/SkirmishSettings.ini";
 
-        public SkirmishLobby(WindowManager windowManager, TopBar topBar, MapLoader mapLoader, DiscordHandler discordHandler)
-            : base(windowManager, "SkirmishLobby", mapLoader, false, discordHandler)
+        private readonly XNAMessageBox xnaMessageBox;
+
+        public SkirmishLobby(WindowManager windowManager,
+            TopBar topBar,
+            MapLoader mapLoader,
+            DiscordHandler discordHandler,
+            StatisticsManager statisticsManager,
+            ILogger logger,
+            LogFileStatisticsParser logFileStatisticsParser,
+            GameProcessLogic gameProcessLogic,
+            UserINISettings userIniSettings,
+            XNAMessageBox xnaMessageBox,
+            LoadOrSaveGameOptionPresetWindow loadOrSaveGameOptionPresetWindow,
+            GameOptionPresets gameOptionPresets,
+            MapCodeHelper mapCodeHelper,
+            IServiceProvider serviceProvider)
+            : base(windowManager, mapLoader, discordHandler, statisticsManager, logger, logFileStatisticsParser, gameProcessLogic, userIniSettings, xnaMessageBox, loadOrSaveGameOptionPresetWindow, gameOptionPresets, mapCodeHelper, serviceProvider)
         {
+            IsMultiPlayer = false;
+            Name = "SkirmishLobby";
             this.topBar = topBar;
+            this.xnaMessageBox = xnaMessageBox;
         }
 
         public event EventHandler Exited;
 
-        TopBar topBar;
+        private TopBar topBar;
 
         public override void Initialize()
         {
@@ -36,12 +58,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             RandomSeed = new Random().Next();
 
-            //InitPlayerOptionDropdowns(128, 98, 90, 48, 55, new Point(6, 24));
             InitPlayerOptionDropdowns();
 
             btnLeaveGame.Text = "Main Menu".L10N("UI:Main:MainMenu");
-
-            //MapPreviewBox.EnableContextMenu = true;
 
             ddPlayerSides[0].AddItem("Spectator".L10N("UI:Main:SpectatorSide"), AssetLoader.LoadTexture("spectatoricon.png"));
 
@@ -74,7 +93,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected override void AddNotice(string message, Color color)
         {
-            XNAMessageBox.Show(WindowManager, "Message".L10N("UI:Main:MessageTitle"), message);
+            xnaMessageBox.Caption = "Message".L10N("UI:Main:MessageTitle");
+            xnaMessageBox.Description = message;
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+            xnaMessageBox.Show();
         }
 
         protected override void OnEnabledChanged(object sender, EventArgs args)
@@ -176,7 +199,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
             }
 
-            XNAMessageBox.Show(WindowManager, "Cannot launch game".L10N("UI:Main:LaunchGameErrorTitle"), error);
+            xnaMessageBox.Caption = "Cannot launch game".L10N("UI:Main:LaunchGameErrorTitle");
+            xnaMessageBox.Description = error;
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+            xnaMessageBox.Show();
         }
 
         protected override ValueTask BtnLeaveGame_LeftClickAsync()
@@ -224,7 +251,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected override int GetDefaultMapRankIndex(GameModeMap gameModeMap)
         {
-            return StatisticsManager.Instance.GetSkirmishRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
+            return statisticsManager.GetSkirmishRankForDefaultMap(gameModeMap.Map.Name, gameModeMap.Map.MaxPlayers);
         }
 
         protected override async ValueTask GameProcessExitedAsync()
@@ -297,7 +324,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Saving skirmish settings failed!");
+                logger.LogExceptionDetails(ex, "Saving skirmish settings failed!");
             }
         }
 
@@ -349,7 +376,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (player == null)
             {
-                Logger.Log("Failed to load human player information from skirmish settings!");
+                logger.LogInformation("Failed to load human player information from skirmish settings!");
                 InitDefaultSettings();
                 return;
             }
@@ -362,12 +389,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             List<string> keys = skirmishSettingsIni.GetSectionKeys("AIPlayers");
 
             if (keys == null)
-            {
                 keys = new List<string>(); // No point skip parsing all settings if only AI info is missing.
-                //Logger.Log("AI player information doesn't exist in skirmish settings!");
-                //InitDefaultSettings();
-                //return;
-            }
 
             bool AIAllowed = !(Map.MultiplayerOnly || GameMode.MultiplayerOnly) || !(Map.HumanPlayersOnly || GameMode.HumanPlayersOnly);
             foreach (string key in keys)
@@ -379,7 +401,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 if (aiPlayer == null)
                 {
-                    Logger.Log("Failed to load AI player information from skirmish settings!");
+                    logger.LogInformation("Failed to load AI player information from skirmish settings!");
                     InitDefaultSettings();
                     return;
                 }
@@ -400,7 +422,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                         int gameModeMatchIndex = GameMode.ForcedDropDownValues.FindIndex(p => p.Key.Equals(dd.Name));
                         if (gameModeMatchIndex > -1)
                         {
-                            Logger.Log("Dropdown '" + dd.Name + "' has forced value in gamemode - saved settings ignored.");
+                            logger.LogInformation("Dropdown '" + dd.Name + "' has forced value in gamemode - saved settings ignored.");
                             continue;
                         }
                     }
@@ -410,7 +432,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                         int gameModeMatchIndex = Map.ForcedDropDownValues.FindIndex(p => p.Key.Equals(dd.Name));
                         if (gameModeMatchIndex > -1)
                         {
-                            Logger.Log("Dropdown '" + dd.Name + "' has forced value in map - saved settings ignored.");
+                            logger.LogInformation("Dropdown '" + dd.Name + "' has forced value in map - saved settings ignored.");
                             continue;
                         }
                     }
@@ -428,7 +450,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                         int gameModeMatchIndex = GameMode.ForcedCheckBoxValues.FindIndex(p => p.Key.Equals(cb.Name));
                         if (gameModeMatchIndex > -1)
                         {
-                            Logger.Log("Checkbox '" + cb.Name + "' has forced value in gamemode - saved settings ignored.");
+                            logger.LogInformation("Checkbox '" + cb.Name + "' has forced value in gamemode - saved settings ignored.");
                             continue;
                         }
                     }
@@ -438,7 +460,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                         int gameModeMatchIndex = Map.ForcedCheckBoxValues.FindIndex(p => p.Key.Equals(cb.Name));
                         if (gameModeMatchIndex > -1)
                         {
-                            Logger.Log("Checkbox '" + cb.Name + "' has forced value in map - saved settings ignored.");
+                            logger.LogInformation("Checkbox '" + cb.Name + "' has forced value in map - saved settings ignored.");
                             continue;
                         }
                     }

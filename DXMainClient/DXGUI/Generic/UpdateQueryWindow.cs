@@ -1,17 +1,18 @@
-﻿using ClientCore;
+﻿using System;
+using ClientCore;
 using ClientGUI;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Generic
 {
     /// <summary>
     /// A window that asks the user whether they want to update their game.
     /// </summary>
-    public class UpdateQueryWindow : XNAWindow
+    internal sealed class UpdateQueryWindow : XNAWindow
     {
         public delegate void UpdateAcceptedEventHandler(object sender, EventArgs e);
         public event UpdateAcceptedEventHandler UpdateAccepted;
@@ -19,7 +20,10 @@ namespace DTAClient.DXGUI.Generic
         public delegate void UpdateDeclinedEventHandler(object sender, EventArgs e);
         public event UpdateDeclinedEventHandler UpdateDeclined;
 
-        public UpdateQueryWindow(WindowManager windowManager) : base(windowManager) { }
+        public UpdateQueryWindow(WindowManager windowManager, ILogger logger, IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
+        {
+        }
 
         private XNALabel lblDescription;
         private XNALabel lblUpdateSize;

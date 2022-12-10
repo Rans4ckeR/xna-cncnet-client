@@ -4,15 +4,26 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using ClientGUI;
 using DTAClient.Domain.Multiplayer;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
     /// <summary>
     /// A game option drop-down for the game lobby.
     /// </summary>
-    public class GameLobbyDropDown : XNAClientDropDown
+    internal sealed class GameLobbyDropDown : XNAClientDropDown
     {
-        public GameLobbyDropDown(WindowManager windowManager) : base(windowManager) { }
+        private readonly ILogger logger;
+        private readonly MapCodeHelper mapCodeHelper;
+
+        public GameLobbyDropDown(WindowManager windowManager,
+            MapCodeHelper mapCodeHelper,
+            ILogger logger)
+            : base(windowManager)
+        {
+            this.mapCodeHelper = mapCodeHelper;
+            this.logger = logger;
+        }
 
         public string OptionName { get; private set; }
 
@@ -106,7 +117,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (String.IsNullOrEmpty(spawnIniOption))
             {
-                Logger.Log("GameLobbyDropDown.WriteSpawnIniCode: " + Name + " has no associated spawn INI option!");
+                logger.LogInformation("GameLobbyDropDown.WriteSpawnIniCode: " + Name + " has no associated spawn INI option!");
                 return;
             }
 
@@ -146,7 +157,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (Items[SelectedIndex].Tag != null) customIniPath = Items[SelectedIndex].Tag.ToString();
             else customIniPath = Items[SelectedIndex].Text;
 
-            MapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
+            mapCodeHelper.ApplyMapCode(mapIni, customIniPath, gameMode);
         }
 
         public override void OnLeftClick()

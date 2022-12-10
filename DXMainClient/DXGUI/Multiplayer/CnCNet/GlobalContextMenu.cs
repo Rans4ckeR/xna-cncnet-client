@@ -8,6 +8,7 @@ using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.Online;
 using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -28,7 +29,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private readonly string OPEN_LINK = "Open Link".L10N("UI:Main:OpenLink");
 
         private readonly CnCNetUserData cncnetUserData;
-        private readonly PrivateMessagingWindow pmWindow;
+        //      private readonly PrivateMessagingWindow pmWindow;
         private XNAContextMenuItem privateMessageItem;
         private XNAContextMenuItem toggleFriendItem;
         private XNAContextMenuItem toggleIgnoreItem;
@@ -38,6 +39,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private XNAContextMenuItem openLinkItem;
 
         private readonly CnCNetManager connectionManager;
+        private readonly ILogger logger;
+        private readonly XNAMessageBox xnaMessageBox;
+
         private GlobalContextMenuData contextMenuData;
 
         public EventHandler<JoinUserEventArgs> JoinEvent;
@@ -46,12 +50,16 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             WindowManager windowManager,
             CnCNetManager connectionManager,
             CnCNetUserData cncnetUserData,
-            PrivateMessagingWindow pmWindow
-        ) : base(windowManager)
+            //PrivateMessagingWindow pmWindow, todo DI
+            ILogger logger,
+            XNAMessageBox xnaMessageBox)
+            : base(windowManager)
         {
             this.connectionManager = connectionManager;
             this.cncnetUserData = cncnetUserData;
-            this.pmWindow = pmWindow;
+            //      this.pmWindow = pmWindow;
+            this.logger = logger;
+            this.xnaMessageBox = xnaMessageBox;
 
             Name = nameof(GlobalContextMenu);
             ClientRectangle = new Rectangle(0, 0, 150, 2);
@@ -64,7 +72,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             privateMessageItem = new XNAContextMenuItem()
             {
                 Text = PRIVATE_MESSAGE,
-                SelectAction = () => pmWindow.InitPM(GetIrcUser().Name)
+                //         SelectAction = () => pmWindow.InitPM(GetIrcUser().Name)
             };
             toggleFriendItem = new XNAContextMenuItem()
             {
@@ -182,8 +190,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Unable to copy link.");
-                XNAMessageBox.Show(WindowManager, "Error".L10N("UI:Main:Error"), "Unable to copy link".L10N("UI:Main:ClipboardCopyLinkFailed"));
+                logger.LogExceptionDetails(ex, "Unable to copy link.");
+
+                xnaMessageBox.Caption = "Error".L10N("UI:Main:Error");
+                xnaMessageBox.Description = "Unable to copy link".L10N("UI:Main:ClipboardCopyLinkFailed");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
             }
         }
 

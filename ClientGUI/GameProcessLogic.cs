@@ -1,47 +1,69 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using ClientCore;
-using Rampastring.Tools;
-using ClientCore.INIProcessing;
 using System.Threading.Tasks;
-using Rampastring.XNAUI;
+using ClientCore;
+using ClientCore.Extensions;
+using ClientCore.INIProcessing;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace ClientGUI
 {
     /// <summary>
     /// A static class used for controlling the launching and exiting of the game executable.
     /// </summary>
-    public static class GameProcessLogic
+    public sealed class GameProcessLogic
     {
-        public static event Action GameProcessStarted;
+        private readonly ILogger logger;
+        private readonly PreprocessorBackgroundTask preprocessorBackgroundTask;
+        private readonly UserINISettings userIniSettings;
+        private readonly XNAMessageBox xnaMessageBox;
 
-        public static event Action GameProcessStarting;
+        public GameProcessLogic(
+            ILogger logger,
+            PreprocessorBackgroundTask preprocessorBackgroundTask,
+            UserINISettings userIniSettings,
+            XNAMessageBox xnaMessageBox)
+        {
+            this.logger = logger;
+            this.preprocessorBackgroundTask = preprocessorBackgroundTask;
+            this.userIniSettings = userIniSettings;
+            this.xnaMessageBox = xnaMessageBox;
+        }
 
-        public static event Action GameProcessExited;
+        public event Action GameProcessStarted;
 
-        public static bool UseQres { get; set; }
-        public static bool SingleCoreAffinity { get; set; }
+        public event Action GameProcessStarting;
+
+        public event Action GameProcessExited;
+
+        public bool UseQres { get; set; }
+        public bool SingleCoreAffinity { get; set; }
 
         /// <summary>
         /// Starts the main game process.
         /// </summary>
-        public static async ValueTask StartGameProcessAsync(WindowManager windowManager)
+        public async ValueTask StartGameProcessAsync()
         {
-            Logger.Log("About to launch main game executable.");
+            logger.LogInformation("About to launch main game executable.");
 
             // In the relatively unlikely event that INI preprocessing is still going on, just wait until it's done.
             // TODO ideally this should be handled in the UI so the client doesn't appear just frozen for the user.
             int waitTimes = 0;
-            while (PreprocessorBackgroundTask.Instance.IsRunning)
+            while (preprocessorBackgroundTask.IsRunning)
             {
                 await Task.Delay(1000);
                 waitTimes++;
                 if (waitTimes > 10)
                 {
-                    XNAMessageBox.Show(windowManager, "INI preprocessing not complete", "INI preprocessing not complete. Please try " +
+                    xnaMessageBox.Caption = "INI preprocessing not complete";
+                    xnaMessageBox.Description = "INI preprocessing not complete. Please try " +
                         "launching the game again. If the problem persists, " +
-                        "contact the game or mod authors for support.");
+                        "contact the game or mod authors for support.";
+                    xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                    xnaMessageBox.Show();
                     return;
                 }
             }
@@ -73,9 +95,9 @@ namespace ClientGUI
 
             GameProcessStarting?.Invoke();
 
-            if (UserINISettings.Instance.WindowedMode && UseQres && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            if (userIniSettings.WindowedMode && UseQres && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                Logger.Log("Windowed mode is enabled - using QRes.");
+                logger.LogInformation("Windowed mode is enabled - using QRes.");
                 Process QResProcess = new Process();
                 QResProcess.StartInfo.FileName = ProgramConstants.QRES_EXECUTABLE;
 
@@ -85,18 +107,23 @@ namespace ClientGUI
                     QResProcess.StartInfo.Arguments = "c=16 /R " + "\"" + SafePath.CombineFilePath(ProgramConstants.GamePath, gameExecutableName) + "\" " + additionalExecutableName + "-SPAWN";
                 QResProcess.EnableRaisingEvents = true;
                 QResProcess.Exited += new EventHandler(Process_Exited);
-                Logger.Log("Launch executable: " + QResProcess.StartInfo.FileName);
-                Logger.Log("Launch arguments: " + QResProcess.StartInfo.Arguments);
+                logger.LogInformation("Launch executable: " + QResProcess.StartInfo.FileName);
+                logger.LogInformation("Launch arguments: " + QResProcess.StartInfo.Arguments);
                 try
                 {
                     QResProcess.Start();
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Error launching QRes");
-                    XNAMessageBox.Show(windowManager, "Error launching game", "Error launching " + ProgramConstants.QRES_EXECUTABLE + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
+                    logger.LogExceptionDetails(ex, "Error launching QRes");
+
+                    xnaMessageBox.Caption = "Error launching game";
+                    xnaMessageBox.Description = "Error launching " + ProgramConstants.QRES_EXECUTABLE + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                         "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
-                        Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message);
+                        Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message;
+                    xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                    xnaMessageBox.Show();
                     Process_Exited(QResProcess, EventArgs.Empty);
                     return;
                 }
@@ -115,19 +142,24 @@ namespace ClientGUI
                     DtaProcess.StartInfo.Arguments = additionalExecutableName + "-SPAWN";
                 DtaProcess.EnableRaisingEvents = true;
                 DtaProcess.Exited += new EventHandler(Process_Exited);
-                Logger.Log("Launch executable: " + DtaProcess.StartInfo.FileName);
-                Logger.Log("Launch arguments: " + DtaProcess.StartInfo.Arguments);
+                logger.LogInformation("Launch executable: " + DtaProcess.StartInfo.FileName);
+                logger.LogInformation("Launch arguments: " + DtaProcess.StartInfo.Arguments);
                 try
                 {
                     DtaProcess.Start();
-                    Logger.Log("GameProcessLogic: Process started.");
+                    logger.LogInformation("GameProcessLogic: Process started.");
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Error launching " + gameExecutableName);
-                    XNAMessageBox.Show(windowManager, "Error launching game", "Error launching " + gameExecutableName + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
+                    logger.LogExceptionDetails(ex, "Error launching " + gameExecutableName);
+
+                    xnaMessageBox.Caption = "Error launching game";
+                    xnaMessageBox.Description = "Error launching " + gameExecutableName + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                         "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
-                        Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message);
+                        Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message;
+                    xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                    xnaMessageBox.Show();
                     Process_Exited(DtaProcess, EventArgs.Empty);
                     return;
                 }
@@ -141,12 +173,12 @@ namespace ClientGUI
 
             GameProcessStarted?.Invoke();
 
-            Logger.Log("Waiting for qres.dat or " + gameExecutableName + " to exit.");
+            logger.LogInformation("Waiting for qres.dat or " + gameExecutableName + " to exit.");
         }
 
-        static void Process_Exited(object sender, EventArgs e)
+        private void Process_Exited(object sender, EventArgs e)
         {
-            Logger.Log("GameProcessLogic: Process exited.");
+            logger.LogInformation("GameProcessLogic: Process exited.");
             Process proc = (Process)sender;
             proc.Exited -= Process_Exited;
             proc.Dispose();

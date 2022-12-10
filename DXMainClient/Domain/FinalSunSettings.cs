@@ -2,7 +2,9 @@
 using System.IO;
 using Rampastring.Tools;
 using ClientCore;
+using ClientCore.Extensions;
 using ClientCore.PlatformShim;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain
 {
@@ -11,7 +13,7 @@ namespace DTAClient.Domain
         /// <summary>
         /// Checks for the existence of the FinalSun settings file and writes it if it doesn't exist.
         /// </summary>
-        public static void WriteFinalSunIni()
+        public static void WriteFinalSunIni(ILogger logger)
         {
             // The encoding of the FinalSun/FinalAlert ini file should be legacy ANSI, not Windows-1252 and also not any specific encoding.
             // Otherwise, the map editor will not work in a non-ASCII path. ANSI doesn't mean a specific codepage,
@@ -21,10 +23,10 @@ namespace DTAClient.Domain
                 string finalSunIniPath = ClientConfiguration.Instance.FinalSunIniPath;
                 var finalSunIniFile = new FileInfo(Path.Combine(ProgramConstants.GamePath, finalSunIniPath));
 
-                Logger.Log("Checking for the existence of FinalSun.ini.");
+                logger.LogInformation("Checking for the existence of FinalSun.ini.");
                 if (finalSunIniFile.Exists)
                 {
-                    Logger.Log("FinalSun settings file exists.");
+                    logger.LogInformation("FinalSun settings file exists.");
 
                     IniFile iniFile = new IniFile();
                     iniFile.FileName = finalSunIniFile.FullName;
@@ -39,7 +41,7 @@ namespace DTAClient.Domain
                     return;
                 }
 
-                Logger.Log("FinalSun.ini doesn't exist - writing default settings.");
+                logger.LogInformation("FinalSun.ini doesn't exist - writing default settings.");
 
                 if (!finalSunIniFile.Directory.Exists)
                     finalSunIniFile.Directory.Create();
@@ -61,7 +63,7 @@ namespace DTAClient.Domain
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "An exception occurred while checking the existence of FinalSun settings.");
+                logger.LogExceptionDetails(ex, "An exception occurred while checking the existence of FinalSun settings.");
             }
         }
     }

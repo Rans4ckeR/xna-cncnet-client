@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using ClientCore.Statistics.GameParsers;
-using Rampastring.Tools;
 
 namespace ClientCore.Statistics
 {
@@ -49,7 +47,7 @@ namespace ClientCore.Statistics
         public void AddPlayer(string name, bool isLocal, bool isAI, bool isSpectator,
             int side, int team, int color, int aiLevel)
         {
-            PlayerStatistics ps = new PlayerStatistics(name, isLocal, isAI, isSpectator, 
+            PlayerStatistics ps = new PlayerStatistics(name, isLocal, isAI, isSpectator,
                 side, team, color, aiLevel);
             Players.Add(ps);
         }
@@ -57,16 +55,6 @@ namespace ClientCore.Statistics
         public void AddPlayer(PlayerStatistics ps)
         {
             Players.Add(ps);
-        }
-
-        public void ParseStatistics(string gamePath, string gameName, bool isLoadedGame)
-        {
-            Logger.Log("Parsing game statistics.");
-
-            LengthInSeconds = (int)(DateTime.Now - DateAndTime).TotalSeconds;
-
-            var parser = new LogFileStatisticsParser(this, isLoadedGame);
-            parser.ParseStats(gamePath, ClientConfiguration.Instance.StatisticsLogFileName);
         }
 
         public PlayerStatistics GetEmptyPlayerByName(string playerName)

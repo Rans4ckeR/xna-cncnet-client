@@ -1,25 +1,37 @@
-﻿using ClientCore;
+﻿using System;
+using System.IO;
+using ClientCore;
 using ClientGUI;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.IO;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
     /// <summary>
     /// A window that allows the user to host a new game on CnCNet.
     /// </summary>
-    class GameCreationWindow : XNAWindow
+    internal sealed class GameCreationWindow : XNAWindow
     {
-        public GameCreationWindow(WindowManager windowManager, TunnelHandler tunnelHandler)
-            : base(windowManager)
+        private readonly XNAMessageBox xnaMessageBox;
+        private readonly UserINISettings userIniSettings;
+
+        public GameCreationWindow(
+            WindowManager windowManager,
+            TunnelHandler tunnelHandler,
+            ILogger logger,
+            XNAMessageBox xnaMessageBox,
+            UserINISettings userIniSettings,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.tunnelHandler = tunnelHandler;
+            this.xnaMessageBox = xnaMessageBox;
+            this.userIniSettings = userIniSettings;
         }
 
         public event EventHandler Cancelled;
@@ -158,9 +170,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             CenterOnParent();
 
-            UserINISettings.Instance.SettingsSaved += Instance_SettingsSaved;
+            userIniSettings.SettingsSaved += Instance_SettingsSaved;
 
-            if (UserINISettings.Instance.AlwaysDisplayTunnelList)
+            if (userIniSettings.AlwaysDisplayTunnelList)
                 BtnDisplayAdvancedOptions_LeftClick(this, EventArgs.Empty);
         }
 
@@ -180,7 +192,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void Instance_SettingsSaved(object sender, EventArgs e)
         {
-            tbGameName.Text = string.Format("{0}'s Game".L10N("UI:Main:GameOfPlayer"), UserINISettings.Instance.PlayerName.Value);
+            tbGameName.Text = string.Format("{0}'s Game".L10N("UI:Main:GameOfPlayer"), userIniSettings.PlayerName.Value);
         }
 
         private void BtnCancel_LeftClick(object sender, EventArgs e)
@@ -219,8 +231,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             if (new ProfanityFilter().IsOffensive(gameName))
             {
-                XNAMessageBox.Show(WindowManager, "Offensive game name".L10N("UI:Main:GameNameOffensiveTitle"),
-                    "Please enter a less offensive game name.".L10N("UI:Main:GameNameOffensiveText"));
+                xnaMessageBox.Caption = "Offensive game name".L10N("UI:Main:GameNameOffensiveTitle");
+                xnaMessageBox.Description = "Please enter a less offensive game name.".L10N("UI:Main:GameNameOffensiveText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
                 return;
             }
 

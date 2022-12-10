@@ -1,22 +1,54 @@
-﻿using Localization;
+﻿using System;
 using ClientCore;
 using ClientCore.CnCNet5;
+using ClientCore.Extensions;
 using ClientGUI;
+using ClientUpdater;
 using DTAConfig.OptionPanels;
+using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using ClientUpdater;
 
 namespace DTAConfig
 {
-    public class OptionsWindow : XNAWindow
+    public sealed class OptionsWindow : XNAWindow
     {
-        public OptionsWindow(WindowManager windowManager, GameCollection gameCollection) : base(windowManager)
+        private readonly XNAMessageBox xnaMessageBox;
+        private readonly UserINISettings userIniSettings;
+        private readonly ComponentsPanel componentsPanel;
+        private readonly UpdaterOptionsPanel updaterOptionsPanel;
+        private readonly DisplayOptionsPanel displayOptionsPanel;
+        private readonly AudioOptionsPanel audioOptionsPanel;
+        private readonly GameOptionsPanel gameOptionsPanel;
+        private readonly CnCNetOptionsPanel cncNetOptionsPanel;
+
+        public OptionsWindow(
+            WindowManager windowManager,
+            GameCollection gameCollection,
+            ILogger logger,
+            XNAMessageBox xnaMessageBox,
+            UserINISettings userIniSettings,
+            ComponentsPanel componentsPanel,
+            UpdaterOptionsPanel updaterOptionsPanel,
+            DisplayOptionsPanel displayOptionsPanel,
+            AudioOptionsPanel audioOptionsPanel,
+            GameOptionsPanel gameOptionsPanel,
+            CnCNetOptionsPanel cncNetOptionsPanel,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.gameCollection = gameCollection;
+            this.xnaMessageBox = xnaMessageBox;
+            this.userIniSettings = userIniSettings;
+            this.componentsPanel = componentsPanel;
+            this.updaterOptionsPanel = updaterOptionsPanel;
+            this.displayOptionsPanel = displayOptionsPanel;
+            this.audioOptionsPanel = audioOptionsPanel;
+            this.gameOptionsPanel = gameOptionsPanel;
+            this.cncNetOptionsPanel = cncNetOptionsPanel;
         }
 
         public event EventHandler OnForceUpdate;
@@ -24,9 +56,7 @@ namespace DTAConfig
         private XNAClientTabControl tabControl;
 
         private XNAOptionsPanel[] optionsPanels;
-        private ComponentsPanel componentsPanel;
 
-        private DisplayOptionsPanel displayOptionsPanel;
         private XNAControl topBar;
 
         private GameCollection gameCollection;
@@ -63,17 +93,15 @@ namespace DTAConfig
             btnSave.Text = "Save".L10N("UI:DTAConfig:ButtonSave");
             btnSave.LeftClick += BtnSave_LeftClick;
 
-            displayOptionsPanel = new DisplayOptionsPanel(WindowManager, UserINISettings.Instance);
-            componentsPanel = new ComponentsPanel(WindowManager, UserINISettings.Instance);
-            var updaterOptionsPanel = new UpdaterOptionsPanel(WindowManager, UserINISettings.Instance);
             updaterOptionsPanel.OnForceUpdate += (s, e) => { Disable(); OnForceUpdate?.Invoke(this, EventArgs.Empty); };
+            cncNetOptionsPanel.GameCollection = gameCollection;
 
             optionsPanels = new XNAOptionsPanel[]
             {
                 displayOptionsPanel,
-                new AudioOptionsPanel(WindowManager, UserINISettings.Instance),
-                new GameOptionsPanel(WindowManager, UserINISettings.Instance, topBar),
-                new CnCNetOptionsPanel(WindowManager, UserINISettings.Instance, gameCollection),
+                audioOptionsPanel,
+                gameOptionsPanel,
+                cncNetOptionsPanel,
                 updaterOptionsPanel,
                 componentsPanel
             };
@@ -132,24 +160,26 @@ namespace DTAConfig
         {
             if (Updater.IsComponentDownloadInProgress())
             {
-                var msgBox = new XNAMessageBox(WindowManager, "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
-                    ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
+                xnaMessageBox.Caption = "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle");
+                xnaMessageBox.Description = ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
                     Environment.NewLine + Environment.NewLine +
-                    "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"), XNAMessageBoxButtons.YesNo);
-                msgBox.Show();
-                msgBox.YesClickedAction = ExitDownloadCancelConfirmation_YesClicked;
+                    "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+                xnaMessageBox.YesClickedAction = ExitDownloadCancelConfirmation_YesClicked;
+
+                xnaMessageBox.Show();
 
                 return;
             }
 
-            WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
+            WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(userIniSettings.ClientVolume));
             Disable();
         }
 
         private void ExitDownloadCancelConfirmation_YesClicked(XNAMessageBox messageBox)
         {
             componentsPanel.CancelAllDownloads();
-            WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(UserINISettings.Instance.ClientVolume));
+            WindowManager.SoundPlayer.SetVolume(Convert.ToSingle(userIniSettings.ClientVolume));
             Disable();
         }
 
@@ -157,12 +187,14 @@ namespace DTAConfig
         {
             if (Updater.IsComponentDownloadInProgress())
             {
-                XNAMessageBox msgBox = new XNAMessageBox(WindowManager, "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle"),
-                      ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
+                xnaMessageBox.Caption = "Downloads in progress".L10N("UI:DTAConfig:DownloadingTitle");
+                xnaMessageBox.Description = ("Optional component downloads are in progress. The downloads will be cancelled if you exit the Options menu." +
                       Environment.NewLine + Environment.NewLine +
-                      "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText"), XNAMessageBoxButtons.YesNo);
-                msgBox.Show();
-                msgBox.YesClickedAction = SaveDownloadCancelConfirmation_YesClicked;
+                      "Are you sure you want to continue?").L10N("UI:DTAConfig:DownloadingText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+                xnaMessageBox.YesClickedAction = SaveDownloadCancelConfirmation_YesClicked;
+
+                xnaMessageBox.Show();
 
                 return;
             }
@@ -189,25 +221,31 @@ namespace DTAConfig
                 foreach (var panel in optionsPanels)
                     restartRequired = panel.Save() || restartRequired;
 
-                UserINISettings.Instance.SaveSettings();
+                userIniSettings.SaveSettings();
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Saving settings failed!");
-                XNAMessageBox.Show(WindowManager, "Saving Settings Failed".L10N("UI:DTAConfig:SaveSettingFailTitle"),
-                    "Saving settings failed! Error message:".L10N("UI:DTAConfig:SaveSettingFailText") + " " + ex.Message);
+                logger.LogExceptionDetails(ex, "Saving settings failed!");
+
+                xnaMessageBox.Caption = "Saving Settings Failed".L10N("UI:DTAConfig:SaveSettingFailTitle");
+                xnaMessageBox.Description = ("Saving settings failed! Error message:".L10N("UI:DTAConfig:SaveSettingFailText") + " " + ex.Message);
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
             }
 
             Disable();
 
             if (restartRequired)
             {
-                var msgBox = new XNAMessageBox(WindowManager, "Restart Required".L10N("UI:DTAConfig:RestartClientTitle"),
-                    ("The client needs to be restarted for some of the changes to take effect." +
+                xnaMessageBox.Caption = "Restart Required".L10N("UI:DTAConfig:RestartClientTitle");
+                xnaMessageBox.Description = ("The client needs to be restarted for some of the changes to take effect." +
                     Environment.NewLine + Environment.NewLine +
-                    "Do you want to restart now?").L10N("UI:DTAConfig:RestartClientText"), XNAMessageBoxButtons.YesNo);
-                msgBox.Show();
-                msgBox.YesClickedAction = RestartMsgBox_YesClicked;
+                    "Do you want to restart now?").L10N("UI:DTAConfig:RestartClientText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+                xnaMessageBox.YesClickedAction = RestartMsgBox_YesClicked;
+
+                xnaMessageBox.Show();
             }
         }
 
@@ -218,7 +256,7 @@ namespace DTAConfig
         /// changes that could affect theirs functionality.
         /// Shows the popup to inform the user if needed.
         /// </summary>
-        /// <returns>A bool that determines whether the 
+        /// <returns>A bool that determines whether the
         /// settings values were changed.</returns>
         private bool RefreshOptionPanels()
         {
@@ -229,12 +267,15 @@ namespace DTAConfig
 
             if (optionValuesChanged)
             {
-                XNAMessageBox.Show(WindowManager, "Setting Value(s) Changed".L10N("UI:DTAConfig:SettingChangedTitle"),
-                    ("One or more setting values are" + Environment.NewLine +
+                xnaMessageBox.Caption = "Setting Value(s) Changed".L10N("UI:DTAConfig:SettingChangedTitle");
+                xnaMessageBox.Description = ("One or more setting values are" + Environment.NewLine +
                     "no longer available and were changed." +
                     Environment.NewLine + Environment.NewLine +
                     "You may want to verify the new setting" + Environment.NewLine +
-                    "values in client's options window.").L10N("UI:DTAConfig:SettingChangedText"));
+                    "values in client's options window.").L10N("UI:DTAConfig:SettingChangedText");
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
 
                 return true;
             }
@@ -252,7 +293,7 @@ namespace DTAConfig
             foreach (var panel in optionsPanels)
                 panel.Save();
 
-            UserINISettings.Instance.SaveSettings();
+            userIniSettings.SaveSettings();
         }
 
         public void Open()

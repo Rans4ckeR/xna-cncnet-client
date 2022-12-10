@@ -1,15 +1,14 @@
-﻿using ClientCore.Settings;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ClientCore.Enums;
+using ClientCore.Settings;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace ClientCore
 {
-    public class UserINISettings
+    public sealed class UserINISettings
     {
-        private static UserINISettings _instance;
-
         public const string VIDEO = "Video";
         public const string MULTIPLAYER = "MultiPlayer";
         public const string OPTIONS = "Options";
@@ -23,106 +22,88 @@ namespace ClientCore
         private const bool DEFAULT_HIDE_INCOMPATIBLE_GAMES = false;
         private const int DEFAULT_MAX_PLAYER_COUNT = 8;
 
-        public static UserINISettings Instance
+        private readonly ILogger logger;
+
+        public UserINISettings(ILogger logger)
         {
-            get
-            {
-                if (_instance == null)
-                    throw new InvalidOperationException("UserINISettings not initialized!");
-
-                return _instance;
-            }
-        }
-
-        public static void Initialize(string iniFileName)
-        {
-            if (_instance != null)
-                throw new InvalidOperationException("UserINISettings has already been initialized!");
-
-            var iniFile = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, iniFileName));
-
-            _instance = new UserINISettings(iniFile);
-        }
-
-        protected UserINISettings(IniFile iniFile)
-        {
-            SettingsIni = iniFile;
+            this.logger = logger;
+            SettingsIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.SettingsIniName));
 
             const string WINDOWED_MODE_KEY = "Video.Windowed";
 #if TS
-            BackBufferInVRAM = new BoolSetting(iniFile, VIDEO, "UseGraphicsPatch", true);
+            BackBufferInVRAM = new BoolSetting(SettingsIni, VIDEO, "UseGraphicsPatch", true);
 #else
-            BackBufferInVRAM = new BoolSetting(iniFile, VIDEO, "VideoBackBuffer", false);
+            BackBufferInVRAM = new BoolSetting(SettingsIni, VIDEO, "VideoBackBuffer", false);
 #endif
 
-            IngameScreenWidth = new IntSetting(iniFile, VIDEO, "ScreenWidth", 1024);
-            IngameScreenHeight = new IntSetting(iniFile, VIDEO, "ScreenHeight", 768);
-            ClientTheme = new StringSetting(iniFile, MULTIPLAYER, "Theme", string.Empty);
-            DetailLevel = new IntSetting(iniFile, OPTIONS, "DetailLevel", 2);
-            Renderer = new StringSetting(iniFile, COMPATIBILITY, "Renderer", string.Empty);
-            WindowedMode = new BoolSetting(iniFile, VIDEO, WINDOWED_MODE_KEY, false);
-            BorderlessWindowedMode = new BoolSetting(iniFile, VIDEO, "NoWindowFrame", false);
-            BorderlessWindowedClient = new BoolSetting(iniFile, VIDEO, "BorderlessWindowedClient", true);
-            ClientFPS = new IntSetting(iniFile, VIDEO, "ClientFPS", 60);
-            DisplayToggleableExtraTextures = new BoolSetting(iniFile, VIDEO, "DisplayToggleableExtraTextures", true);
+            IngameScreenWidth = new IntSetting(SettingsIni, VIDEO, "ScreenWidth", 1024);
+            IngameScreenHeight = new IntSetting(SettingsIni, VIDEO, "ScreenHeight", 768);
+            ClientTheme = new StringSetting(SettingsIni, MULTIPLAYER, "Theme", string.Empty);
+            DetailLevel = new IntSetting(SettingsIni, OPTIONS, "DetailLevel", 2);
+            Renderer = new StringSetting(SettingsIni, COMPATIBILITY, "Renderer", string.Empty);
+            WindowedMode = new BoolSetting(SettingsIni, VIDEO, WINDOWED_MODE_KEY, false);
+            BorderlessWindowedMode = new BoolSetting(SettingsIni, VIDEO, "NoWindowFrame", false);
+            BorderlessWindowedClient = new BoolSetting(SettingsIni, VIDEO, "BorderlessWindowedClient", true);
+            ClientFPS = new IntSetting(SettingsIni, VIDEO, "ClientFPS", 60);
+            DisplayToggleableExtraTextures = new BoolSetting(SettingsIni, VIDEO, "DisplayToggleableExtraTextures", true);
 
-            ScoreVolume = new DoubleSetting(iniFile, AUDIO, "ScoreVolume", 0.7);
-            SoundVolume = new DoubleSetting(iniFile, AUDIO, "SoundVolume", 0.7);
-            VoiceVolume = new DoubleSetting(iniFile, AUDIO, "VoiceVolume", 0.7);
-            IsScoreShuffle = new BoolSetting(iniFile, AUDIO, "IsScoreShuffle", true);
-            ClientVolume = new DoubleSetting(iniFile, AUDIO, "ClientVolume", 1.0);
-            PlayMainMenuMusic = new BoolSetting(iniFile, AUDIO, "PlayMainMenuMusic", true);
-            StopMusicOnMenu = new BoolSetting(iniFile, AUDIO, "StopMusicOnMenu", true);
-            MessageSound = new BoolSetting(iniFile, AUDIO, "ChatMessageSound", true);
+            ScoreVolume = new DoubleSetting(SettingsIni, AUDIO, "ScoreVolume", 0.7);
+            SoundVolume = new DoubleSetting(SettingsIni, AUDIO, "SoundVolume", 0.7);
+            VoiceVolume = new DoubleSetting(SettingsIni, AUDIO, "VoiceVolume", 0.7);
+            IsScoreShuffle = new BoolSetting(SettingsIni, AUDIO, "IsScoreShuffle", true);
+            ClientVolume = new DoubleSetting(SettingsIni, AUDIO, "ClientVolume", 1.0);
+            PlayMainMenuMusic = new BoolSetting(SettingsIni, AUDIO, "PlayMainMenuMusic", true);
+            StopMusicOnMenu = new BoolSetting(SettingsIni, AUDIO, "StopMusicOnMenu", true);
+            MessageSound = new BoolSetting(SettingsIni, AUDIO, "ChatMessageSound", true);
 
-            ScrollRate = new IntSetting(iniFile, OPTIONS, "ScrollRate", 3);
-            DragDistance = new IntSetting(iniFile, OPTIONS, "DragDistance", 4);
-            DoubleTapInterval = new IntSetting(iniFile, OPTIONS, "DoubleTapInterval", 30);
-            Win8CompatMode = new StringSetting(iniFile, OPTIONS, "Win8Compat", "No");
+            ScrollRate = new IntSetting(SettingsIni, OPTIONS, "ScrollRate", 3);
+            DragDistance = new IntSetting(SettingsIni, OPTIONS, "DragDistance", 4);
+            DoubleTapInterval = new IntSetting(SettingsIni, OPTIONS, "DoubleTapInterval", 30);
+            Win8CompatMode = new StringSetting(SettingsIni, OPTIONS, "Win8Compat", "No");
 
-            PlayerName = new StringSetting(iniFile, MULTIPLAYER, "Handle", string.Empty);
+            PlayerName = new StringSetting(SettingsIni, MULTIPLAYER, "Handle", string.Empty);
 
-            ChatColor = new IntSetting(iniFile, MULTIPLAYER, "ChatColor", -1);
-            LANChatColor = new IntSetting(iniFile, MULTIPLAYER, "LANChatColor", -1);
-            PingUnofficialCnCNetTunnels = new BoolSetting(iniFile, MULTIPLAYER, "PingCustomTunnels", true);
-            WritePathToRegistry = new BoolSetting(iniFile, OPTIONS, "WriteInstallationPathToRegistry", true);
-            PlaySoundOnGameHosted = new BoolSetting(iniFile, MULTIPLAYER, "PlaySoundOnGameHosted", true);
-            SkipConnectDialog = new BoolSetting(iniFile, MULTIPLAYER, "SkipConnectDialog", false);
-            PersistentMode = new BoolSetting(iniFile, MULTIPLAYER, "PersistentMode", false);
-            AutomaticCnCNetLogin = new BoolSetting(iniFile, MULTIPLAYER, "AutomaticCnCNetLogin", false);
-            DiscordIntegration = new BoolSetting(iniFile, MULTIPLAYER, "DiscordIntegration", true);
-            AllowGameInvitesFromFriendsOnly = new BoolSetting(iniFile, MULTIPLAYER, "AllowGameInvitesFromFriendsOnly", false);
-            NotifyOnUserListChange = new BoolSetting(iniFile, MULTIPLAYER, "NotifyOnUserListChange", true);
-            DisablePrivateMessagePopups = new BoolSetting(iniFile, MULTIPLAYER, "DisablePrivateMessagePopups", false);
-            AllowPrivateMessagesFromState = new IntSetting(iniFile, MULTIPLAYER, "AllowPrivateMessagesFromState", (int)AllowPrivateMessagesFromEnum.All);
-            EnableMapSharing = new BoolSetting(iniFile, MULTIPLAYER, "EnableMapSharing", true);
-            AlwaysDisplayTunnelList = new BoolSetting(iniFile, MULTIPLAYER, "AlwaysDisplayTunnelList", false);
-            MapSortState = new IntSetting(iniFile, MULTIPLAYER, "MapSortState", (int)SortDirection.None);
-            UseLegacyTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseLegacyTunnels", false);
-            UseP2P = new BoolSetting(iniFile, MULTIPLAYER, "UseP2P", false);
-            UseDynamicTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseDynamicTunnels", true);
+            ChatColor = new IntSetting(SettingsIni, MULTIPLAYER, "ChatColor", -1);
+            LANChatColor = new IntSetting(SettingsIni, MULTIPLAYER, "LANChatColor", -1);
+            PingUnofficialCnCNetTunnels = new BoolSetting(SettingsIni, MULTIPLAYER, "PingCustomTunnels", true);
+            WritePathToRegistry = new BoolSetting(SettingsIni, OPTIONS, "WriteInstallationPathToRegistry", true);
+            PlaySoundOnGameHosted = new BoolSetting(SettingsIni, MULTIPLAYER, "PlaySoundOnGameHosted", true);
+            SkipConnectDialog = new BoolSetting(SettingsIni, MULTIPLAYER, "SkipConnectDialog", false);
+            PersistentMode = new BoolSetting(SettingsIni, MULTIPLAYER, "PersistentMode", false);
+            AutomaticCnCNetLogin = new BoolSetting(SettingsIni, MULTIPLAYER, "AutomaticCnCNetLogin", false);
+            DiscordIntegration = new BoolSetting(SettingsIni, MULTIPLAYER, "DiscordIntegration", true);
+            AllowGameInvitesFromFriendsOnly = new BoolSetting(SettingsIni, MULTIPLAYER, "AllowGameInvitesFromFriendsOnly", false);
+            NotifyOnUserListChange = new BoolSetting(SettingsIni, MULTIPLAYER, "NotifyOnUserListChange", true);
+            DisablePrivateMessagePopups = new BoolSetting(SettingsIni, MULTIPLAYER, "DisablePrivateMessagePopups", false);
+            AllowPrivateMessagesFromState = new IntSetting(SettingsIni, MULTIPLAYER, "AllowPrivateMessagesFromState", (int)AllowPrivateMessagesFromEnum.All);
+            EnableMapSharing = new BoolSetting(SettingsIni, MULTIPLAYER, "EnableMapSharing", true);
+            AlwaysDisplayTunnelList = new BoolSetting(SettingsIni, MULTIPLAYER, "AlwaysDisplayTunnelList", false);
+            MapSortState = new IntSetting(SettingsIni, MULTIPLAYER, "MapSortState", (int)SortDirection.None);
+            UseLegacyTunnels = new BoolSetting(SettingsIni, MULTIPLAYER, "UseLegacyTunnels", false);
+            UseP2P = new BoolSetting(SettingsIni, MULTIPLAYER, "UseP2P", false);
+            UseDynamicTunnels = new BoolSetting(SettingsIni, MULTIPLAYER, "UseDynamicTunnels", true);
 
-            CheckForUpdates = new BoolSetting(iniFile, OPTIONS, "CheckforUpdates", true);
+            CheckForUpdates = new BoolSetting(SettingsIni, OPTIONS, "CheckforUpdates", true);
 
-            PrivacyPolicyAccepted = new BoolSetting(iniFile, OPTIONS, "PrivacyPolicyAccepted", false);
-            IsFirstRun = new BoolSetting(iniFile, OPTIONS, "IsFirstRun", true);
-            CustomComponentsDenied = new BoolSetting(iniFile, OPTIONS, "CustomComponentsDenied", false);
-            Difficulty = new IntSetting(iniFile, OPTIONS, "Difficulty", 1);
-            ScrollDelay = new IntSetting(iniFile, OPTIONS, "ScrollDelay", 4);
-            GameSpeed = new IntSetting(iniFile, OPTIONS, "GameSpeed", 1);
-            PreloadMapPreviews = new BoolSetting(iniFile, VIDEO, "PreloadMapPreviews", false);
-            ForceLowestDetailLevel = new BoolSetting(iniFile, VIDEO, "ForceLowestDetailLevel", false);
-            MinimizeWindowsOnGameStart = new BoolSetting(iniFile, OPTIONS, "MinimizeWindowsOnGameStart", true);
-            AutoRemoveUnderscoresFromName = new BoolSetting(iniFile, OPTIONS, "AutoRemoveUnderscoresFromName", true);
+            PrivacyPolicyAccepted = new BoolSetting(SettingsIni, OPTIONS, "PrivacyPolicyAccepted", false);
+            IsFirstRun = new BoolSetting(SettingsIni, OPTIONS, "IsFirstRun", true);
+            CustomComponentsDenied = new BoolSetting(SettingsIni, OPTIONS, "CustomComponentsDenied", false);
+            Difficulty = new IntSetting(SettingsIni, OPTIONS, "Difficulty", 1);
+            ScrollDelay = new IntSetting(SettingsIni, OPTIONS, "ScrollDelay", 4);
+            GameSpeed = new IntSetting(SettingsIni, OPTIONS, "GameSpeed", 1);
+            PreloadMapPreviews = new BoolSetting(SettingsIni, VIDEO, "PreloadMapPreviews", false);
+            ForceLowestDetailLevel = new BoolSetting(SettingsIni, VIDEO, "ForceLowestDetailLevel", false);
+            MinimizeWindowsOnGameStart = new BoolSetting(SettingsIni, OPTIONS, "MinimizeWindowsOnGameStart", true);
+            AutoRemoveUnderscoresFromName = new BoolSetting(SettingsIni, OPTIONS, "AutoRemoveUnderscoresFromName", true);
 
-            SortState = new IntSetting(iniFile, GAME_FILTERS, "SortState", (int)SortDirection.None);
-            ShowFriendGamesOnly = new BoolSetting(iniFile, GAME_FILTERS, "ShowFriendGamesOnly", DEFAULT_SHOW_FRIENDS_ONLY_GAMES);
-            HideLockedGames = new BoolSetting(iniFile, GAME_FILTERS, "HideLockedGames", DEFAULT_HIDE_LOCKED_GAMES);
-            HidePasswordedGames = new BoolSetting(iniFile, GAME_FILTERS, "HidePasswordedGames", DEFAULT_HIDE_PASSWORDED_GAMES);
-            HideIncompatibleGames = new BoolSetting(iniFile, GAME_FILTERS, "HideIncompatibleGames", DEFAULT_HIDE_INCOMPATIBLE_GAMES);
-            MaxPlayerCount = new IntRangeSetting(iniFile, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
+            SortState = new IntSetting(SettingsIni, GAME_FILTERS, "SortState", (int)SortDirection.None);
+            ShowFriendGamesOnly = new BoolSetting(SettingsIni, GAME_FILTERS, "ShowFriendGamesOnly", DEFAULT_SHOW_FRIENDS_ONLY_GAMES);
+            HideLockedGames = new BoolSetting(SettingsIni, GAME_FILTERS, "HideLockedGames", DEFAULT_HIDE_LOCKED_GAMES);
+            HidePasswordedGames = new BoolSetting(SettingsIni, GAME_FILTERS, "HidePasswordedGames", DEFAULT_HIDE_PASSWORDED_GAMES);
+            HideIncompatibleGames = new BoolSetting(SettingsIni, GAME_FILTERS, "HideIncompatibleGames", DEFAULT_HIDE_INCOMPATIBLE_GAMES);
+            MaxPlayerCount = new IntRangeSetting(SettingsIni, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
 
-            FavoriteMaps = new StringListSetting(iniFile, OPTIONS, "FavoriteMaps", new List<string>());
+            FavoriteMaps = new StringListSetting(SettingsIni, OPTIONS, "FavoriteMaps", new List<string>());
         }
 
         public IniFile SettingsIni { get; private set; }
@@ -314,7 +295,7 @@ namespace ClientCore
             else
                 FavoriteMaps.Add(favoriteMapKey);
 
-            Instance.SaveSettings();
+            SaveSettings();
 
             return !isFavorite;
         }
@@ -342,10 +323,9 @@ namespace ClientCore
 
         public void SaveSettings()
         {
-            Logger.Log("Writing settings INI.");
+            logger.LogInformation("Writing settings INI.");
 
             ApplyDefaults();
-            // CleanUpLegacySettings();
 
             SettingsIni.WriteIniFile();
 

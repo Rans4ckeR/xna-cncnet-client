@@ -4,11 +4,11 @@ using ClientCore;
 
 namespace DTAClient.Domain.Multiplayer
 {
-    public class GameModeMapCollection : List<GameModeMap>
+    internal sealed class GameModeMapCollection : List<GameModeMap>
     {
-        public GameModeMapCollection(IEnumerable<GameMode> gameModes) :
+        public GameModeMapCollection(IEnumerable<GameMode> gameModes, UserINISettings userIniSettings) :
             base(gameModes.SelectMany(gm => gm.Maps.Select(map =>
-                new GameModeMap(gm, map, UserINISettings.Instance.IsFavoriteMap(map.Name, gm.Name)))).Distinct())
+                new GameModeMap(gm, map, userIniSettings.IsFavoriteMap(map.Name, gm.Name)))).Distinct())
         {
         }
 

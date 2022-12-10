@@ -1,7 +1,7 @@
-﻿using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
 {

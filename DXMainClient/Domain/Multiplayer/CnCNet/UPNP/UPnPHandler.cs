@@ -13,12 +13,12 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Xml;
-using ClientCore;
-using Rampastring.Tools;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
-internal static class UPnPHandler
+internal sealed class UPnPHandler
 {
     private const string InternetGatewayDeviceDeviceType = "upnp:rootdevice";
     private const int UPnPMultiCastPort = 1900;
@@ -32,7 +32,14 @@ internal static class UPnPHandler
         [AddressType.IpV6SiteLocal] = IPAddress.Parse("[FF05::C]")
     }.AsReadOnly();
 
-    public static async ValueTask<(InternetGatewayDevice InternetGatewayDevice, List<ushort> P2pPorts, List<ushort> P2pIpV6PortIds, IPAddress ipV6Address, IPAddress ipV4Address)> SetupPortsAsync(
+    private readonly ILogger logger;
+
+    public UPnPHandler(ILogger logger)
+    {
+        this.logger = logger;
+    }
+
+    public async ValueTask<(InternetGatewayDevice InternetGatewayDevice, List<ushort> P2pPorts, List<ushort> P2pIpV6PortIds, IPAddress ipV6Address, IPAddress ipV4Address)> SetupPortsAsync(
         InternetGatewayDevice internetGatewayDevice, IEnumerable<ushort> p2pReservedPorts, CancellationToken cancellationToken = default)
     {
         var p2pPorts = new List<ushort>();
@@ -41,7 +48,7 @@ internal static class UPnPHandler
         bool routerNatEnabled = false;
         bool natDetected = false;
 
-        Logger.Log("Starting P2P Setup.");
+        logger.LogInformation("Starting P2P Setup.");
 
         if (internetGatewayDevice is null)
         {
@@ -53,7 +60,7 @@ internal static class UPnPHandler
 
         if (internetGatewayDevice is not null)
         {
-            Logger.Log("Found NAT device.");
+            logger.LogInformation("Found NAT device.");
 
             routerNatEnabled = await internetGatewayDevice.GetNatRsipStatusAsync(cancellationToken);
             routerPublicIpV4Address = await internetGatewayDevice.GetExternalIpV4AddressAsync(cancellationToken);
@@ -61,7 +68,7 @@ internal static class UPnPHandler
 
         if (routerPublicIpV4Address == null)
         {
-            Logger.Log("Using IPV4 detection.");
+            logger.LogInformation("Using IPV4 detection.");
 
             routerPublicIpV4Address = await NetworkHelper.DetectPublicIpV4Address(cancellationToken);
         }
@@ -75,14 +82,14 @@ internal static class UPnPHandler
         publicIpV4Address ??= routerPublicIpV4Address;
 
         if (publicIpV4Address is not null)
-            Logger.Log("Public IPV4 detected.");
+            logger.LogInformation("Public IPV4 detected.");
 
         var privateIpV4Addresses = NetworkHelper.GetPrivateIpAddresses().Where(q => q.AddressFamily is AddressFamily.InterNetwork).ToList();
         IPAddress privateIpV4Address = privateIpV4Addresses.FirstOrDefault();
 
         if (natDetected && privateIpV4Address is not null && publicIpV4Address is not null)
         {
-            Logger.Log("Using IPV4 port mapping.");
+            logger.LogInformation("Using IPV4 port mapping.");
 
             try
             {
@@ -95,7 +102,7 @@ internal static class UPnPHandler
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, $"Could not open P2P IPV4 ports for {privateIpV4Address} -> {publicIpV4Address}.");
+                logger.LogExceptionDetails(ex, $"Could not open P2P IPV4 ports for {privateIpV4Address} -> {publicIpV4Address}.");
             }
         }
 
@@ -124,7 +131,7 @@ internal static class UPnPHandler
 
         if (publicIpV6Address is not null)
         {
-            Logger.Log("Public IPV6 detected.");
+            logger.LogInformation("Public IPV6 detected.");
 
             if (internetGatewayDevice is not null)
             {
@@ -134,7 +141,7 @@ internal static class UPnPHandler
 
                     if (firewallEnabled && inboundPinholeAllowed)
                     {
-                        Logger.Log("Configuring IPV6 firewall.");
+                        logger.LogInformation("Configuring IPV6 firewall.");
 
                         foreach (ushort p2pReservedPort in p2pReservedPorts)
                         {
@@ -144,7 +151,7 @@ internal static class UPnPHandler
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, $"Could not open P2P IPV6 ports for {publicIpV6Address}.");
+                    logger.LogExceptionDetails(ex, $"Could not open P2P IPV6 ports for {publicIpV6Address}.");
                 }
             }
         }
@@ -152,7 +159,7 @@ internal static class UPnPHandler
         return (internetGatewayDevice, p2pPorts, p2pIpV6PortIds, publicIpV6Address, publicIpV4Address);
     }
 
-    private static async ValueTask<IEnumerable<InternetGatewayDevice>> GetInternetGatewayDevicesAsync(CancellationToken cancellationToken)
+    private async ValueTask<IEnumerable<InternetGatewayDevice>> GetInternetGatewayDevicesAsync(CancellationToken cancellationToken)
     {
         IEnumerable<string> rawDeviceResponses = await GetRawDeviceResponses(cancellationToken);
         IEnumerable<Dictionary<string, string>> formattedDeviceResponses = GetFormattedDeviceResponses(rawDeviceResponses);
@@ -297,7 +304,7 @@ internal static class UPnPHandler
         return localAddressesDeviceResponses.Where(q => q.Any()).SelectMany(q => q).Distinct();
     }
 
-    private static async Task<InternetGatewayDevice> GetInternetGatewayDeviceAsync(IGrouping<string, InternetGatewayDeviceResponse> internetGatewayDeviceResponses, CancellationToken cancellationToken)
+    private async Task<InternetGatewayDevice> GetInternetGatewayDeviceAsync(IGrouping<string, InternetGatewayDeviceResponse> internetGatewayDeviceResponses, CancellationToken cancellationToken)
     {
         Uri[] locations = internetGatewayDeviceResponses.Select(r => r.Location).ToArray();
         Uri location = GetPreferredLocation(locations);
@@ -323,14 +330,16 @@ internal static class UPnPHandler
             }
         }
 
-        return new(
-            internetGatewayDeviceResponses.Select(r => r.Location).Distinct(),
-            internetGatewayDeviceResponses.Select(r => r.Server).Distinct().Single(),
-            internetGatewayDeviceResponses.Select(r => r.CacheControl).Distinct().Single(),
-            internetGatewayDeviceResponses.Select(r => r.Ext).Distinct().Single(),
-            internetGatewayDeviceResponses.Select(r => r.SearchTarget).Distinct().Single(),
-            internetGatewayDeviceResponses.Key,
-            uPnPDescription,
-            location);
+        return new(logger)
+        {
+            Locations = internetGatewayDeviceResponses.Select(r => r.Location).Distinct(),
+            Server = internetGatewayDeviceResponses.Select(r => r.Server).Distinct().Single(),
+            CacheControl = internetGatewayDeviceResponses.Select(r => r.CacheControl).Distinct().Single(),
+            Ext = internetGatewayDeviceResponses.Select(r => r.Ext).Distinct().Single(),
+            SearchTarget = internetGatewayDeviceResponses.Select(r => r.SearchTarget).Distinct().Single(),
+            UniqueServiceName = internetGatewayDeviceResponses.Key,
+            UPnPDescription = uPnPDescription,
+            PreferredLocation = location
+        };
     }
 }

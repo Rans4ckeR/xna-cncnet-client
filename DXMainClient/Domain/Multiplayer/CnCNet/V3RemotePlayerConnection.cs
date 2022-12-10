@@ -4,8 +4,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
-using ClientCore;
-using Rampastring.Tools;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
@@ -20,11 +20,18 @@ internal sealed class V3RemotePlayerConnection : IDisposable
     private const int MinimumPacketSize = 8;
     private const int MaximumPacketSize = 1024;
 
+    private readonly ILogger logger;
+
     private uint gameLocalPlayerId;
     private CancellationToken cancellationToken;
     private Socket tunnelSocket;
     private IPEndPoint remoteEndPoint;
     private ushort localPort;
+
+    public V3RemotePlayerConnection(ILogger logger)
+    {
+        this.logger = logger;
+    }
 
     public void SetUp(IPEndPoint remoteEndPoint, ushort localPort, uint gameLocalPlayerId, CancellationToken cancellationToken)
     {
@@ -60,9 +67,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
     public async ValueTask StartConnectionAsync()
     {
 #if DEBUG
-        Logger.Log($"Attempting to establish a connection from port {localPort} to {remoteEndPoint}).");
+        logger.LogTrace($"Attempting to establish a connection from port {localPort} to {remoteEndPoint}).");
 #else
-        Logger.Log($"Attempting to establish a connection using {localPort}).");
+        logger.LogInformation($"Attempting to establish a connection using {localPort}).");
 #endif
 
         tunnelSocket = new Socket(SocketType.Dgram, ProtocolType.Udp);
@@ -85,9 +92,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         catch (SocketException ex)
         {
 #if DEBUG
-            ProgramConstants.LogException(ex, $"Failed to establish connection from port {localPort} to {remoteEndPoint}.");
+            logger.LogExceptionDetails(ex, $"Failed to establish connection from port {localPort} to {remoteEndPoint}.");
 #else
-            ProgramConstants.LogException(ex, $"Failed to establish connection using {localPort}.");
+            logger.LogExceptionDetails(ex, $"Failed to establish connection using {localPort}.");
 #endif
             OnRaiseConnectionFailedEvent(EventArgs.Empty);
 
@@ -100,9 +107,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         catch (OperationCanceledException)
         {
 #if DEBUG
-            Logger.Log($"Failed to establish connection (time out) from port {localPort} to {remoteEndPoint}.");
+            logger.LogTrace($"Failed to establish connection (time out) from port {localPort} to {remoteEndPoint}.");
 #else
-            Logger.Log($"Failed to establish connection (time out) using {localPort}.");
+            logger.LogInformation($"Failed to establish connection (time out) using {localPort}.");
 #endif
             OnRaiseConnectionFailedEvent(EventArgs.Empty);
 
@@ -110,9 +117,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         }
 
 #if DEBUG
-        Logger.Log($"Connection from {tunnelSocket.LocalEndPoint} to {remoteEndPoint} established.");
+        logger.LogTrace($"Connection from {tunnelSocket.LocalEndPoint} to {remoteEndPoint} established.");
 #else
-        Logger.Log($"Connection using {localPort} established.");
+        logger.LogInformation($"Connection using {localPort} established.");
 #endif
         OnRaiseConnectedEvent(EventArgs.Empty);
         await ReceiveLoopAsync();
@@ -126,7 +133,7 @@ internal sealed class V3RemotePlayerConnection : IDisposable
     public async ValueTask SendDataAsync(ReadOnlyMemory<byte> data, uint receiverId)
     {
 #if DEBUG
-        Logger.Log($"Sending data {gameLocalPlayerId} -> {receiverId} from {tunnelSocket.LocalEndPoint} to {remoteEndPoint}.");
+        logger.LogTrace($"Sending data {gameLocalPlayerId} -> {receiverId} from {tunnelSocket.LocalEndPoint} to {remoteEndPoint}.");
 
 #endif
         const int idsSize = sizeof(uint) * 2;
@@ -152,9 +159,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         catch (SocketException ex)
         {
 #if DEBUG
-            ProgramConstants.LogException(ex, $"Socket exception sending data to {remoteEndPoint}.");
+            logger.LogExceptionDetails(ex, $"Socket exception sending data to {remoteEndPoint}.");
 #else
-            ProgramConstants.LogException(ex, $"Socket exception sending data from port {localPort}.");
+            logger.LogExceptionDetails(ex, $"Socket exception sending data from port {localPort}.");
 #endif
             OnRaiseConnectionCutEvent(EventArgs.Empty);
         }
@@ -167,9 +174,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         catch (OperationCanceledException)
         {
 #if DEBUG
-            Logger.Log($"Remote host connection {remoteEndPoint} timed out when sending data.");
+            logger.LogTrace($"Remote host connection {remoteEndPoint} timed out when sending data.");
 #else
-            Logger.Log($"Remote host connection from port {localPort} timed out when sending data.");
+            logger.LogInformation($"Remote host connection from port {localPort} timed out when sending data.");
 #endif
             OnRaiseConnectionCutEvent(EventArgs.Empty);
         }
@@ -178,9 +185,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
     public void Dispose()
     {
 #if DEBUG
-        Logger.Log($"Connection to remote host {remoteEndPoint} closed.");
+        logger.LogTrace($"Connection to remote host {remoteEndPoint} closed.");
 #else
-        Logger.Log($"Connection to remote host on port {localPort} closed.");
+        logger.LogInformation($"Connection to remote host on port {localPort} closed.");
 #endif
         tunnelSocket?.Close();
     }
@@ -191,9 +198,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
         int receiveTimeout = GameStartReceiveTimeout;
 
 #if DEBUG
-        Logger.Log($"Start listening for {remoteEndPoint} on {tunnelSocket.LocalEndPoint}.");
+        logger.LogTrace($"Start listening for {remoteEndPoint} on {tunnelSocket.LocalEndPoint}.");
 #else
-        Logger.Log($"Start listening on {localPort}.");
+        logger.LogInformation($"Start listening on {localPort}.");
 #endif
 
         while (!cancellationToken.IsCancellationRequested)
@@ -210,9 +217,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
             catch (SocketException ex)
             {
 #if DEBUG
-                ProgramConstants.LogException(ex, $"Socket exception in {remoteEndPoint} receive loop.");
+                logger.LogExceptionDetails(ex, $"Socket exception in {remoteEndPoint} receive loop.");
 #else
-                ProgramConstants.LogException(ex, $"Socket exception on port {localPort} receive loop.");
+                logger.LogExceptionDetails(ex, $"Socket exception on port {localPort} receive loop.");
 #endif
                 OnRaiseConnectionCutEvent(EventArgs.Empty);
 
@@ -229,9 +236,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
             catch (OperationCanceledException)
             {
 #if DEBUG
-                Logger.Log($"Remote host connection {remoteEndPoint} timed out when receiving data.");
+                logger.LogTrace($"Remote host connection {remoteEndPoint} timed out when receiving data.");
 #else
-                Logger.Log($"Remote host connection on port {localPort} timed out when receiving data.");
+                logger.LogInformation($"Remote host connection on port {localPort} timed out when receiving data.");
 #endif
                 OnRaiseConnectionCutEvent(EventArgs.Empty);
 
@@ -243,9 +250,9 @@ internal sealed class V3RemotePlayerConnection : IDisposable
             if (socketReceiveFromResult.ReceivedBytes < MinimumPacketSize)
             {
 #if DEBUG
-                Logger.Log($"Invalid data packet from {socketReceiveFromResult.RemoteEndPoint}");
+                logger.LogTrace($"Invalid data packet from {socketReceiveFromResult.RemoteEndPoint}");
 #else
-                Logger.Log($"Invalid data packet on {localPort}");
+                logger.LogInformation($"Invalid data packet on {localPort}");
 #endif
                 continue;
             }
@@ -255,15 +262,15 @@ internal sealed class V3RemotePlayerConnection : IDisposable
             uint receiverId = BitConverter.ToUInt32(buffer[4..8].Span);
 
 #if DEBUG
-            Logger.Log($"Received {senderId} -> {receiverId} from {socketReceiveFromResult.RemoteEndPoint} on {tunnelSocket.LocalEndPoint}.");
+            logger.LogTrace($"Received {senderId} -> {receiverId} from {socketReceiveFromResult.RemoteEndPoint} on {tunnelSocket.LocalEndPoint}.");
 
 #endif
             if (receiverId != gameLocalPlayerId)
             {
 #if DEBUG
-                Logger.Log($"Invalid target (received: {receiverId}, expected: {gameLocalPlayerId}) from {socketReceiveFromResult.RemoteEndPoint}.");
+                logger.LogTrace($"Invalid target (received: {receiverId}, expected: {gameLocalPlayerId}) from {socketReceiveFromResult.RemoteEndPoint}.");
 #else
-                Logger.Log($"Invalid target (received: {receiverId}, expected: {gameLocalPlayerId}) on port {localPort}.");
+                logger.LogInformation($"Invalid target (received: {receiverId}, expected: {gameLocalPlayerId}) on port {localPort}.");
 #endif
 
                 continue;

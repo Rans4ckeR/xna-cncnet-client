@@ -1,25 +1,29 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ClientCore;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace DTAConfig
 {
     /// <summary>
     /// A DirectDraw wrapper option.
     /// </summary>
-    class DirectDrawWrapper
+    public sealed class DirectDrawWrapper
     {
+        private readonly ILogger logger;
+
         /// <summary>
         /// Creates a new DirectDrawWrapper instance and parses its configuration
         /// from an INI file.
         /// </summary>
         /// <param name="internalName">The internal name of the renderer.</param>
         /// <param name="iniFile">The file to parse the renderer's options from.</param>
-        public DirectDrawWrapper(string internalName, IniFile iniFile)
+        public DirectDrawWrapper(string internalName, IniFile iniFile, ILogger logger)
         {
+            this.logger = logger;
             InternalName = internalName;
             Parse(iniFile.GetSection(InternalName));
         }
@@ -36,13 +40,13 @@ namespace DTAConfig
 
         /// <summary>
         /// If not null or empty, windowed mode will be written to this INI key
-        /// in the section defined in <see cref="DirectDrawWrapper.WindowedModeSection"/> 
+        /// in the section defined in <see cref="DirectDrawWrapper.WindowedModeSection"/>
         /// instead of the regular settings INI file.
         /// </summary>
         public string WindowedModeKey { get; private set; }
 
         /// <summary>
-        /// If not null or empty, the setting that controls whether the game is 
+        /// If not null or empty, the setting that controls whether the game is
         /// run in borderless windowed mode will be written to this INI key in
         /// the section defined by
         /// <see cref="DirectDrawWrapper.WindowedModeSection"/> instead of the
@@ -87,7 +91,7 @@ namespace DTAConfig
         {
             if (section == null)
             {
-                Logger.Log("DirectDrawWrapper: Configuration for renderer '" + InternalName + "' not found!");
+                logger.LogInformation("DirectDrawWrapper: Configuration for renderer '" + InternalName + "' not found!");
                 return;
             }
 
@@ -135,16 +139,16 @@ namespace DTAConfig
 
             if (!string.IsNullOrEmpty(ddrawDLLPath) &&
                 !SafePath.GetFile(ProgramConstants.GetBaseResourcePath(), ddrawDLLPath).Exists)
-                Logger.Log("DirectDrawWrapper: File specified in DLLPath= for renderer '" + InternalName + "' does not exist!");
+                logger.LogInformation("DirectDrawWrapper: File specified in DLLPath= for renderer '" + InternalName + "' does not exist!");
 
             if (!string.IsNullOrEmpty(resConfigFileName) &&
                 !SafePath.GetFile(ProgramConstants.GetBaseResourcePath(), resConfigFileName).Exists)
-                Logger.Log("DirectDrawWrapper: File specified in ConfigFileName= for renderer '" + InternalName + "' does not exist!");
+                logger.LogInformation("DirectDrawWrapper: File specified in ConfigFileName= for renderer '" + InternalName + "' does not exist!");
 
             foreach (var file in filesToCopy)
             {
                 if (!SafePath.GetFile(ProgramConstants.GetBaseResourcePath(), file).Exists)
-                    Logger.Log("DirectDrawWrapper: Additional file '" + file + "' for renderer '" + InternalName + "' does not exist!");
+                    logger.LogInformation("DirectDrawWrapper: Additional file '" + file + "' for renderer '" + InternalName + "' does not exist!");
             }
         }
 
@@ -210,7 +214,7 @@ namespace DTAConfig
     /// An exception that is thrown when configuration for DirectDraw wrapper contains
     /// invalid or unexpected settings / data or required settings / data are missing.
     /// </summary>
-    class DirectDrawWrapperConfigurationException : Exception
+    internal class DirectDrawWrapperConfigurationException : Exception
     {
         public DirectDrawWrapperConfigurationException(string message) : base(message)
         {

@@ -1,24 +1,23 @@
 ﻿using System;
-using System.IO;
-using Microsoft.Win32;
-using DTAClient.Domain;
-using ClientCore;
-using Rampastring.Tools;
-using DTAClient.DXGUI;
-using ClientUpdater;
-using System.Security.Principal;
 using System.DirectoryServices;
-using System.Linq;
-using DTAClient.Online;
-using ClientCore.INIProcessing;
-using System.Threading.Tasks;
 using System.Globalization;
+using System.IO;
+using System.Linq;
 using System.Management;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Security.Principal;
+using System.Threading.Tasks;
+using ClientCore;
 using ClientCore.Extensions;
-using ClientCore.Settings;
-using Microsoft.Xna.Framework.Graphics;
+using ClientCore.INIProcessing;
+using ClientGUI;
+using ClientUpdater;
+using DTAClient.Domain;
+using DTAClient.Online;
+using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
+using Rampastring.Tools;
 
 namespace DTAClient
 {
@@ -27,29 +26,63 @@ namespace DTAClient
     /// </summary>
     internal sealed class Startup
     {
+        private readonly ILogger logger;
+        private readonly PreprocessorBackgroundTask preprocessorBackgroundTask;
+        private readonly UserINISettings userIniSettings;
+        private readonly XNAMessageBox xnaMessageBox;
+        private readonly ErrorHandler errorHandler;
+
+        public Startup(
+            ILogger logger,
+            PreprocessorBackgroundTask preprocessorBackgroundTask,
+            UserINISettings userIniSettings,
+            XNAMessageBox xnaMessageBox,
+            ErrorHandler errorHandler)
+        {
+            this.logger = logger;
+            this.preprocessorBackgroundTask = preprocessorBackgroundTask;
+            this.userIniSettings = userIniSettings;
+            this.xnaMessageBox = xnaMessageBox;
+            this.errorHandler = errorHandler;
+        }
+
         /// <summary>
         /// The main method for startup and initialization.
         /// </summary>
         public void Execute()
         {
-            string themePath = ClientConfiguration.Instance.GetThemePath(UserINISettings.Instance.ClientTheme)
-                ?? ClientConfiguration.Instance.GetThemeInfoFromIndex(0)[1];
-            ProgramConstants.RESOURCES_DIR = SafePath.CombineDirectoryPath(ProgramConstants.BASE_RESOURCE_PATH, themePath);
+            errorHandler.DisplayErrorAction = (title, error, exit) =>
+            {
+                xnaMessageBox.Caption = title;
+                xnaMessageBox.Description = error;
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+                xnaMessageBox.OKClickedAction = _ =>
+                {
+                    if (exit)
+                        Environment.Exit(1);
+                };
+
+                xnaMessageBox.Show();
+            };
+
+            //string themePath = ClientConfiguration.Instance.GetThemePath(userIniSettings.ClientTheme)
+            //    ?? ClientConfiguration.Instance.GetThemeInfoFromIndex(0)[1];
+            //ProgramConstants.RESOURCES_DIR = SafePath.CombineDirectoryPath(ProgramConstants.BASE_RESOURCE_PATH, themePath);
             DirectoryInfo resourcesDirectory = SafePath.GetDirectory(ProgramConstants.GetResourcePath());
 
             if (!resourcesDirectory.Exists)
                 throw new DirectoryNotFoundException("Theme directory not found!" + Environment.NewLine + ProgramConstants.RESOURCES_DIR);
 
-            Logger.Log("Initializing updater.");
+            logger.LogInformation("Initializing updater.");
             SafePath.DeleteFileIfExists(ProgramConstants.GamePath, "version_u");
             Updater.Initialize(ProgramConstants.GamePath, ProgramConstants.GetBaseResourcePath(), ClientConfiguration.Instance.SettingsIniName, ClientConfiguration.Instance.LocalGame, SafePath.GetFile(ProgramConstants.StartupExecutable).Name);
-            Logger.Log("OSDescription: " + RuntimeInformation.OSDescription);
-            Logger.Log("OSArchitecture: " + RuntimeInformation.OSArchitecture);
-            Logger.Log("ProcessArchitecture: " + RuntimeInformation.ProcessArchitecture);
-            Logger.Log("FrameworkDescription: " + RuntimeInformation.FrameworkDescription);
-            Logger.Log("RuntimeIdentifier: " + RuntimeInformation.RuntimeIdentifier);
-            Logger.Log("Selected OS profile: " + ProgramConstants.OSId);
-            Logger.Log("Current culture: " + CultureInfo.CurrentCulture);
+            logger.LogInformation("OSDescription: " + RuntimeInformation.OSDescription);
+            logger.LogInformation("OSArchitecture: " + RuntimeInformation.OSArchitecture);
+            logger.LogInformation("ProcessArchitecture: " + RuntimeInformation.ProcessArchitecture);
+            logger.LogInformation("FrameworkDescription: " + RuntimeInformation.FrameworkDescription);
+            logger.LogInformation("RuntimeIdentifier: " + RuntimeInformation.RuntimeIdentifier);
+            logger.LogInformation("Selected OS profile: " + ProgramConstants.OSId);
+            logger.LogInformation("Current culture: " + CultureInfo.CurrentCulture);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -69,14 +102,14 @@ namespace DTAClient
 
             if (updaterFolder.Exists)
             {
-                Logger.Log("Attempting to delete temporary updater directory.");
+                logger.LogInformation("Attempting to delete temporary updater directory.");
                 try
                 {
                     updaterFolder.Delete(true);
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex);
+                    logger.LogExceptionDetails(ex);
                 }
             }
 
@@ -86,21 +119,21 @@ namespace DTAClient
 
                 if (!savedGamesFolder.Exists)
                 {
-                    Logger.Log("Saved Games directory does not exist - attempting to create one.");
+                    logger.LogInformation("Saved Games directory does not exist - attempting to create one.");
                     try
                     {
                         savedGamesFolder.Create();
                     }
                     catch (Exception ex)
                     {
-                        ProgramConstants.LogException(ex);
+                        logger.LogExceptionDetails(ex);
                     }
                 }
             }
 
             if (Updater.CustomComponents != null)
             {
-                Logger.Log("Removing partial custom component downloads.");
+                logger.LogInformation("Removing partial custom component downloads.");
                 foreach (var component in Updater.CustomComponents)
                 {
                     try
@@ -109,12 +142,12 @@ namespace DTAClient
                     }
                     catch (Exception ex)
                     {
-                        ProgramConstants.LogException(ex);
+                        logger.LogExceptionDetails(ex);
                     }
                 }
             }
 
-            FinalSunSettings.WriteFinalSunIni();
+            FinalSunSettings.WriteFinalSunIni(logger);
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 WriteInstallPathToRegistry();
@@ -122,17 +155,16 @@ namespace DTAClient
             ClientConfiguration.Instance.RefreshSettings();
 
             // Start INI file preprocessor
-            PreprocessorBackgroundTask.Instance.Run();
+            preprocessorBackgroundTask.Run();
 
-            GameClass gameClass = new GameClass();
+            // todo DI
+            //int currentWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
+            //int currentHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
 
-            int currentWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
-            int currentHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
+            //userIniSettings.ClientResolutionX = new IntSetting(userIniSettings.SettingsIni, UserINISettings.VIDEO, "ClientResolutionX", currentWidth);
+            //userIniSettings.ClientResolutionY = new IntSetting(userIniSettings.SettingsIni, UserINISettings.VIDEO, "ClientResolutionY", currentHeight);
 
-            UserINISettings.Instance.ClientResolutionX = new IntSetting(UserINISettings.Instance.SettingsIni, UserINISettings.VIDEO, "ClientResolutionX", currentWidth);
-            UserINISettings.Instance.ClientResolutionY = new IntSetting(UserINISettings.Instance.SettingsIni, UserINISettings.VIDEO, "ClientResolutionY", currentHeight);
-
-            gameClass.Run();
+            //gameClass.Run();
         }
 
 #if ARES
@@ -163,7 +195,7 @@ namespace DTAClient
                         }
                         catch (Exception ex)
                         {
-                            ProgramConstants.LogException(ex, "PruneFiles: Could not delete file " + fsEntry.Name + ".");
+                            logger.LogExceptionDetails(ex, "PruneFiles: Could not delete file " + fsEntry.Name + ".");
                         }
                     }
                 }
@@ -173,7 +205,7 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "PruneFiles: An error occurred while pruning files from " + directory.Name + ".");
+                logger.LogExceptionDetails(ex, "PruneFiles: An error occurred while pruning files from " + directory.Name + ".");
             }
         }
 #endif
@@ -193,7 +225,7 @@ namespace DTAClient
         /// </summary>
         /// <param name="newDirectory">New log files directory.</param>
         /// <param name="searchPattern">Search string the log file names must match against to be copied. Can contain wildcard characters (* and ?) but doesn't support regular expressions.</param>
-        private static void MigrateLogFiles(DirectoryInfo newDirectory, string searchPattern)
+        private void MigrateLogFiles(DirectoryInfo newDirectory, string searchPattern)
         {
             DirectoryInfo currentDirectory = SafePath.GetDirectory(ProgramConstants.ClientUserFilesPath, "ErrorLogs");
             try
@@ -227,7 +259,7 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "MigrateLogFiles: An error occurred while moving log files from " +
+                logger.LogExceptionDetails(ex, "MigrateLogFiles: An error occurred while moving log files from " +
                     currentDirectory.Name + " to " +
                     newDirectory.Name + ".");
             }
@@ -237,7 +269,7 @@ namespace DTAClient
         /// Writes processor, graphics card and memory info to the log file.
         /// </summary>
         [SupportedOSPlatform("windows")]
-        private static void CheckSystemSpecifications()
+        private void CheckSystemSpecifications()
         {
             string cpu = string.Empty;
             string videoController = string.Empty;
@@ -256,7 +288,7 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
 
                 cpu = "CPU info not found";
             }
@@ -278,7 +310,7 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
 
                 cpu = "Video controller info not found";
             }
@@ -298,18 +330,18 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
 
                 cpu = "Memory info not found";
             }
 
-            Logger.Log(string.Format("Hardware info: {0} | {1} | {2}", cpu.Trim(), videoController.Trim(), memory));
+            logger.LogInformation(string.Format("Hardware info: {0} | {1} | {2}", cpu.Trim(), videoController.Trim(), memory));
         }
 
         /// <summary>
         /// Generate an ID for online play.
         /// </summary>
-        private static async ValueTask GenerateOnlineIdAsync()
+        private async ValueTask GenerateOnlineIdAsync()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -339,7 +371,7 @@ namespace DTAClient
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex);
+                    logger.LogExceptionDetails(ex);
                     var rn = new Random();
                     using RegistryKey key = Registry.CurrentUser.CreateSubKey("SOFTWARE\\" + ClientConfiguration.Instance.InstallationPathRegKey);
                     string str = rn.Next(int.MaxValue - 1).ToString(CultureInfo.InvariantCulture);
@@ -355,7 +387,7 @@ namespace DTAClient
                     }
                     catch (Exception ex1)
                     {
-                        ProgramConstants.LogException(ex1);
+                        logger.LogExceptionDetails(ex1);
                     }
 
                     Connection.SetId(str);
@@ -371,7 +403,7 @@ namespace DTAClient
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex);
+                    logger.LogExceptionDetails(ex);
                     Connection.SetId(new Random().Next(int.MaxValue - 1).ToString(CultureInfo.InvariantCulture));
                 }
             }
@@ -381,15 +413,15 @@ namespace DTAClient
         /// Writes the game installation path to the Windows registry.
         /// </summary>
         [SupportedOSPlatform("windows")]
-        private static void WriteInstallPathToRegistry()
+        private void WriteInstallPathToRegistry()
         {
-            if (!UserINISettings.Instance.WritePathToRegistry)
+            if (!userIniSettings.WritePathToRegistry)
             {
-                Logger.Log("Skipping writing installation path to the Windows Registry because of INI setting.");
+                logger.LogInformation("Skipping writing installation path to the Windows Registry because of INI setting.");
                 return;
             }
 
-            Logger.Log("Writing installation path to the Windows registry.");
+            logger.LogInformation("Writing installation path to the Windows registry.");
 
             try
             {
@@ -398,7 +430,7 @@ namespace DTAClient
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Failed to write installation path to the Windows registry");
+                logger.LogExceptionDetails(ex, "Failed to write installation path to the Windows registry");
             }
         }
     }

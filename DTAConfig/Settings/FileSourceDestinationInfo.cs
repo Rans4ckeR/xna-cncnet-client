@@ -1,12 +1,12 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using ClientCore;
+using Rampastring.Tools;
 
 namespace DTAConfig.Settings
 {
-    sealed class FileSourceDestinationInfo
+    internal sealed class FileSourceDestinationInfo
     {
         private readonly string destinationPath;
         private readonly string sourcePath;

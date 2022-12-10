@@ -1,28 +1,40 @@
-﻿using ClientCore;
+﻿using System;
+using ClientCore;
 using ClientCore.CnCNet5;
 using ClientGUI;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
-    class CnCNetLoginWindow : XNAWindow
+    internal sealed class CnCNetLoginWindow : XNAWindow
     {
-        public CnCNetLoginWindow(WindowManager windowManager) : base(windowManager)
+        private readonly UserINISettings userIniSettings;
+        private readonly XNAMessageBox xnaMessageBox;
+
+        public CnCNetLoginWindow(
+            WindowManager windowManager,
+            ILogger logger,
+            UserINISettings userIniSettings,
+            XNAMessageBox xnaMessageBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
+            this.userIniSettings = userIniSettings;
+            this.xnaMessageBox = xnaMessageBox;
         }
 
-        XNALabel lblConnectToCnCNet;
-        XNATextBox tbPlayerName;
-        XNALabel lblPlayerName;
-        XNAClientCheckBox chkRememberMe;
-        XNAClientCheckBox chkPersistentMode;
-        XNAClientCheckBox chkAutoConnect;
-        XNAClientButton btnConnect;
-        XNAClientButton btnCancel;
+        private XNALabel lblConnectToCnCNet;
+        private XNATextBox tbPlayerName;
+        private XNALabel lblPlayerName;
+        private XNAClientCheckBox chkRememberMe;
+        private XNAClientCheckBox chkPersistentMode;
+        private XNAClientCheckBox chkAutoConnect;
+        private XNAClientButton btnConnect;
+        private XNAClientButton btnCancel;
 
         public event EventHandler Cancelled;
         public event EventHandler Connect;
@@ -42,7 +54,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             lblConnectToCnCNet.CenterOnParent();
             lblConnectToCnCNet.ClientRectangle = new Rectangle(
                 lblConnectToCnCNet.X, 12,
-                lblConnectToCnCNet.Width, 
+                lblConnectToCnCNet.Width,
                 lblConnectToCnCNet.Height);
 
             tbPlayerName = new XNATextBox(WindowManager);
@@ -103,12 +115,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             CenterOnParent();
 
-            UserINISettings.Instance.SettingsSaved += Instance_SettingsSaved;
+            userIniSettings.SettingsSaved += Instance_SettingsSaved;
         }
 
         private void Instance_SettingsSaved(object sender, EventArgs e)
         {
-            tbPlayerName.Text = UserINISettings.Instance.PlayerName;
+            tbPlayerName.Text = userIniSettings.PlayerName;
         }
 
         private void BtnCancel_LeftClick(object sender, EventArgs e)
@@ -139,29 +151,33 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             if (!string.IsNullOrEmpty(errorMessage))
             {
-                XNAMessageBox.Show(WindowManager, "Invalid Player Name".L10N("UI:Main:InvalidPlayerName"), errorMessage);
+                xnaMessageBox.Caption = "Invalid Player Name".L10N("UI:Main:InvalidPlayerName");
+                xnaMessageBox.Description = errorMessage;
+                xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.OK;
+
+                xnaMessageBox.Show();
                 return;
             }
 
             ProgramConstants.PLAYERNAME = tbPlayerName.Text;
 
-            UserINISettings.Instance.SkipConnectDialog.Value = chkRememberMe.Checked;
-            UserINISettings.Instance.PersistentMode.Value = chkPersistentMode.Checked;
-            UserINISettings.Instance.AutomaticCnCNetLogin.Value = chkAutoConnect.Checked;
-            UserINISettings.Instance.PlayerName.Value = ProgramConstants.PLAYERNAME;
+            userIniSettings.SkipConnectDialog.Value = chkRememberMe.Checked;
+            userIniSettings.PersistentMode.Value = chkPersistentMode.Checked;
+            userIniSettings.AutomaticCnCNetLogin.Value = chkAutoConnect.Checked;
+            userIniSettings.PlayerName.Value = ProgramConstants.PLAYERNAME;
 
-            UserINISettings.Instance.SaveSettings();
+            userIniSettings.SaveSettings();
 
             Connect?.Invoke(this, EventArgs.Empty);
         }
 
         public void LoadSettings()
         {
-            chkAutoConnect.Checked = UserINISettings.Instance.AutomaticCnCNetLogin;
-            chkPersistentMode.Checked = UserINISettings.Instance.PersistentMode;
-            chkRememberMe.Checked = UserINISettings.Instance.SkipConnectDialog;
+            chkAutoConnect.Checked = userIniSettings.AutomaticCnCNetLogin;
+            chkPersistentMode.Checked = userIniSettings.PersistentMode;
+            chkRememberMe.Checked = userIniSettings.SkipConnectDialog;
 
-            tbPlayerName.Text = UserINISettings.Instance.PlayerName;
+            tbPlayerName.Text = userIniSettings.PlayerName;
 
             if (chkRememberMe.Checked)
                 BtnConnect_LeftClick(this, EventArgs.Empty);

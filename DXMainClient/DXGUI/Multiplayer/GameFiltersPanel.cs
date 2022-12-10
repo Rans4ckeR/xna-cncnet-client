@@ -8,10 +8,12 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
-    public class GameFiltersPanel : XNAPanel
+    internal sealed class GameFiltersPanel : XNAPanel
     {
         private const int minPlayerCount = 2;
         private const int maxPlayerCount = 8;
+
+        private readonly UserINISettings userIniSettings;
 
         private XNAClientCheckBox chkBoxFriendsOnly;
         private XNAClientCheckBox chkBoxHideLockedGames;
@@ -19,8 +21,10 @@ namespace DTAClient.DXGUI.Multiplayer
         private XNAClientCheckBox chkBoxHideIncompatibleGames;
         private XNAClientDropDown ddMaxPlayerCount;
 
-        public GameFiltersPanel(WindowManager windowManager) : base(windowManager)
+        public GameFiltersPanel(WindowManager windowManager, UserINISettings userIniSettings)
+            : base(windowManager)
         {
+            this.userIniSettings = userIniSettings;
         }
 
         public override void Initialize()
@@ -147,19 +151,17 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private void Save()
         {
-            var userIniSettings = UserINISettings.Instance;
             userIniSettings.ShowFriendGamesOnly.Value = chkBoxFriendsOnly.Checked;
             userIniSettings.HideLockedGames.Value = chkBoxHideLockedGames.Checked;
             userIniSettings.HidePasswordedGames.Value = chkBoxHidePasswordedGames.Checked;
             userIniSettings.HideIncompatibleGames.Value = chkBoxHideIncompatibleGames.Checked;
             userIniSettings.MaxPlayerCount.Value = int.Parse(ddMaxPlayerCount.SelectedItem.Text);
-            
-            UserINISettings.Instance.SaveSettings();
+
+            userIniSettings.SaveSettings();
         }
 
         private void Load()
         {
-            var userIniSettings = UserINISettings.Instance;
             chkBoxFriendsOnly.Checked = userIniSettings.ShowFriendGamesOnly.Value;
             chkBoxHideLockedGames.Checked = userIniSettings.HideLockedGames.Value;
             chkBoxHidePasswordedGames.Checked = userIniSettings.HidePasswordedGames.Value;
@@ -169,7 +171,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private void ResetDefaults()
         {
-            UserINISettings.Instance.ResetGameFilters();
+            userIniSettings.ResetGameFilters();
             Load();
         }
 

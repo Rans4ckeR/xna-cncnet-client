@@ -1,21 +1,25 @@
-﻿using ClientCore;
-using Microsoft.Xna.Framework;
-using System;
+﻿using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
 
 namespace DTAClient.Domain.Multiplayer.LAN
 {
     internal sealed class LANPlayerInfo : PlayerInfo
     {
-        public LANPlayerInfo(Encoding encoding)
+        private readonly ILogger logger;
+
+        public LANPlayerInfo(Encoding encoding, ILogger logger)
         {
             this.encoding = encoding;
+            this.logger = logger;
             Port = ProgramConstants.LAN_INGAME_PORT;
         }
 
@@ -104,7 +108,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Sending message to " + ToString() + " failed!");
+                logger.LogExceptionDetails(ex, "Sending message to " + ToString() + " failed!");
             }
 
             TimeSinceLastSentMessage = TimeSpan.Zero;
@@ -136,7 +140,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Socket error with client " + Name + "; removing.");
+                    logger.LogExceptionDetails(ex, "Socket error with client " + Name + "; removing.");
                     ConnectionLost?.Invoke(this, EventArgs.Empty);
                     break;
                 }

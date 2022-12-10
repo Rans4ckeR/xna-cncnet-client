@@ -10,7 +10,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
             this.handler = handler;
         }
 
-        Action<LANPlayerInfo, string> handler;
+        private Action<LANPlayerInfo, string> handler;
 
         public override bool Handle(LANPlayerInfo pInfo, string message)
         {

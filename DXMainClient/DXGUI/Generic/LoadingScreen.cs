@@ -7,25 +7,34 @@ using ClientGUI;
 using ClientUpdater;
 using DTAClient.Domain.Multiplayer;
 using DTAClient.Online;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using Rampastring.Tools;
 using Rampastring.XNAUI;
 
 namespace DTAClient.DXGUI.Generic
 {
-    internal class LoadingScreen : XNAWindow
+    internal sealed class LoadingScreen : XNAWindow
     {
+        private readonly UserINISettings userIniSettings;
+        private readonly PrivacyNotification privacyNotification;
+        private readonly MainMenu mainMenu;
+
         public LoadingScreen(
             CnCNetManager cncnetManager,
             WindowManager windowManager,
+            MapLoader mapLoader,
+            ILogger logger,
+            UserINISettings userIniSettings,
+            PrivacyNotification privacyNotification,
             IServiceProvider serviceProvider,
-            MapLoader mapLoader
-        ) : base(windowManager)
+            MainMenu mainMenu) //todo DI
+            : base(windowManager, logger, serviceProvider)
         {
             this.cncnetManager = cncnetManager;
-            this.serviceProvider = serviceProvider;
             this.mapLoader = mapLoader;
+            this.userIniSettings = userIniSettings;
+            this.privacyNotification = privacyNotification;
+            this.mainMenu = mainMenu;
         }
 
         private MapLoader mapLoader;
@@ -33,7 +42,6 @@ namespace DTAClient.DXGUI.Generic
         private Task updaterInitTask;
         private Task mapLoadTask;
         private readonly CnCNetManager cncnetManager;
-        private readonly IServiceProvider serviceProvider;
 
         public override void Initialize()
         {
@@ -68,7 +76,7 @@ namespace DTAClient.DXGUI.Generic
 
         private void LogGameClientVersion()
         {
-            Logger.Log($"Game Client Version: {ClientConfiguration.Instance.LocalGame} {Updater.GameVersion}");
+            logger.LogInformation($"Game Client Version: {ClientConfiguration.Instance.LocalGame} {Updater.GameVersion}");
             Updater.OnLocalFileVersionsChecked -= LogGameClientVersion;
         }
 
@@ -77,20 +85,19 @@ namespace DTAClient.DXGUI.Generic
             ProgramConstants.GAME_VERSION = ClientConfiguration.Instance.ModMode ?
                 "N/A" : Updater.GameVersion;
 
-            MainMenu mainMenu = serviceProvider.GetService<MainMenu>();
-
+            // todo DI
             WindowManager.AddAndInitializeControl(mainMenu);
             mainMenu.PostInit();
 
-            if (UserINISettings.Instance.AutomaticCnCNetLogin &&
+            if (userIniSettings.AutomaticCnCNetLogin &&
                 NameValidator.IsNameValid(ProgramConstants.PLAYERNAME) == null)
             {
                 cncnetManager.Connect();
             }
 
-            if (!UserINISettings.Instance.PrivacyPolicyAccepted)
+            if (!userIniSettings.PrivacyPolicyAccepted)
             {
-                WindowManager.AddAndInitializeControl(new PrivacyNotification(WindowManager));
+                WindowManager.AddAndInitializeControl(privacyNotification);
             }
 
             WindowManager.RemoveControl(this);

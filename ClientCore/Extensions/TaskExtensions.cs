@@ -19,7 +19,7 @@ public static class TaskExtensions
         }
         catch (Exception ex)
         {
-            ProgramConstants.HandleException(ex);
+            ErrorHandler.Instance.HandleException(ex);
         }
     }
 
@@ -37,7 +37,7 @@ public static class TaskExtensions
         }
         catch (Exception ex)
         {
-            ProgramConstants.HandleException(ex);
+            ErrorHandler.Instance.HandleException(ex);
         }
 
         return default;
@@ -102,7 +102,7 @@ public static class TaskExtensions
         }
         catch (Exception ex)
         {
-            ProgramConstants.HandleException(ex);
+            ErrorHandler.Instance.HandleException(ex);
         }
     }
 }

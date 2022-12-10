@@ -4,10 +4,8 @@ namespace ClientCore
 {
     public static class LoadingScreenController
     {
-        public static string GetLoadScreenName(string sideId)
+        public static string GetLoadScreenName(string sideId, int resHeight)
         {
-            int resHeight = UserINISettings.Instance.IngameScreenHeight;
-
             string loadingScreenName = ProgramConstants.BASE_RESOURCE_PATH + "l";
 
             if (resHeight < 480)

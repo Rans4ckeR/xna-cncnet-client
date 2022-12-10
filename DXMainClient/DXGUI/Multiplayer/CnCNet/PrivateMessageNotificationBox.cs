@@ -1,13 +1,13 @@
-﻿using ClientCore;
+﻿using System;
+using System.IO;
+using System.Reflection;
+using ClientCore;
+using ClientCore.CnCNet5;
 using Localization;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.IO;
-using System.Reflection;
-using ClientCore.CnCNet5;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
@@ -20,26 +20,22 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
     /// </summary>
     public class PrivateMessageNotificationBox : XNAPanel
     {
-        const double DOWN_TIME_WAIT_SECONDS = 4.0;
-        const double DOWN_MOVEMENT_RATE = 2.0;
-        const double UP_MOVEMENT_RATE = 2.0;
+        private const double DOWN_TIME_WAIT_SECONDS = 4.0;
+        private const double DOWN_MOVEMENT_RATE = 2.0;
+        private const double UP_MOVEMENT_RATE = 2.0;
 
         public PrivateMessageNotificationBox(WindowManager windowManager) : base(windowManager)
         {
             downTimeWaitTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS);
         }
 
-        XNALabel lblSender;
-        XNAPanel gameIconPanel;
-        XNALabel lblMessage;
-
-        TimeSpan downTime = TimeSpan.Zero;
-
-        TimeSpan downTimeWaitTime;
-
-        bool isDown = false;
-
-        double locationY = -100.0;
+        private XNALabel lblSender;
+        private XNAPanel gameIconPanel;
+        private XNALabel lblMessage;
+        private TimeSpan downTime = TimeSpan.Zero;
+        private TimeSpan downTimeWaitTime;
+        private bool isDown;
+        private double locationY = -100.0;
 
         public override void Initialize()
         {

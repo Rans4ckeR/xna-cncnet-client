@@ -1,18 +1,20 @@
-﻿using ClientCore;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.Extensions;
 using ClientCore.Statistics;
+using ClientCore.Statistics.GameParsers;
 using ClientGUI;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -21,9 +23,27 @@ namespace DTAClient.DXGUI.Multiplayer
     /// </summary>
     internal abstract class GameLoadingLobbyBase : XNAWindow, ISwitchable
     {
-        public GameLoadingLobbyBase(WindowManager windowManager, DiscordHandler discordHandler) : base(windowManager)
+        private readonly SavedGameManager savedGameManager;
+        private readonly StatisticsManager statisticsManager;
+        private readonly GameProcessLogic gameProcessLogic;
+        private readonly LogFileStatisticsParser logFileStatisticsParser;
+
+        protected GameLoadingLobbyBase(
+            WindowManager windowManager,
+            DiscordHandler discordHandler,
+            ILogger logger,
+            SavedGameManager savedGameManager,
+            StatisticsManager statisticsManager,
+            GameProcessLogic gameProcessLogic,
+            LogFileStatisticsParser logFileStatisticsParser,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
             this.discordHandler = discordHandler;
+            this.savedGameManager = savedGameManager;
+            this.statisticsManager = statisticsManager;
+            this.gameProcessLogic = gameProcessLogic;
+            this.logFileStatisticsParser = logFileStatisticsParser;
         }
 
         public event EventHandler GameLeft;
@@ -38,7 +58,7 @@ namespace DTAClient.DXGUI.Multiplayer
         /// </summary>
         protected List<PlayerInfo> Players = new List<PlayerInfo>();
 
-        protected bool IsHost = false;
+        protected bool IsHost;
 
         protected DiscordHandler discordHandler;
 
@@ -230,12 +250,12 @@ namespace DTAClient.DXGUI.Multiplayer
         private void fsw_Created(object sender, FileSystemEventArgs e) =>
             AddCallback(() => HandleFSWEventAsync(e).HandleTask());
 
-        private static async ValueTask HandleFSWEventAsync(FileSystemEventArgs e)
+        private async ValueTask HandleFSWEventAsync(FileSystemEventArgs e)
         {
-            Logger.Log("FSW Event: " + e.FullPath);
+            logger.LogInformation("FSW Event: " + e.FullPath);
 
             if (Path.GetFileName(e.FullPath) == "SAVEGAME.NET")
-                await SavedGameManager.RenameSavedGameAsync();
+                await savedGameManager.RenameSavedGameAsync();
         }
 
         private async ValueTask BtnLoadGame_LeftClickAsync()
@@ -337,8 +357,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
             gameLoadTime = DateTime.Now;
 
-            GameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
-            await GameProcessLogic.StartGameProcessAsync(WindowManager);
+            gameProcessLogic.GameProcessExited += SharedUILogic_GameProcessExited;
+            await gameProcessLogic.StartGameProcessAsync();
 
             fsw.EnableRaisingEvents = true;
             UpdateDiscordPresence(true);
@@ -350,21 +370,24 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             fsw.EnableRaisingEvents = false;
 
-            GameProcessLogic.GameProcessExited -= SharedUILogic_GameProcessExited;
+            gameProcessLogic.GameProcessExited -= SharedUILogic_GameProcessExited;
 
-            var matchStatistics = StatisticsManager.Instance.GetMatchWithGameID(uniqueGameId);
+            var matchStatistics = statisticsManager.GetMatchWithGameID(uniqueGameId);
 
             if (matchStatistics != null)
             {
                 int newLength = matchStatistics.LengthInSeconds +
                     (int)(DateTime.Now - gameLoadTime).TotalSeconds;
 
-                matchStatistics.ParseStatistics(ProgramConstants.GamePath,
-                    ClientConfiguration.Instance.LocalGame, true);
+                logger.LogInformation("GameProcessExited: Parsing statistics.");
+
+                matchStatistics.LengthInSeconds = (int)(DateTime.Now - matchStatistics.DateAndTime).TotalSeconds;
+
+                logFileStatisticsParser.ParseStats(ProgramConstants.GamePath, ClientConfiguration.Instance.StatisticsLogFileName, false);
 
                 matchStatistics.LengthInSeconds = newLength;
 
-                StatisticsManager.Instance.SaveDatabase();
+                statisticsManager.SaveDatabase();
             }
 
             UpdateDiscordPresence(true);

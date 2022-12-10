@@ -1,14 +1,22 @@
-﻿using ClientCore;
+﻿using System;
+using System.Net;
+using ClientCore;
 using ClientCore.CnCNet5;
 using DTAClient.Domain.Multiplayer;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
-using System;
-using System.Net;
 
 namespace DTAClient.Domain.LAN
 {
-    class HostedLANGame : GenericHostedGame
+    internal sealed class HostedLANGame : GenericHostedGame
     {
+        private readonly ILogger logger;
+
+        public HostedLANGame(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
         public IPEndPoint EndPoint { get; set; }
         public string LoadedGameID { get; set; }
 
@@ -26,7 +34,7 @@ namespace DTAClient.Domain.LAN
         {
             if (parameters.Length != 9)
             {
-                Logger.Log("Ignoring LAN GAME message because of an incorrect number of parameters.");
+                logger.LogInformation("Ignoring LAN GAME message because of an incorrect number of parameters.");
                 return false;
             }
 

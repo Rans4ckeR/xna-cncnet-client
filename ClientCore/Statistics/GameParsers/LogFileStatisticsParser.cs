@@ -1,39 +1,44 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
+using ClientCore.Extensions;
 
 namespace ClientCore.Statistics.GameParsers
 {
-    public class LogFileStatisticsParser : GenericMatchParser
+    public sealed class LogFileStatisticsParser
     {
-        public LogFileStatisticsParser(MatchStatistics ms, bool isLoadedGame) : base(ms)
+        private readonly ILogger logger;
+
+        public LogFileStatisticsParser(ILogger logger)
         {
-            this.isLoadedGame = isLoadedGame;
+            this.logger = logger;
         }
+
+        private MatchStatistics Statistics { get; set; }
 
         private string fileName = "DTA.log";
         private string economyString = "Economy"; // RA2/YR do not have economy stat, but a number of built objects.
-        private bool isLoadedGame;
 
-        public void ParseStats(string gamepath, string fileName)
+        public void ParseStats(string gamepath, string fileName, bool isLoadedGame)
         {
             this.fileName = fileName;
             if (ClientConfiguration.Instance.UseBuiltStatistic) economyString = "Built";
-            ParseStatistics(gamepath);
+            ParseStatistics(gamepath, isLoadedGame);
         }
 
-        protected override void ParseStatistics(string gamepath)
+        private void ParseStatistics(string gamepath, bool isLoadedGame)
         {
             FileInfo statisticsFileInfo = SafePath.GetFile(gamepath, fileName);
 
             if (!statisticsFileInfo.Exists)
             {
-                Logger.Log("DTAStatisticsParser: Failed to read statistics: the log file does not exist.");
+                logger.LogInformation("DTAStatisticsParser: Failed to read statistics: the log file does not exist.");
                 return;
             }
 
-            Logger.Log("Attempting to read statistics from " + fileName);
+            logger.LogInformation("Attempting to read statistics from " + fileName);
 
             try
             {
@@ -59,13 +64,13 @@ namespace ClientCore.Statistics.GameParsers
                         if (isLoadedGame && currentPlayer == null)
                             currentPlayer = Statistics.Players.Find(p => p.Name == playerName);
 
-                        Logger.Log("Found player " + playerName);
+                        logger.LogInformation("Found player " + playerName);
                         numPlayersFound++;
 
                         if (currentPlayer == null && playerName == "Computer" && numPlayersFound <= Statistics.NumberOfHumanPlayers)
                         {
                             // The player has been taken over by an AI during the match
-                            Logger.Log("Losing take-over AI found");
+                            logger.LogInformation("Losing take-over AI found");
                             takeoverAIs.Add(new PlayerStatistics("Computer", false, true, false, 0, 10, 255, 1));
                             currentPlayer = takeoverAIs[takeoverAIs.Count - 1];
                         }
@@ -83,13 +88,13 @@ namespace ClientCore.Statistics.GameParsers
                         if (isLoadedGame && currentPlayer == null)
                             currentPlayer = Statistics.Players.Find(p => p.Name == playerName);
 
-                        Logger.Log("Found player " + playerName);
+                        logger.LogInformation("Found player " + playerName);
                         numPlayersFound++;
 
                         if (currentPlayer == null && playerName == "Computer" && numPlayersFound <= Statistics.NumberOfHumanPlayers)
                         {
                             // The player has been taken over by an AI during the match
-                            Logger.Log("Winning take-over AI found");
+                            logger.LogInformation("Winning take-over AI found");
                             takeoverAIs.Add(new PlayerStatistics("Computer", false, true, false, 0, 10, 255, 1));
                             currentPlayer = takeoverAIs[takeoverAIs.Count - 1];
                         }
@@ -150,7 +155,7 @@ namespace ClientCore.Statistics.GameParsers
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "DTAStatisticsParser: Error parsing statistics from match!");
+                logger.LogExceptionDetails(ex, "DTAStatisticsParser: Error parsing statistics from match!");
             }
         }
     }

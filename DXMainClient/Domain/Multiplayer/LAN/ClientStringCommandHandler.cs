@@ -9,7 +9,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
             this.action = action;
         }
 
-        Action<string> action;
+        private Action<string> action;
 
         public override bool Handle(string message)
         {

@@ -9,7 +9,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers
             this.handler = handler;
         }
 
-        Action<string, int> handler;
+        private Action<string, int> handler;
 
         public override bool Handle(string sender, string message)
         {

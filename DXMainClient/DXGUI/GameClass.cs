@@ -1,28 +1,15 @@
-﻿using ClientCore;
+﻿using System;
+using ClientCore;
 using ClientCore.CnCNet5;
 using ClientGUI;
-using DTAClient.Domain;
 using DTAClient.DXGUI.Generic;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
-using System;
-using ClientGUI;
-using DTAClient.Domain.Multiplayer;
-using DTAClient.Domain.Multiplayer.CnCNet;
-using DTAClient.DXGUI.Multiplayer;
-using DTAClient.DXGUI.Multiplayer.CnCNet;
-using DTAClient.DXGUI.Multiplayer.GameLobby;
-using DTAClient.Online;
-using DTAConfig;
-using DTAConfig.Settings;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Rampastring.XNAUI.XNAControls;
-using MainMenu = DTAClient.DXGUI.Generic.MainMenu;
 #if DX || (GL && WINFORMS)
 using System.Diagnostics;
 using System.IO;
@@ -38,35 +25,59 @@ namespace DTAClient.DXGUI
     /// The main class for the game. Sets up asset search paths
     /// and initializes components.
     /// </summary>
-    public class GameClass : Game
+    internal sealed class GameClass : Game
     {
-        public GameClass()
+        private readonly ILogger logger;
+        private readonly UserINISettings userIniSettings;
+
+        private ContentManager content;
+        private WindowManager windowManager;
+        //private LoadingScreen loadingScreen;
+        private GraphicsDeviceManager graphics;
+
+        public GameClass(ILogger logger, UserINISettings userIniSettings)
+        {
+            this.logger = logger;
+            this.userIniSettings = userIniSettings;
+        }
+
+        public (WindowManager WindowManager, GraphicsDeviceManager GraphicsDeviceManager) SetupDependencies()
         {
             graphics = new GraphicsDeviceManager(this);
+            windowManager = new(this, graphics);
+            content = new ContentManager(Services);
+
             graphics.SynchronizeWithVerticalRetrace = false;
 #if !XNA
             graphics.HardwareModeSwitch = false;
 #endif
-            content = new ContentManager(Services);
+
+            return (windowManager, graphics);
         }
 
-        private static GraphicsDeviceManager graphics;
-        ContentManager content;
+        //public void SetupLoadingScreen(LoadingScreen loadingScreen)
+        //{
+        //    this.loadingScreen = loadingScreen;
+        //}
 
         protected override void Initialize()
         {
-            Logger.Log("Initializing GameClass.");
+            logger.LogInformation("Initializing GameClass.");
 
             string windowTitle = ClientConfiguration.Instance.WindowTitle;
             Window.Title = string.IsNullOrEmpty(windowTitle) ?
                 string.Format("{0} Client", ProgramConstants.GAME_NAME_SHORT) : windowTitle;
 
-            base.Initialize();
+            string themePath = ClientConfiguration.Instance.GetThemePath(userIniSettings.ClientTheme)
+                ?? ClientConfiguration.Instance.GetThemeInfoFromIndex(0)[1];
+            ProgramConstants.RESOURCES_DIR = SafePath.CombineDirectoryPath(ProgramConstants.BASE_RESOURCE_PATH, themePath);
 
             AssetLoader.Initialize(GraphicsDevice, content);
             AssetLoader.AssetSearchPaths.Add(ProgramConstants.GetResourcePath());
             AssetLoader.AssetSearchPaths.Add(ProgramConstants.GetBaseResourcePath());
             AssetLoader.AssetSearchPaths.Add(ProgramConstants.GamePath);
+
+            base.Initialize();
 
 #if DX || (GL && WINFORMS)
             // Try to create and load a texture to check for MonoGame compatibility
@@ -86,7 +97,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex) when (ex.Message.Contains("DeviceRemoved"))
             {
-                ProgramConstants.LogException(ex, $"Creating texture on startup failed! Creating {startupFailureFile} file and re-launching client launcher.");
+                logger.LogExceptionDetails(ex, $"Creating texture on startup failed! Creating {startupFailureFile} file and re-launching client launcher.");
 
                 DirectoryInfo clientDirectory = SafePath.GetDirectory(ProgramConstants.ClientUserFilesPath);
 
@@ -102,13 +113,13 @@ namespace DTAClient.DXGUI
                 {
                     // LauncherExe is unspecified, just throw the exception forward
                     // because we can't handle it
-                    Logger.Log("No LauncherExe= specified in ClientDefinitions.ini! " +
+                    logger.LogInformation("No LauncherExe= specified in ClientDefinitions.ini! " +
                         "Forwarding exception to regular exception handler.");
 
                     throw;
                 }
 
-                Logger.Log("Starting " + launcherExe + " and exiting.");
+                logger.LogInformation("Starting " + launcherExe + " and exiting.");
 
                 Process.Start(SafePath.CombineFilePath(ProgramConstants.GamePath, launcherExe));
                 Environment.Exit(1);
@@ -117,29 +128,15 @@ namespace DTAClient.DXGUI
 #endif
             InitializeUISettings();
 
-            WindowManager wm = new WindowManager(this, graphics);
-            wm.Initialize(content, ProgramConstants.GetBaseResourcePath());
-
-            ProgramConstants.DisplayErrorAction = (title, error, exit) =>
-            {
-                new XNAMessageBox(wm, title, error, XNAMessageBoxButtons.OK)
-                {
-                    OKClickedAction = _ =>
-                    {
-                        if (exit)
-                            Environment.Exit(1);
-                    }
-                }.Show();
-            };
-
-            SetGraphicsMode(wm);
+            windowManager.Initialize(content, ProgramConstants.GetBaseResourcePath());
+            SetGraphicsMode(windowManager);
 #if WINFORMS
 
             wm.SetIcon(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), "clienticon.ico"));
             wm.SetControlBox(true);
 #endif
 
-            wm.Cursor.Textures = new Texture2D[]
+            windowManager.Cursor.Textures = new Texture2D[]
             {
                 AssetLoader.LoadTexture("cursor.png"),
                 AssetLoader.LoadTexture("waitCursor.png")
@@ -155,11 +152,11 @@ namespace DTAClient.DXGUI
                 wm.Cursor.LoadNativeCursor(alternativeNativeCursorPath.FullName);
 
 #endif
-            Components.Add(wm);
+            Components.Add(windowManager);
 
-            string playerName = UserINISettings.Instance.PlayerName.Value.Trim();
+            string playerName = userIniSettings.PlayerName.Value.Trim();
 
-            if (UserINISettings.Instance.AutoRemoveUnderscoresFromName)
+            if (userIniSettings.AutoRemoveUnderscoresFromName)
             {
                 while (playerName.EndsWith("_"))
                     playerName = playerName[..^1];
@@ -175,85 +172,13 @@ namespace DTAClient.DXGUI
             playerName = Renderer.GetSafeString(NameValidator.GetValidOfflineName(playerName), 0);
 
             ProgramConstants.PLAYERNAME = playerName;
-            UserINISettings.Instance.PlayerName.Value = playerName;
+            userIniSettings.PlayerName.Value = playerName;
 
-            IServiceProvider serviceProvider = BuildServiceProvider(wm);
-            LoadingScreen ls = serviceProvider.GetService<LoadingScreen>();
-            wm.AddAndInitializeControl(ls);
-            ls.ClientRectangle = new Rectangle((wm.RenderResolutionX - ls.Width) / 2,
-                (wm.RenderResolutionY - ls.Height) / 2, ls.Width, ls.Height);
-        }
-
-        private IServiceProvider BuildServiceProvider(WindowManager windowManager)
-        {
-            // Create host - this allows for things like DependencyInjection
-            IHost host = Host.CreateDefaultBuilder()
-                .ConfigureServices((_, services) =>
-                    {
-                        // services (or service-like)
-                        services
-                            .AddSingleton<ServiceProvider>()
-                            .AddSingleton(windowManager)
-                            .AddSingleton(GraphicsDevice)
-                            .AddSingleton<GameCollection>()
-                            .AddSingleton<CnCNetUserData>()
-                            .AddSingleton<CnCNetManager>()
-                            .AddSingleton<TunnelHandler>()
-                            .AddSingleton<DiscordHandler>()
-                            .AddSingleton<PrivateMessageHandler>()
-                            .AddSingleton<MapLoader>();
-
-                        // singleton xna controls - same instance on each request
-                        services
-                            .AddSingletonXnaControl<LoadingScreen>()
-                            .AddSingletonXnaControl<TopBar>()
-                            .AddSingletonXnaControl<OptionsWindow>()
-                            .AddSingletonXnaControl<PrivateMessagingWindow>()
-                            .AddSingletonXnaControl<PrivateMessagingPanel>()
-                            .AddSingletonXnaControl<LANLobby>()
-                            .AddSingletonXnaControl<CnCNetGameLobby>()
-                            .AddSingletonXnaControl<CnCNetGameLoadingLobby>()
-                            .AddSingletonXnaControl<CnCNetLobby>()
-                            .AddSingletonXnaControl<GameInProgressWindow>()
-                            .AddSingletonXnaControl<SkirmishLobby>()
-                            .AddSingletonXnaControl<MainMenu>()
-                            .AddSingletonXnaControl<MapPreviewBox>()
-                            .AddSingletonXnaControl<GameLaunchButton>()
-                            .AddSingletonXnaControl<PlayerExtraOptionsPanel>();
-
-                        // transient xna controls - new instance on each request
-                        services
-                            .AddTransientXnaControl<XNAControl>()
-                            .AddTransientXnaControl<XNAButton>()
-                            .AddTransientXnaControl<XNAClientButton>()
-                            .AddTransientXnaControl<XNAClientCheckBox>()
-                            .AddTransientXnaControl<XNAClientDropDown>()
-                            .AddTransientXnaControl<XNALinkButton>()
-                            .AddTransientXnaControl<XNAExtraPanel>()
-                            .AddTransientXnaControl<XNACheckBox>()
-                            .AddTransientXnaControl<XNADropDown>()
-                            .AddTransientXnaControl<XNALabel>()
-                            .AddTransientXnaControl<XNALinkLabel>()
-                            .AddTransientXnaControl<XNAListBox>()
-                            .AddTransientXnaControl<XNAMultiColumnListBox>()
-                            .AddTransientXnaControl<XNAPanel>()
-                            .AddTransientXnaControl<XNAProgressBar>()
-                            .AddTransientXnaControl<XNASuggestionTextBox>()
-                            .AddTransientXnaControl<XNATextBox>()
-                            .AddTransientXnaControl<XNATrackbar>()
-                            .AddTransientXnaControl<XNAChatTextBox>()
-                            .AddTransientXnaControl<ChatListBox>()
-                            .AddTransientXnaControl<GameLobbyCheckBox>()
-                            .AddTransientXnaControl<GameLobbyDropDown>()
-                            .AddTransientXnaControl<SettingCheckBox>()
-                            .AddTransientXnaControl<SettingDropDown>()
-                            .AddTransientXnaControl<FileSettingCheckBox>()
-                            .AddTransientXnaControl<FileSettingDropDown>();
-                    }
-                )
-                .Build();
-
-            return host.Services.GetService<IServiceProvider>();
+            PreStartup.PostInitialize();
+            // todo DI
+            //windowManager.AddAndInitializeControl(loadingScreen);
+            //loadingScreen.ClientRectangle = new Rectangle((windowManager.RenderResolutionX - loadingScreen.Width) / 2,
+            //    (windowManager.RenderResolutionY - loadingScreen.Height) / 2, loadingScreen.Width, loadingScreen.Height);
         }
 
         private void InitializeUISettings()
@@ -265,7 +190,6 @@ namespace DTAClient.DXGUI
             settings.ButtonTextColor = settings.AltColor;
             settings.ButtonHoverColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.ButtonHoverColor);
             settings.TextColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.UILabelColor);
-            //settings.WindowBorderColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.WindowBorderColor);
             settings.PanelBorderColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.PanelBorderColor);
             settings.BackgroundColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.AltUIBackgroundColor);
             settings.FocusColor = AssetLoader.GetColorFromString(ClientConfiguration.Instance.ListBoxFocusColor);
@@ -290,14 +214,14 @@ namespace DTAClient.DXGUI
         /// TODO move to some helper class?
         /// </summary>
         /// <param name="wm">The window manager</param>
-        public static void SetGraphicsMode(WindowManager wm)
+        public void SetGraphicsMode(WindowManager wm)
         {
             var clientConfiguration = ClientConfiguration.Instance;
 
-            int windowWidth = UserINISettings.Instance.ClientResolutionX;
-            int windowHeight = UserINISettings.Instance.ClientResolutionY;
+            int windowWidth = userIniSettings.ClientResolutionX;
+            int windowHeight = userIniSettings.ClientResolutionY;
 
-            bool borderlessWindowedClient = UserINISettings.Instance.BorderlessWindowedClient;
+            bool borderlessWindowedClient = userIniSettings.BorderlessWindowedClient;
             int currentWidth = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width;
             int currentHeight = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height;
 
@@ -379,7 +303,7 @@ namespace DTAClient.DXGUI
     /// <summary>
     /// An exception that is thrown when initializing display / graphics mode fails.
     /// </summary>
-    class GraphicsModeInitializationException : Exception
+    internal class GraphicsModeInitializationException : Exception
     {
         public GraphicsModeInitializationException(string message) : base(message)
         {

@@ -1,17 +1,26 @@
 ﻿using System;
-using ClientCore;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using ClientCore;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace DTAClient.Online
 {
-    internal static class CnCNetGameCheck
+    internal sealed class CnCNetGameCheck
     {
         private const int REFRESH_INTERVAL = 15000; // 15 seconds
 
-        public static async ValueTask RunServiceAsync(CancellationToken cancellationToken)
+        private readonly ILogger logger;
+
+        public CnCNetGameCheck(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
+        public async ValueTask RunServiceAsync(CancellationToken cancellationToken)
         {
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -27,7 +36,7 @@ namespace DTAClient.Online
             }
         }
 
-        private static void CheatEngineWatchEvent()
+        private void CheatEngineWatchEvent()
         {
             Process[] processlist = Process.GetProcesses();
 
@@ -44,14 +53,14 @@ namespace DTAClient.Online
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex);
+                    logger.LogExceptionDetails(ex);
                 }
 
                 process.Dispose();
             }
         }
 
-        private static void KillGameInstance()
+        private void KillGameInstance()
         {
             string gameExecutableName = ClientConfiguration.Instance.GetOperatingSystemVersion() == OSVersion.UNIX ?
                 ClientConfiguration.Instance.UnixGameExecutableName :
@@ -65,7 +74,7 @@ namespace DTAClient.Online
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex);
+                    logger.LogExceptionDetails(ex);
                 }
 
                 process.Dispose();

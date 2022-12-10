@@ -6,11 +6,13 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ClientCore;
+using ClientCore.Extensions;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
 {
-    public class MapLoader
+    internal sealed class MapLoader
     {
         public const string MAP_FILE_EXTENSION = ".map";
         private const string CUSTOM_MAPS_DIRECTORY = "Maps/Custom";
@@ -20,6 +22,16 @@ namespace DTAClient.Domain.Multiplayer
         private const string GameModeAliasesSection = "GameModeAliases";
         private const int CurrentCustomMapCacheVersion = 1;
         private readonly JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions { IncludeFields = true };
+        private readonly ILogger logger;
+        private readonly UserINISettings userIniSettings;
+        private readonly MapPreviewExtractor mapPreviewExtractor;
+
+        public MapLoader(ILogger logger, UserINISettings userIniSettings, MapPreviewExtractor mapPreviewExtractor)
+        {
+            this.logger = logger;
+            this.userIniSettings = userIniSettings;
+            this.mapPreviewExtractor = mapPreviewExtractor;
+        }
 
         /// <summary>
         /// List of game modes.
@@ -30,7 +42,7 @@ namespace DTAClient.Domain.Multiplayer
 
         /// <summary>
         /// A list of game mode aliases.
-        /// Every game mode entry that exists in this dictionary will get 
+        /// Every game mode entry that exists in this dictionary will get
         /// replaced by the game mode entries of the value string array
         /// when map is added to game mode map lists.
         /// </summary>
@@ -48,7 +60,7 @@ namespace DTAClient.Domain.Multiplayer
         {
             string mpMapsPath = SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.MPMapsIniPath);
 
-            Logger.Log($"Loading maps from {mpMapsPath}.");
+            logger.LogInformation($"Loading maps from {mpMapsPath}.");
 
             IniFile mpMapsIni = new IniFile(mpMapsPath);
 
@@ -58,7 +70,7 @@ namespace DTAClient.Domain.Multiplayer
             await LoadCustomMapsAsync();
 
             GameModes.RemoveAll(g => g.Maps.Count < 1);
-            GameModeMaps = new GameModeMapCollection(GameModes);
+            GameModeMaps = new GameModeMapCollection(GameModes, userIniSettings);
         }
 
         private void LoadMultiMaps(IniFile mpMapsIni)
@@ -67,7 +79,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (keys == null)
             {
-                Logger.Log("Loading multiplayer map list failed!!!");
+                logger.LogInformation("Loading multiplayer map list failed!!!");
                 return;
             }
 
@@ -81,7 +93,7 @@ namespace DTAClient.Domain.Multiplayer
 
                 if (!mapFile.Exists)
                 {
-                    Logger.Log("Map " + mapFile.FullName + " doesn't exist!");
+                    logger.LogInformation("Map " + mapFile.FullName + " doesn't exist!");
                     continue;
                 }
 
@@ -136,7 +148,7 @@ namespace DTAClient.Domain.Multiplayer
 
             if (!customMapsDirectory.Exists)
             {
-                Logger.Log($"Custom maps directory {customMapsDirectory} does not exist!");
+                logger.LogInformation($"Custom maps directory {customMapsDirectory} does not exist!");
                 return;
             }
 
@@ -215,7 +227,7 @@ namespace DTAClient.Domain.Multiplayer
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex);
+                logger.LogExceptionDetails(ex);
                 return new ConcurrentDictionary<string, Map>();
             }
         }
@@ -233,13 +245,13 @@ namespace DTAClient.Domain.Multiplayer
 
             if (!customMapFile.Exists)
             {
-                Logger.Log("LoadCustomMap: Map " + customMapFile.FullName + " not found!");
+                logger.LogInformation("LoadCustomMap: Map " + customMapFile.FullName + " not found!");
                 resultMessage = $"Map file {customMapFile.Name} doesn't exist!";
 
                 return null;
             }
 
-            Logger.Log("LoadCustomMap: Loading custom map " + customMapFile.FullName);
+            logger.LogInformation("LoadCustomMap: Loading custom map " + customMapFile.FullName);
 
             Map map = new Map(mapPath, customMapFilePath);
 
@@ -249,14 +261,14 @@ namespace DTAClient.Domain.Multiplayer
                 {
                     if (gm.Maps.Find(m => m.SHA1 == map.SHA1) != null)
                     {
-                        Logger.Log("LoadCustomMap: Custom map " + customMapFile.FullName + " is already loaded!");
+                        logger.LogInformation("LoadCustomMap: Custom map " + customMapFile.FullName + " is already loaded!");
                         resultMessage = $"Map {customMapFile.FullName} is already loaded.";
 
                         return null;
                     }
                 }
 
-                Logger.Log("LoadCustomMap: Map " + customMapFile.FullName + " added succesfully.");
+                logger.LogInformation("LoadCustomMap: Map " + customMapFile.FullName + " added succesfully.");
 
                 AddMapToGameModes(map, true);
                 var gameModes = GameModes.Where(gm => gm.Maps.Contains(map));
@@ -267,7 +279,7 @@ namespace DTAClient.Domain.Multiplayer
                 return map;
             }
 
-            Logger.Log("LoadCustomMap: Loading map " + customMapFile.FullName + " failed!");
+            logger.LogInformation("LoadCustomMap: Loading map " + customMapFile.FullName + " failed!");
             resultMessage = $"Loading map {customMapFile.FullName} failed!";
 
             return null;
@@ -275,7 +287,7 @@ namespace DTAClient.Domain.Multiplayer
 
         public void DeleteCustomMap(GameModeMap gameModeMap)
         {
-            Logger.Log("Deleting map " + gameModeMap.Map.Name);
+            logger.LogInformation("Deleting map " + gameModeMap.Map.Name);
             File.Delete(gameModeMap.Map.CompleteFilePath);
             foreach (GameMode gameMode in GameModeMaps.GameModes)
             {
@@ -311,7 +323,7 @@ namespace DTAClient.Domain.Multiplayer
 
                     gm.Maps.Add(map);
                     if (enableLogging)
-                        Logger.Log("AddMapToGameModes: Added map " + map.Name + " to game mode " + gm.Name);
+                        logger.LogInformation("AddMapToGameModes: Added map " + map.Name + " to game mode " + gm.Name);
                 }
             }
         }

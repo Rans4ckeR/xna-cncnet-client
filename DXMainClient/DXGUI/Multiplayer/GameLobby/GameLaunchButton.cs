@@ -1,9 +1,9 @@
-﻿using ClientGUI;
+﻿using System;
+using ClientGUI;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
-using System;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
@@ -54,7 +54,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         }
     }
 
-    class StarDisplay : XNAControl
+    internal class StarDisplay : XNAControl
     {
         public StarDisplay(WindowManager windowManager, Texture2D[] rankTextures) : base(windowManager)
         {

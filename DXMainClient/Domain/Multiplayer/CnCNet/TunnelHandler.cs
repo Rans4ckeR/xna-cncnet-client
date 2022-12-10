@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.Extensions;
 using DTAClient.Online;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -31,6 +32,8 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         private const uint CYCLES_PER_TUNNEL_LIST_REFRESH = 6;
 
         private readonly WindowManager wm;
+        private readonly UserINISettings userIniSettings;
+        private readonly ILogger logger;
 
         private TimeSpan timeSinceTunnelRefresh = TimeSpan.MaxValue;
         private uint skipCount;
@@ -41,10 +44,16 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
         public event Action<int> TunnelPinged;
 
-        public TunnelHandler(WindowManager wm, CnCNetManager connectionManager)
+        public TunnelHandler(
+            WindowManager wm,
+            CnCNetManager connectionManager,
+            UserINISettings userIniSettings,
+            ILogger logger)
             : base(wm.Game)
         {
             this.wm = wm;
+            this.userIniSettings = userIniSettings;
+            this.logger = logger;
 
             wm.Game.Components.Add(this);
 
@@ -92,7 +101,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
             for (int i = 0; i < Tunnels.Count; i++)
             {
-                if (UserINISettings.Instance.PingUnofficialCnCNetTunnels || Tunnels[i].Official || Tunnels[i].Recommended)
+                if (userIniSettings.PingUnofficialCnCNetTunnels || Tunnels[i].Official || Tunnels[i].Recommended)
                     PingListTunnelAsync(i).HandleTask();
             }
 
@@ -142,7 +151,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// Downloads and parses the list of CnCNet tunnels.
         /// </summary>
         /// <returns>A list of tunnel servers.</returns>
-        private static async ValueTask<List<CnCNetTunnel>> DoRefreshTunnelsAsync()
+        private async ValueTask<List<CnCNetTunnel>> DoRefreshTunnelsAsync()
         {
             FileInfo tunnelCacheFile = SafePath.GetFile(ProgramConstants.ClientUserFilesPath, "tunnel_cache");
             var returnValue = new List<CnCNetTunnel>();
@@ -160,7 +169,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
             string data;
 
-            Logger.Log("Fetching tunnel server info.");
+            logger.LogInformation("Fetching tunnel server info.");
 
             try
             {
@@ -168,21 +177,21 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (HttpRequestException ex)
             {
-                ProgramConstants.LogException(ex, "Error when downloading tunnel server info. Retrying.");
+                logger.LogExceptionDetails(ex, "Error when downloading tunnel server info. Retrying.");
                 try
                 {
                     data = await client.GetStringAsync(ProgramConstants.CNCNET_TUNNEL_LIST_URL);
                 }
                 catch (HttpRequestException ex1)
                 {
-                    ProgramConstants.LogException(ex1);
+                    logger.LogExceptionDetails(ex1);
                     if (!tunnelCacheFile.Exists)
                     {
-                        Logger.Log("Tunnel cache file doesn't exist!");
+                        logger.LogInformation("Tunnel cache file doesn't exist!");
                         return returnValue;
                     }
 
-                    Logger.Log("Fetching tunnel server list failed. Using cached tunnel data.");
+                    logger.LogInformation("Fetching tunnel server list failed. Using cached tunnel data.");
                     data = await File.ReadAllTextAsync(tunnelCacheFile.FullName);
                 }
             }
@@ -194,7 +203,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             {
                 try
                 {
-                    var tunnel = CnCNetTunnel.Parse(serverInfo);
+                    var tunnel = CnCNetTunnel.Parse(serverInfo, logger);
 
                     if (tunnel == null)
                         continue;
@@ -205,17 +214,17 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     if (tunnel.Version is not Constants.TUNNEL_VERSION_2 and not Constants.TUNNEL_VERSION_3)
                         continue;
 
-                    if (tunnel.Version is Constants.TUNNEL_VERSION_2 && !UserINISettings.Instance.UseLegacyTunnels)
+                    if (tunnel.Version is Constants.TUNNEL_VERSION_2 && !userIniSettings.UseLegacyTunnels)
                         continue;
 
-                    if (tunnel.Version is Constants.TUNNEL_VERSION_3 && UserINISettings.Instance.UseLegacyTunnels)
+                    if (tunnel.Version is Constants.TUNNEL_VERSION_3 && userIniSettings.UseLegacyTunnels)
                         continue;
 
                     returnValue.Add(tunnel);
                 }
                 catch (Exception ex)
                 {
-                    ProgramConstants.LogException(ex, "Caught an exception when parsing a tunnel server.");
+                    logger.LogExceptionDetails(ex, "Caught an exception when parsing a tunnel server.");
                 }
             }
 
@@ -236,7 +245,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Refreshing tunnel cache file failed!");
+                logger.LogExceptionDetails(ex, "Refreshing tunnel cache file failed!");
             }
 
             return returnValue;

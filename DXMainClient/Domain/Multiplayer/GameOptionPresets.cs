@@ -1,18 +1,22 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using ClientCore;
+using Microsoft.Extensions.Logging;
+using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
 {
     /// <summary>
     /// A single game option preset.
     /// </summary>
-    public class GameOptionPreset
+    internal sealed class GameOptionPreset
     {
-        public GameOptionPreset(string profileName)
+        private readonly ILogger logger;
+
+        public GameOptionPreset(string profileName, ILogger logger)
         {
+            this.logger = logger;
             ProfileName = profileName;
 
             if (ProfileName.Contains('[') || ProfileName.Contains(']'))
@@ -46,7 +50,7 @@ namespace DTAClient.Domain.Multiplayer
                 string[] splitValue = value.Split(':');
                 if (splitValue.Length != 2)
                 {
-                    Logger.Log($"Failed to parse game option preset value ({ProfileName}, {keyName})");
+                    logger.LogInformation($"Failed to parse game option preset value ({ProfileName}, {keyName})");
                     continue;
                 }
 
@@ -89,23 +93,16 @@ namespace DTAClient.Domain.Multiplayer
     /// <summary>
     /// Handles game option presets.
     /// </summary>
-    public class GameOptionPresets
+    internal sealed class GameOptionPresets
     {
         private const string IniFileName = "GameOptionsPresets.ini";
         private const string PresetDefinitionsSectionName = "Presets";
 
-        private GameOptionPresets() { }
+        private readonly ILogger logger;
 
-        private static GameOptionPresets _instance;
-        public static GameOptionPresets Instance
+        public GameOptionPresets(ILogger logger)
         {
-            get
-            {
-                if (_instance == null)
-                    _instance = new GameOptionPresets();
-
-                return _instance;
-            }
+            this.logger = logger;
         }
 
         private IniFile gameOptionPresetsIni;
@@ -172,7 +169,7 @@ namespace DTAClient.Domain.Multiplayer
                     if (presetSection == null)
                         continue;
 
-                    var preset = new GameOptionPreset(kvp.Value);
+                    var preset = new GameOptionPreset(kvp.Value, logger);
                     preset.Read(presetSection);
                     presets[kvp.Value] = preset;
                 }

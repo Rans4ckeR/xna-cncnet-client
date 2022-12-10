@@ -1,7 +1,7 @@
-﻿using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Rampastring.Tools;
 
 namespace ClientCore.INIProcessing
 {
@@ -31,7 +31,6 @@ namespace ClientCore.INIProcessing
     /// </summary>
     public class IniPreprocessInfoStore
     {
-        private const string StoreIniName = "ProcessedIniInfo.ini";
         private const string ProcessedINIsSection = "ProcessedINIs";
 
         public List<PreprocessedIniInfo> PreprocessedIniInfos { get; } = new List<PreprocessedIniInfo>();
@@ -39,12 +38,12 @@ namespace ClientCore.INIProcessing
         /// <summary>
         /// Loads the preprocessed INI information.
         /// </summary>
-        public void Load()
+        public string Load()
         {
             FileInfo processedIniInfoFile = SafePath.GetFile(ProgramConstants.ClientUserFilesPath, "ProcessedIniInfo.ini");
 
             if (!processedIniInfoFile.Exists)
-                return;
+                return null;
 
             var iniFile = new IniFile(processedIniInfoFile.FullName);
             var keys = iniFile.GetSectionKeys(ProcessedINIsSection);
@@ -54,10 +53,7 @@ namespace ClientCore.INIProcessing
                     new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
                 if (values.Length != 3)
-                {
-                    Logger.Log("Failed to parse preprocessed INI info, key " + key);
-                    continue;
-                }
+                    return key;
 
                 // If an INI file no longer exists, it's useless to keep its record
                 if (!SafePath.GetFile(ProgramConstants.GamePath, "INI", values[0]).Exists)
@@ -65,10 +61,12 @@ namespace ClientCore.INIProcessing
 
                 PreprocessedIniInfos.Add(new PreprocessedIniInfo(values));
             }
+
+            return null;
         }
 
         /// <summary>
-        /// Checks if a (potentially processed) INI file is up-to-date 
+        /// Checks if a (potentially processed) INI file is up-to-date
         /// or whether it needs to be (re)processed.
         /// </summary>
         /// <param name="fileName">The name of the INI file in its directory.

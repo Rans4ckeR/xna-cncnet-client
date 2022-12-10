@@ -4,38 +4,148 @@ using ClientGUI;
 using DTAClient.Domain.Multiplayer;
 using DTAClient.Online.EventArguments;
 using Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
-    public class LoadOrSaveGameOptionPresetWindow : XNAWindow
+    internal sealed class LoadOrSaveGameOptionPresetWindow : XNAWindow
     {
         private bool _isLoad;
 
-        private readonly XNALabel lblHeader;
+        private XNALabel lblHeader;
 
-        private readonly XNADropDownItem ddiCreatePresetItem;
+        private XNADropDownItem ddiCreatePresetItem;
 
-        private readonly XNADropDownItem ddiSelectPresetItem;
+        private XNADropDownItem ddiSelectPresetItem;
 
-        private readonly XNAClientButton btnLoadSave;
+        private XNAClientButton btnLoadSave;
 
-        private readonly XNAClientButton btnDelete;
+        private XNAClientButton btnDelete;
 
-        private readonly XNAClientDropDown ddPresetSelect;
+        private XNAClientDropDown ddPresetSelect;
 
-        private readonly XNALabel lblNewPresetName;
+        private XNALabel lblNewPresetName;
 
-        private readonly XNATextBox tbNewPresetName;
+        private XNATextBox tbNewPresetName;
+
+        private readonly GameOptionPresets gameOptionPresets;
+        private readonly XNAMessageBox xnaMessageBox;
 
         public EventHandler<GameOptionPresetEventArgs> PresetLoaded;
 
         public EventHandler<GameOptionPresetEventArgs> PresetSaved;
 
-        public LoadOrSaveGameOptionPresetWindow(WindowManager windowManager) : base(windowManager)
+        public LoadOrSaveGameOptionPresetWindow(
+            WindowManager windowManager,
+            ILogger logger,
+            GameOptionPresets gameOptionPresets,
+            XNAMessageBox xnaMessageBox,
+            IServiceProvider serviceProvider)
+            : base(windowManager, logger, serviceProvider)
         {
+            this.gameOptionPresets = gameOptionPresets;
+            this.xnaMessageBox = xnaMessageBox;
+            //ClientRectangle = new Rectangle(0, 0, 325, 185);
+
+            //var margin = 10;
+
+            //lblHeader = new XNALabel(WindowManager);
+            //lblHeader.Name = nameof(lblHeader);
+            //lblHeader.FontIndex = 1;
+            //lblHeader.ClientRectangle = new Rectangle(
+            //    margin, margin,
+            //    150, 22
+            //);
+
+            //var lblPresetName = new XNALabel(WindowManager);
+            //lblPresetName.Name = nameof(lblPresetName);
+            //lblPresetName.Text = "Preset Name".L10N("UI:Main:PresetName");
+            //lblPresetName.ClientRectangle = new Rectangle(
+            //    margin, lblHeader.Bottom + margin,
+            //    150, 18
+            //);
+
+            //ddiCreatePresetItem = new XNADropDownItem();
+            //ddiCreatePresetItem.Text = "[Create New]".L10N("UI:Main:CreateNewPreset");
+
+            //ddiSelectPresetItem = new XNADropDownItem();
+            //ddiSelectPresetItem.Text = "[Select Preset]".L10N("UI:Main:SelectPreset");
+            //ddiSelectPresetItem.Selectable = false;
+
+            //ddPresetSelect = new XNAClientDropDown(WindowManager);
+            //ddPresetSelect.Name = nameof(ddPresetSelect);
+            //ddPresetSelect.ClientRectangle = new Rectangle(
+            //    10, lblPresetName.Bottom + 2,
+            //    150, 22
+            //);
+            //ddPresetSelect.SelectedIndexChanged += DropDownPresetSelect_SelectedIndexChanged;
+
+            //lblNewPresetName = new XNALabel(WindowManager);
+            //lblNewPresetName.Name = nameof(lblNewPresetName);
+            //lblNewPresetName.Text = "New Preset Name".L10N("UI:Main:NewPresetName");
+            //lblNewPresetName.ClientRectangle = new Rectangle(
+            //    margin, ddPresetSelect.Bottom + margin,
+            //    150, 18
+            //);
+
+            //tbNewPresetName = new XNATextBox(WindowManager);
+            //tbNewPresetName.Name = nameof(tbNewPresetName);
+            //tbNewPresetName.ClientRectangle = new Rectangle(
+            //    10, lblNewPresetName.Bottom + 2,
+            //    150, 22
+            //);
+            //tbNewPresetName.TextChanged += (sender, args) => RefreshButtons();
+
+            //btnLoadSave = new XNAClientButton(WindowManager);
+            //btnLoadSave.Name = nameof(btnLoadSave);
+            //btnLoadSave.LeftClick += BtnLoadSave_LeftClick;
+            //btnLoadSave.ClientRectangle = new Rectangle(
+            //    margin,
+            //    Height - UIDesignConstants.BUTTON_HEIGHT - margin,
+            //    UIDesignConstants.BUTTON_WIDTH_92,
+            //    UIDesignConstants.BUTTON_HEIGHT
+            //);
+
+            //btnDelete = new XNAClientButton(WindowManager);
+            //btnDelete.Name = nameof(btnDelete);
+            //btnDelete.Text = "Delete".L10N("UI:Main:ButtonDelete");
+            //btnDelete.LeftClick += BtnDelete_LeftClick;
+            //btnDelete.ClientRectangle = new Rectangle(
+            //    btnLoadSave.Right + margin,
+            //    btnLoadSave.Y,
+            //    UIDesignConstants.BUTTON_WIDTH_92,
+            //    UIDesignConstants.BUTTON_HEIGHT
+            //);
+
+            //var btnCancel = new XNAClientButton(WindowManager);
+            //btnCancel.Text = "Cancel".L10N("UI:Main:ButtonCancel");
+            //btnCancel.ClientRectangle = new Rectangle(
+            //    btnDelete.Right + margin,
+            //    btnLoadSave.Y,
+            //    UIDesignConstants.BUTTON_WIDTH_92,
+            //    UIDesignConstants.BUTTON_HEIGHT
+            //);
+            //btnCancel.LeftClick += (sender, args) => Disable();
+
+            //AddChild(lblHeader);
+            //AddChild(lblPresetName);
+            //AddChild(ddPresetSelect);
+            //AddChild(lblNewPresetName);
+            //AddChild(tbNewPresetName);
+            //AddChild(btnLoadSave);
+            //AddChild(btnDelete);
+            //AddChild(btnCancel);
+
+            //Disable();
+        }
+
+        public override void Initialize()
+        {
+            PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
+            BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 255), 1, 1);
             ClientRectangle = new Rectangle(0, 0, 325, 185);
 
             var margin = 10;
@@ -128,13 +238,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             AddChild(btnCancel);
 
             Disable();
-        }
-
-        public override void Initialize()
-        {
-            PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
-            BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 255), 1, 1);
-            
             base.Initialize();
         }
 
@@ -214,7 +317,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             ddPresetSelect.Items.Add(_isLoad ? ddiSelectPresetItem : ddiCreatePresetItem);
             ddPresetSelect.SelectedIndex = 0;
 
-            ddPresetSelect.Items.AddRange(GameOptionPresets.Instance
+            ddPresetSelect.Items.AddRange(gameOptionPresets
                 .GetPresetNames()
                 .OrderBy(name => name)
                 .Select(name => new XNADropDownItem()
@@ -267,15 +370,18 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void BtnDelete_LeftClick(object sender, EventArgs e)
         {
             var selectedItem = ddPresetSelect.Items[ddPresetSelect.SelectedIndex];
-            var messageBox = XNAMessageBox.ShowYesNoDialog(WindowManager,
-                "Confirm Preset Delete".L10N("UI:Main:ConfirmPresetDeleteTitle"),
-                "Are you sure you want to delete this preset?".L10N("UI:Main:ConfirmPresetDeleteText") + "\n\n" + selectedItem.Text);
-            messageBox.YesClickedAction = box =>
+
+            xnaMessageBox.Caption = "Confirm Preset Delete".L10N("UI:Main:ConfirmPresetDeleteTitle");
+            xnaMessageBox.Description = "Are you sure you want to delete this preset?".L10N("UI:Main:ConfirmPresetDeleteText") + "\n\n" + selectedItem.Text;
+            xnaMessageBox.MessageBoxButtons = XNAMessageBoxButtons.YesNo;
+            xnaMessageBox.YesClickedAction = box =>
             {
-                GameOptionPresets.Instance.DeletePreset(selectedItem.Text);
+                gameOptionPresets.DeletePreset(selectedItem.Text);
                 ddPresetSelect.Items.Remove(selectedItem);
                 ddPresetSelect.SelectedIndex = 0;
             };
+
+            xnaMessageBox.Show();
         }
     }
 }

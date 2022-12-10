@@ -6,8 +6,9 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using ClientCore;
+using Microsoft.Extensions.Logging;
 using Rampastring.Tools;
+using ClientCore.Extensions;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
 {
@@ -23,18 +24,25 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         private string ipAddress;
         private string hash;
 
+        private readonly ILogger logger;
+
+        public CnCNetTunnel(ILogger logger)
+        {
+            this.logger = logger;
+        }
+
         /// <summary>
         /// Parses a formatted string that contains the tunnel server's
         /// information into a CnCNetTunnel instance.
         /// </summary>
         /// <param name="str">The string that contains the tunnel server's information.</param>
         /// <returns>A CnCNetTunnel instance parsed from the given string.</returns>
-        public static CnCNetTunnel Parse(string str)
+        public static CnCNetTunnel Parse(string str, ILogger logger)
         {
             // For the format, check https://cncnet.org/master-list
             try
             {
-                var tunnel = new CnCNetTunnel();
+                var tunnel = new CnCNetTunnel(logger);
                 string[] parts = str.Split(';');
                 string addressAndPort = parts[0];
                 string secondaryAddress = parts.Length > 12 ? parts[12] : null;
@@ -89,7 +97,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (Exception ex) when (ex is FormatException or OverflowException or IndexOutOfRangeException)
             {
-                ProgramConstants.LogException(ex, "Parsing tunnel information failed. Parsed string: " + str);
+                logger.LogExceptionDetails(ex, "Parsing tunnel information failed. Parsed string: " + str);
                 return null;
             }
         }
@@ -157,7 +165,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             {
                 string addressString = $"{Uri.UriSchemeHttp}://{Address}:{Port}/request?clients={playerCount}";
 
-                Logger.Log($"Contacting tunnel at {addressString}");
+                logger.LogInformation($"Contacting tunnel at {addressString}");
 
                 using var client = new HttpClient(
                     new SocketsHttpHandler
@@ -181,14 +189,14 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 foreach (string port in portIDs)
                 {
                     playerPorts.Add(Convert.ToInt32(port, CultureInfo.InvariantCulture));
-                    Logger.Log($"Added port {port}");
+                    logger.LogInformation($"Added port {port}");
                 }
 
                 return playerPorts;
             }
             catch (Exception ex)
             {
-                ProgramConstants.LogException(ex, "Unable to connect to the specified tunnel server.");
+                logger.LogExceptionDetails(ex, "Unable to connect to the specified tunnel server.");
             }
 
             return new List<int>();
@@ -216,7 +224,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (SocketException ex)
             {
-                ProgramConstants.LogException(ex, $"Failed to ping tunnel {Name} ({Address}:{Port}).");
+                logger.LogExceptionDetails(ex, $"Failed to ping tunnel {Name} ({Address}:{Port}).");
 
                 PingInMs = -1;
             }

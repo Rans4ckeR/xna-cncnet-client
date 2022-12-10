@@ -1,14 +1,14 @@
-﻿using ClientCore;
-using Rampastring.Tools;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using ClientCore;
+using Rampastring.Tools;
 
 namespace DTAClient.Domain.Multiplayer
 {
     /// <summary>
     /// A multiplayer game mode.
     /// </summary>
-    public class GameMode
+    internal sealed class GameMode
     {
         public GameMode(string name)
         {
@@ -150,8 +150,6 @@ namespace DTAClient.Domain.Multiplayer
         {
             return new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, BASE_INI_PATH, mapCodeININame));
         }
-
-        protected bool Equals(GameMode other) => string.Equals(Name, other?.Name, StringComparison.InvariantCultureIgnoreCase);
 
         public override int GetHashCode() => (Name != null ? Name.GetHashCode() : 0);
     }
