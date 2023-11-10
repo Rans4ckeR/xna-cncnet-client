@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using ClientCore;
 using Rampastring.Tools;
 using ClientCore.INIProcessing;
-using System.Threading;
+using System.Threading.Tasks;
 using Rampastring.XNAUI;
 
 namespace ClientGUI
@@ -27,7 +27,7 @@ namespace ClientGUI
         /// <summary>
         /// Starts the main game process.
         /// </summary>
-        public static void StartGameProcess(WindowManager windowManager)
+        public static async ValueTask StartGameProcessAsync(WindowManager windowManager)
         {
             Logger.Log("About to launch main game executable.");
 
@@ -36,7 +36,7 @@ namespace ClientGUI
             int waitTimes = 0;
             while (PreprocessorBackgroundTask.Instance.IsRunning)
             {
-                Thread.Sleep(1000);
+                await Task.Delay(1000).ConfigureAwait(false);
                 waitTimes++;
                 if (waitTimes > 10)
                 {
@@ -48,17 +48,20 @@ namespace ClientGUI
             }
 
             OSVersion osVersion = ClientConfiguration.Instance.GetOperatingSystemVersion();
-
             string gameExecutableName;
             string additionalExecutableName = string.Empty;
 
-            if (osVersion == OSVersion.UNIX)
+            if (osVersion is OSVersion.UNIX)
+            {
                 gameExecutableName = ClientConfiguration.Instance.UnixGameExecutableName;
+            }
             else
             {
                 string launcherExecutableName = ClientConfiguration.Instance.GameLauncherExecutableName;
                 if (string.IsNullOrEmpty(launcherExecutableName))
+                {
                     gameExecutableName = ClientConfiguration.Instance.GetGameExecutableName();
+                }
                 else
                 {
                     gameExecutableName = launcherExecutableName;
@@ -94,7 +97,7 @@ namespace ClientGUI
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Error launching QRes: " + ex.Message);
+                    ProgramConstants.LogException(ex, "Error launching QRes");
                     XNAMessageBox.Show(windowManager, "Error launching game", "Error launching " + ProgramConstants.QRES_EXECUTABLE + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                         "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
                         Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message);
@@ -103,7 +106,7 @@ namespace ClientGUI
                 }
 
                 if (Environment.ProcessorCount > 1 && SingleCoreAffinity)
-                    QResProcess.ProcessorAffinity = (IntPtr)2;
+                    QResProcess.ProcessorAffinity = 2;
             }
             else
             {
@@ -133,7 +136,7 @@ namespace ClientGUI
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Error launching " + gameFileInfo.Name + ": " + ex.Message);
+                    ProgramConstants.LogException(ex, "Error launching " + gameFileInfo.Name);
                     XNAMessageBox.Show(windowManager, "Error launching game", "Error launching " + gameFileInfo.Name + ". Please check that your anti-virus isn't blocking the CnCNet Client. " +
                         "You can also try running the client as an administrator." + Environment.NewLine + Environment.NewLine + "You are unable to participate in this match." +
                         Environment.NewLine + Environment.NewLine + "Returned error: " + ex.Message);
@@ -149,16 +152,17 @@ namespace ClientGUI
             }
 
             GameProcessStarted?.Invoke();
-
             Logger.Log("Waiting for qres.dat or " + gameExecutableName + " to exit.");
         }
 
-        static void Process_Exited(object sender, EventArgs e)
+        private static void Process_Exited(object sender, EventArgs e)
         {
             Logger.Log("GameProcessLogic: Process exited.");
-            Process proc = (Process)sender;
+
+            using var proc = (Process)sender;
+
             proc.Exited -= Process_Exited;
-            proc.Dispose();
+
             GameProcessExited?.Invoke();
         }
     }

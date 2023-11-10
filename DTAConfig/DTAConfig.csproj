@@ -4,18 +4,15 @@
     <Description>CnCNet Config Library</Description>
     <Company>CnCNet</Company>
     <Product>CnCNet Client</Product>
-    <Copyright>Copyright © CnCNet, Rampastring 2011-2022</Copyright>
+    <Copyright>Copyright © CnCNet, Rampastring 2011-2023</Copyright>
     <Trademark>CnCNet</Trademark>
-    <Version>2.2.0.0</Version>
-    <FileVersion>2.2.0.0</FileVersion>
-    <InformationalVersion>2.2.0.0</InformationalVersion>
     <AssemblyName>DTAConfig</AssemblyName>
     <RootNamespace>DTAConfig</RootNamespace>
   </PropertyGroup>
   <Import Project="$(MSBuildThisFileDirectory)..\build\WinForms.props" />
   <ItemGroup>
     <PackageReference Include="CnCNet.ClientUpdater" Version="1.0.15" />
-    <PackageReference Include="GitVersion.MsBuild" Version="5.11.1">
+    <PackageReference Include="GitVersion.MsBuild" Version="5.12.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
