@@ -77,7 +77,7 @@ jobs:
         with:
           path: ./artifacts
       - name: List
-        run: dir /s
+        run: Get-ChildItem -Recurse
       - name: Prerelease
         if: ${{ env.PreReleaseTag != '' }}
         run: gh release create ${{ format('v{0}', env.SemVer) }} ./dist/*.* --generate-notes --target ${{ github.sha }} --prerelease
