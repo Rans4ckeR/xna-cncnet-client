@@ -1,13 +1,13 @@
 #!/usr/bin/env pwsh
 #Requires -Version 7.2
 
-param($Configuration = "Release")
+param($Configuration = "Release", $Framework = "net7.0")
 
 . $PSScriptRoot\Common.ps1
 
-Build-Project $Configuration Ares UniversalGL net7.0
+Build-Project $Configuration Ares UniversalGL $Framework
 if ($IsWindows) {
   @('WindowsDX', 'WindowsGL', 'WindowsXNA') | ForEach-Object {
-    Build-Project $Configuration Ares $_ net7.0-windows
+    Build-Project $Configuration Ares $_ $Framework'-windows'
   }
 }

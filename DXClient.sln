@@ -15,7 +15,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.editorconfig = .editorconfig
 		build\AfterPublish.targets = build\AfterPublish.targets
 		.github\workflows\build.yml = .github\workflows\build.yml
-		build\CopyResources.targets = build\CopyResources.targets
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets
 		build\Framework.props = build\Framework.props
