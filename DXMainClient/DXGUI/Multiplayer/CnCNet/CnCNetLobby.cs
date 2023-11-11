@@ -792,6 +792,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (hg.Incompatible && ClientConfiguration.Instance.DisallowJoiningIncompatibleGames)
                 return "Cannot join game. The host is on a different game version than you.".L10N("Client:Main:DisallowJoiningIncompatibleGames");
 
+            if (hg.Incompatible && ClientConfiguration.Instance.DisallowJoiningIncompatibleGames)
+                return "Cannot join game. The host is on a different game version than you.".L10N("UI:Main:DisallowJoiningIncompatibleGames");
+
             if (hg.Locked)
                 return "The selected game is locked!".L10N("Client:Main:GameLocked");
 

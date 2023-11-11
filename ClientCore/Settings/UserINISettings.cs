@@ -1,8 +1,10 @@
-using ClientCore.Settings;
+﻿using ClientCore.Settings;
 using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ClientCore.Enums;
+using ClientCore.Extensions;
 
 namespace ClientCore
 {
@@ -16,6 +18,7 @@ namespace ClientCore
         public const string AUDIO = "Audio";
         public const string COMPATIBILITY = "Compatibility";
         public const string GAME_FILTERS = "GameFilters";
+        public const string FAVORITE_MAPS = "FavoriteMaps";
 
         private const bool DEFAULT_SHOW_FRIENDS_ONLY_GAMES = false;
         private const bool DEFAULT_HIDE_LOCKED_GAMES = false;
@@ -126,7 +129,7 @@ namespace ClientCore
             HideIncompatibleGames = new BoolSetting(iniFile, GAME_FILTERS, "HideIncompatibleGames", DEFAULT_HIDE_INCOMPATIBLE_GAMES);
             MaxPlayerCount = new IntRangeSetting(iniFile, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
 
-            FavoriteMaps = new StringListSetting(iniFile, OPTIONS, "FavoriteMaps", new List<string>());
+            LoadFavoriteMaps(iniFile);
         }
 
         public IniFile SettingsIni { get; private set; }
@@ -298,7 +301,7 @@ namespace ClientCore
 
         public BoolSetting EnableReplays { get; private set; }
 
-        public StringListSetting FavoriteMaps { get; private set; }
+        public List<string> FavoriteMaps { get; private set; }
 
         public void SetValue(string section, string key, string value)
                => SettingsIni.SetStringValue(section, key, value);
@@ -328,16 +331,38 @@ namespace ClientCore
             if (string.IsNullOrEmpty(mapName))
                 return isFavorite;
 
-            var favoriteMapKey = FavoriteMapKey(mapName, gameModeName);
+            string favoriteMapKey = FavoriteMapKey(mapName, gameModeName);
             isFavorite = IsFavoriteMap(mapName, gameModeName);
             if (isFavorite)
                 FavoriteMaps.Remove(favoriteMapKey);
             else
                 FavoriteMaps.Add(favoriteMapKey);
 
-            Instance.SaveSettings();
+            WriteFavoriteMaps();
 
             return !isFavorite;
+        }
+
+        private void LoadFavoriteMaps(IniFile iniFile)
+        {
+            FavoriteMaps = new List<string>();
+            bool legacyMapsLoaded = LoadLegacyFavoriteMaps(iniFile);
+            var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
+            foreach (KeyValuePair<string, string> keyValuePair in favoriteMapsSection.Keys)
+                FavoriteMaps.Add(keyValuePair.Value);
+
+            if (legacyMapsLoaded)
+                WriteFavoriteMaps();
+        }
+
+        private void WriteFavoriteMaps()
+        {
+            var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
+            favoriteMapsSection.RemoveAllKeys();
+            for (int i = 0; i < FavoriteMaps.Count; i++)
+                favoriteMapsSection.AddKey(i.ToString(), FavoriteMaps[i]);
+
+            SaveSettings();
         }
 
         /// <summary>
@@ -345,7 +370,7 @@ namespace ClientCore
         /// </summary>
         /// <param name="nameName">The name of the map.</param>
         /// <param name="gameModeName">The name of the game mode</param>
-        public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Value.Contains(FavoriteMapKey(nameName, gameModeName));
+        public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Contains(FavoriteMapKey(nameName, gameModeName));
 
         private string FavoriteMapKey(string nameName, string gameModeName) => $"{nameName}:{gameModeName}";
 
@@ -389,6 +414,26 @@ namespace ClientCore
             HideIncompatibleGames.Value = DEFAULT_HIDE_INCOMPATIBLE_GAMES;
             HidePasswordedGames.Value = DEFAULT_HIDE_PASSWORDED_GAMES;
             MaxPlayerCount.Value = DEFAULT_MAX_PLAYER_COUNT;
+        }
+
+        /// <summary>
+        /// Previously, favorite maps were stored under a single key under the [Options] section.
+        /// This attempts to read in that legacy key.
+        /// </summary>
+        /// <param name="iniFile"></param>
+        /// <returns>Whether or not legacy favorites were loaded.</returns>
+        private bool LoadLegacyFavoriteMaps(IniFile iniFile)
+        {
+            var legacyFavoriteMaps = new StringListSetting(iniFile, OPTIONS, FAVORITE_MAPS, new List<string>());
+            if (!legacyFavoriteMaps.Value?.Any() ?? true)
+                return false;
+
+            foreach (string favoriteMapKey in legacyFavoriteMaps.Value)
+                FavoriteMaps.Add(favoriteMapKey);
+
+            // remove the old key
+            iniFile.GetSection(OPTIONS).RemoveKey(FAVORITE_MAPS);
+            return true;
         }
     }
 }
