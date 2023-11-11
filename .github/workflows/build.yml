@@ -76,13 +76,15 @@ jobs:
         uses: actions/download-artifact@main
         with:
           path: ./artifacts
+      - name: List
+        run: dir /s
       - name: Prerelease
         if: ${{ env.PreReleaseTag != '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*/*.*) --generate-notes --target ${{ github.sha }} --prerelease
+        run: gh release create ${{ format('v{0}', env.SemVer) }} ./dist/*.* --generate-notes --target ${{ github.sha }} --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Release
         if: ${{ env.PreReleaseTag == '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*/*.*) --generate-notes --target ${{ github.sha }}
+        run: gh release create ${{ format('v{0}', env.SemVer) }} ./dist/*.* --generate-notes --target ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
