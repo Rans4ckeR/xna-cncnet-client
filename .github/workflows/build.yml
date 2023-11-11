@@ -54,7 +54,7 @@ jobs:
         dotnet-version: '8.x.x'
 
     - name: Build ${{matrix.game}}
-      run: ./BuildScripts/Build-${{matrix.game}}.ps1 Release ${{matrix.framework}} $AssemblySemVer $AssemblySemFileVer $InformationalVersion
+      run: ./BuildScripts/Build-${{matrix.game}}.ps1 Release ${{matrix.framework}} ${{env.AssemblySemVer}} ${{env.AssemblySemFileVer}} ${{env.InformationalVersion}}
       shell: pwsh
 
     - uses: actions/upload-artifact@main
