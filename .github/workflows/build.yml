@@ -1,5 +1,4 @@
 name: build client
-
 on:
   push:
     branches: [ master, develop ]
@@ -42,26 +41,24 @@ jobs:
       matrix:
         game: [Ares,TS,YR]
         framework: [net8.0, net7.0]
-
     steps:
     - uses: actions/checkout@main
       with:
         fetch-depth: 0
-
     - name: Setup .NET Core SDK
       uses: actions/setup-dotnet@main
       with:
         dotnet-version: '8.x.x'
-
     - name: Build ${{matrix.game}}
       run: ./BuildScripts/Build-${{matrix.game}}.ps1 Release ${{matrix.framework}} ${{env.AssemblySemVer}} ${{env.AssemblySemFileVer}} ${{env.InformationalVersion}}
       shell: pwsh
-
-    - uses: actions/upload-artifact@main
-      name: Upload Artifacts
+    - name: Zip
+      run: 7z a -r "${{matrix.game}}-v{{env.SemVer}}-${{matrix.framework}}.zip" "./Compiled/${{matrix.game}}/${{matrix.framework}}/*.*"
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@main
       with:
-        name: artifacts-${{matrix.game}}-${{matrix.framework}}
-        path: ./Compiled/${{matrix.game}}/${{matrix.framework}}
+        name: ${{matrix.game}}-${{matrix.framework}}
+        path: ${{matrix.game}}-v{{env.SemVer}}-${{matrix.framework}}.zip
         if-no-files-found: error
   release:
     needs: [calculate-version, publish]
@@ -80,11 +77,11 @@ jobs:
         run: Get-ChildItem -Recurse
       - name: Prerelease
         if: ${{ env.PreReleaseTag != '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} ./dist/*.* --generate-notes --target ${{ github.sha }} --prerelease
+        run: gh release create ${{ format('v{0}', env.SemVer) }} ./artifacts/*/*.zip --generate-notes --target ${{ github.sha }} --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Release
         if: ${{ env.PreReleaseTag == '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} ./dist/*.* --generate-notes --target ${{ github.sha }}
+        run: gh release create ${{ format('v{0}', env.SemVer) }} ./artifacts/*/*.zip --generate-notes --target ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
