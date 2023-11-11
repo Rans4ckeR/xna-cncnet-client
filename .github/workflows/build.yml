@@ -53,12 +53,12 @@ jobs:
       run: ./BuildScripts/Build-${{matrix.game}}.ps1 Release ${{matrix.framework}} ${{env.AssemblySemVer}} ${{env.AssemblySemFileVer}} ${{env.InformationalVersion}}
       shell: pwsh
     - name: Zip
-      run: 7z a -r "${{matrix.game}}-v{{env.SemVer}}-${{matrix.framework}}.zip" "./Compiled/${{matrix.game}}/${{matrix.framework}}/*.*"
+      run: 7z a -r "${{ format('{0}-v{1}-{2}.zip', matrix.game, env.SemVer, matrix.framework) }}" "./Compiled/${{matrix.game}}/${{matrix.framework}}/*.*"
     - name: Upload Artifacts
       uses: actions/upload-artifact@main
       with:
         name: ${{matrix.game}}-${{matrix.framework}}
-        path: ${{matrix.game}}-v{{env.SemVer}}-${{matrix.framework}}.zip
+        path: ${{ format('{0}-v{1}-{2}.zip', matrix.game, env.SemVer, matrix.framework) }}
         if-no-files-found: error
   release:
     needs: [calculate-version, publish]
