@@ -60,7 +60,7 @@ jobs:
     - uses: actions/upload-artifact@main
       name: Upload Artifacts
       with:
-        name: artifacts-${{matrix.game}}-${{matrix.framework}}.zip
+        name: artifacts-${{matrix.game}}-${{matrix.framework}}
         path: ./Compiled/${{matrix.game}}/${{matrix.framework}}
         if-no-files-found: error
   release:
@@ -78,11 +78,11 @@ jobs:
           path: ./artifacts
       - name: Prerelease
         if: ${{ env.PreReleaseTag != '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*.zip) --generate-notes --target ${{ github.sha }} --prerelease
+        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*) --generate-notes --target ${{ github.sha }} --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Release
         if: ${{ env.PreReleaseTag == '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*.zip) --generate-notes --target ${{ github.sha }}
+        run: gh release create ${{ format('v{0}', env.SemVer) }} (get-item ./artifacts/*) --generate-notes --target ${{ github.sha }}
         env:
           GH_TOKEN: ${{ github.token }}
