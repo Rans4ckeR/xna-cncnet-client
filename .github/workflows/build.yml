@@ -60,7 +60,7 @@ jobs:
     - uses: actions/upload-artifact@main
       name: Upload Artifacts
       with:
-        name: artifacts-${{matrix.game}}-${{matrix.framework}}
+        name: artifacts-${{matrix.game}}-${{matrix.framework}}.zip
         path: ./Compiled/${{matrix.game}}/${{matrix.framework}}
         if-no-files-found: error
   release:
