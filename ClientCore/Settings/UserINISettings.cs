@@ -1,8 +1,10 @@
-using ClientCore.Settings;
+﻿using ClientCore.Settings;
 using Rampastring.Tools;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ClientCore.Enums;
+using ClientCore.Extensions;
 
 namespace ClientCore
 {
@@ -16,6 +18,7 @@ namespace ClientCore
         public const string AUDIO = "Audio";
         public const string COMPATIBILITY = "Compatibility";
         public const string GAME_FILTERS = "GameFilters";
+        public const string FAVORITE_MAPS = "FavoriteMaps";
 
         private const bool DEFAULT_SHOW_FRIENDS_ONLY_GAMES = false;
         private const bool DEFAULT_HIDE_LOCKED_GAMES = false;
@@ -99,6 +102,10 @@ namespace ClientCore
             EnableMapSharing = new BoolSetting(iniFile, MULTIPLAYER, "EnableMapSharing", true);
             AlwaysDisplayTunnelList = new BoolSetting(iniFile, MULTIPLAYER, "AlwaysDisplayTunnelList", false);
             MapSortState = new IntSetting(iniFile, MULTIPLAYER, "MapSortState", (int)SortDirection.None);
+            UseLegacyTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseLegacyTunnels", false);
+            UseP2P = new BoolSetting(iniFile, MULTIPLAYER, "UseP2P", false);
+            UseDynamicTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseDynamicTunnels", true);
+            EnableReplays = new BoolSetting(iniFile, MULTIPLAYER, "EnableReplays", false);
 
             CheckForUpdates = new BoolSetting(iniFile, OPTIONS, "CheckforUpdates", true);
 
@@ -122,7 +129,7 @@ namespace ClientCore
             HideIncompatibleGames = new BoolSetting(iniFile, GAME_FILTERS, "HideIncompatibleGames", DEFAULT_HIDE_INCOMPATIBLE_GAMES);
             MaxPlayerCount = new IntRangeSetting(iniFile, GAME_FILTERS, "MaxPlayerCount", DEFAULT_MAX_PLAYER_COUNT, 2, 8);
 
-            FavoriteMaps = new StringListSetting(iniFile, OPTIONS, "FavoriteMaps", new List<string>());
+            LoadFavoriteMaps(iniFile);
         }
 
         public IniFile SettingsIni { get; private set; }
@@ -134,24 +141,40 @@ namespace ClientCore
         /*********/
 
         public IntSetting IngameScreenWidth { get; private set; }
+
         public IntSetting IngameScreenHeight { get; private set; }
+
         public StringSetting ClientTheme { get; private set; }
+
         public string ThemeFolderPath => ClientConfiguration.Instance.GetThemePath(ClientTheme);
+
         public StringSetting Translation { get; private set; }
+
         public string TranslationFolderPath => SafePath.CombineDirectoryPath(
             ClientConfiguration.Instance.TranslationsFolderPath, Translation);
+
         public string TranslationThemeFolderPath => SafePath.CombineDirectoryPath(
             ClientConfiguration.Instance.TranslationsFolderPath, Translation,
             ClientConfiguration.Instance.GetThemePath(ClientTheme));
+
         public IntSetting DetailLevel { get; private set; }
+
         public StringSetting Renderer { get; private set; }
+
         public BoolSetting WindowedMode { get; private set; }
+
         public BoolSetting BorderlessWindowedMode { get; private set; }
+
         public BoolSetting BackBufferInVRAM { get; private set; }
+
         public IntSetting ClientResolutionX { get; set; }
+
         public IntSetting ClientResolutionY { get; set; }
+
         public BoolSetting BorderlessWindowedClient { get; private set; }
+
         public IntSetting ClientFPS { get; private set; }
+
         public BoolSetting DisplayToggleableExtraTextures { get; private set; }
 
         /*********/
@@ -159,12 +182,19 @@ namespace ClientCore
         /*********/
 
         public DoubleSetting ScoreVolume { get; private set; }
+
         public DoubleSetting SoundVolume { get; private set; }
+
         public DoubleSetting VoiceVolume { get; private set; }
+
         public BoolSetting IsScoreShuffle { get; private set; }
+
         public DoubleSetting ClientVolume { get; private set; }
+
         public BoolSetting PlayMainMenuMusic { get; private set; }
+
         public BoolSetting StopMusicOnMenu { get; private set; }
+
         public BoolSetting MessageSound { get; private set; }
 
         /********/
@@ -172,8 +202,11 @@ namespace ClientCore
         /********/
 
         public IntSetting ScrollRate { get; private set; }
+
         public IntSetting DragDistance { get; private set; }
+
         public IntSetting DoubleTapInterval { get; private set; }
+
         public StringSetting Win8CompatMode { get; private set; }
 
         /************************/
@@ -183,15 +216,23 @@ namespace ClientCore
         public StringSetting PlayerName { get; private set; }
 
         public IntSetting ChatColor { get; private set; }
+
         public IntSetting LANChatColor { get; private set; }
+
         public BoolSetting PingUnofficialCnCNetTunnels { get; private set; }
+
         public BoolSetting WritePathToRegistry { get; private set; }
+
         public BoolSetting PlaySoundOnGameHosted { get; private set; }
 
         public BoolSetting SkipConnectDialog { get; private set; }
+
         public BoolSetting PersistentMode { get; private set; }
+
         public BoolSetting AutomaticCnCNetLogin { get; private set; }
+
         public BoolSetting DiscordIntegration { get; private set; }
+
         public BoolSetting AllowGameInvitesFromFriendsOnly { get; private set; }
 
         public BoolSetting NotifyOnUserListChange { get; private set; }
@@ -205,6 +246,12 @@ namespace ClientCore
         public BoolSetting AlwaysDisplayTunnelList { get; private set; }
 
         public IntSetting MapSortState { get; private set; }
+
+        public BoolSetting UseLegacyTunnels { get; private set; }
+
+        public BoolSetting UseP2P { get; private set; }
+
+        public BoolSetting UseDynamicTunnels { get; private set; }
 
         /*********************/
         /* GAME LIST FILTERS */
@@ -229,7 +276,9 @@ namespace ClientCore
         public BoolSetting CheckForUpdates { get; private set; }
 
         public BoolSetting PrivacyPolicyAccepted { get; private set; }
+
         public BoolSetting IsFirstRun { get; private set; }
+
         public BoolSetting CustomComponentsDenied { get; private set; }
 
         public IntSetting Difficulty { get; private set; }
@@ -250,7 +299,9 @@ namespace ClientCore
 
         public BoolSetting GenerateOnlyNewValuesInTranslationStub { get; private set; }
 
-        public StringListSetting FavoriteMaps { get; private set; }
+        public BoolSetting EnableReplays { get; private set; }
+
+        public List<string> FavoriteMaps { get; private set; }
 
         public void SetValue(string section, string key, string value)
                => SettingsIni.SetStringValue(section, key, value);
@@ -280,16 +331,38 @@ namespace ClientCore
             if (string.IsNullOrEmpty(mapName))
                 return isFavorite;
 
-            var favoriteMapKey = FavoriteMapKey(mapName, gameModeName);
+            string favoriteMapKey = FavoriteMapKey(mapName, gameModeName);
             isFavorite = IsFavoriteMap(mapName, gameModeName);
             if (isFavorite)
                 FavoriteMaps.Remove(favoriteMapKey);
             else
                 FavoriteMaps.Add(favoriteMapKey);
 
-            Instance.SaveSettings();
+            WriteFavoriteMaps();
 
             return !isFavorite;
+        }
+
+        private void LoadFavoriteMaps(IniFile iniFile)
+        {
+            FavoriteMaps = new List<string>();
+            bool legacyMapsLoaded = LoadLegacyFavoriteMaps(iniFile);
+            var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
+            foreach (KeyValuePair<string, string> keyValuePair in favoriteMapsSection.Keys)
+                FavoriteMaps.Add(keyValuePair.Value);
+
+            if (legacyMapsLoaded)
+                WriteFavoriteMaps();
+        }
+
+        private void WriteFavoriteMaps()
+        {
+            var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
+            favoriteMapsSection.RemoveAllKeys();
+            for (int i = 0; i < FavoriteMaps.Count; i++)
+                favoriteMapsSection.AddKey(i.ToString(), FavoriteMaps[i]);
+
+            SaveSettings();
         }
 
         /// <summary>
@@ -297,7 +370,7 @@ namespace ClientCore
         /// </summary>
         /// <param name="nameName">The name of the map.</param>
         /// <param name="gameModeName">The name of the game mode</param>
-        public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Value.Contains(FavoriteMapKey(nameName, gameModeName));
+        public bool IsFavoriteMap(string nameName, string gameModeName) => FavoriteMaps.Contains(FavoriteMapKey(nameName, gameModeName));
 
         private string FavoriteMapKey(string nameName, string gameModeName) => $"{nameName}:{gameModeName}";
 
@@ -341,6 +414,26 @@ namespace ClientCore
             HideIncompatibleGames.Value = DEFAULT_HIDE_INCOMPATIBLE_GAMES;
             HidePasswordedGames.Value = DEFAULT_HIDE_PASSWORDED_GAMES;
             MaxPlayerCount.Value = DEFAULT_MAX_PLAYER_COUNT;
+        }
+
+        /// <summary>
+        /// Previously, favorite maps were stored under a single key under the [Options] section.
+        /// This attempts to read in that legacy key.
+        /// </summary>
+        /// <param name="iniFile"></param>
+        /// <returns>Whether or not legacy favorites were loaded.</returns>
+        private bool LoadLegacyFavoriteMaps(IniFile iniFile)
+        {
+            var legacyFavoriteMaps = new StringListSetting(iniFile, OPTIONS, FAVORITE_MAPS, new List<string>());
+            if (!legacyFavoriteMaps.Value?.Any() ?? true)
+                return false;
+
+            foreach (string favoriteMapKey in legacyFavoriteMaps.Value)
+                FavoriteMaps.Add(favoriteMapKey);
+
+            // remove the old key
+            iniFile.GetSection(OPTIONS).RemoveKey(FAVORITE_MAPS);
+            return true;
         }
     }
 }
