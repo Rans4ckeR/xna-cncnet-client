@@ -547,12 +547,12 @@ namespace DTAClient.Online
             wm.AddCallback(() => DoUserJoinedChannelAsync(channelName, host, userName, ident).HandleTask());
         }
 
-        private async ValueTask DoUserJoinedChannelAsync(string channelName, string host, string userName, string userAddress)
+        private ValueTask DoUserJoinedChannelAsync(string channelName, string host, string userName, string userAddress)
         {
             Channel channel = FindChannel(channelName);
 
             if (channel == null)
-                return;
+                return ValueTask.CompletedTask;
 
             bool isAdmin = false;
             string name = userName;
@@ -596,7 +596,7 @@ namespace DTAClient.Online
             channelUser.IsFriend = cncNetUserData.IsFriend(channelUser.IRCUser.Name);
 
             ircUser.Channels.Add(channelName);
-            await channel.OnUserJoinedAsync(channelUser).ConfigureAwait(false);
+            return channel.OnUserJoinedAsync(channelUser);
         }
 
         private void AddUserToGlobalUserList(IRCUser user)

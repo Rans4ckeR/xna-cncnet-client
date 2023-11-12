@@ -56,10 +56,12 @@ namespace DTAClient.DXGUI.Multiplayer
             WindowManager.GameClosing += (_, _) => WindowManager_GameClosingAsync().HandleTask();
         }
 
-        private async ValueTask WindowManager_GameClosingAsync()
+        private ValueTask WindowManager_GameClosingAsync()
         {
             if (client is { Connected: true })
-                await ClearAsync().ConfigureAwait(false);
+                return ClearAsync();
+
+            return ValueTask.CompletedTask;
         }
 
         public event EventHandler<GameBroadcastEventArgs> GameBroadcast;
@@ -425,7 +427,7 @@ namespace DTAClient.DXGUI.Multiplayer
             lbChatMessages.AddMessage(null, message, color);
         }
 
-        protected override async ValueTask BroadcastOptionsAsync()
+        protected override ValueTask BroadcastOptionsAsync()
         {
             if (Players.Count > 0)
                 Players[0].Ready = true;
@@ -442,7 +444,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 sb.Append(pInfo.IPAddress);
             }
 
-            await BroadcastMessageAsync(sb.ToString(), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
+            return BroadcastMessageAsync(sb.ToString(), cancellationTokenSource?.Token ?? default);
         }
 
         protected override ValueTask HostStartGameAsync()
@@ -461,21 +463,21 @@ namespace DTAClient.DXGUI.Multiplayer
 
         #region Server's command handlers
 
-        private async ValueTask Server_HandleChatMessageAsync(LANPlayerInfo sender, string data)
+        private ValueTask Server_HandleChatMessageAsync(LANPlayerInfo sender, string data)
         {
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length < 2)
-                return;
+                return ValueTask.CompletedTask;
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
             if (colorIndex < 0 || colorIndex >= chatColors.Length)
-                return;
+                return ValueTask.CompletedTask;
 
-            await BroadcastMessageAsync(LANCommands.CHAT_GAME_LOADING_COMMAND + " " + sender +
+            return BroadcastMessageAsync(LANCommands.CHAT_GAME_LOADING_COMMAND + " " + sender +
                 ProgramConstants.LAN_DATA_SEPARATOR + colorIndex +
-                ProgramConstants.LAN_DATA_SEPARATOR + data, cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
+                ProgramConstants.LAN_DATA_SEPARATOR + data, cancellationTokenSource?.Token ?? default);
         }
 
         private void Server_HandleFileHashMessage(LANPlayerInfo sender, string hash)
@@ -485,14 +487,14 @@ namespace DTAClient.DXGUI.Multiplayer
             sender.Verified = true;
         }
 
-        private async ValueTask Server_HandleReadyRequestAsync(LANPlayerInfo sender)
+        private ValueTask Server_HandleReadyRequestAsync(LANPlayerInfo sender)
         {
             if (sender.Ready)
-                return;
+                return ValueTask.CompletedTask;
 
             sender.Ready = true;
             CopyPlayerDataToUI();
-            await BroadcastOptionsAsync().ConfigureAwait(false);
+            return BroadcastOptionsAsync();
         }
 
         #endregion

@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using DTAClient.Domain;
 using DTAClient.Domain.LAN;
 using DTAClient.Domain.Multiplayer;
@@ -512,10 +512,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected override void AddNotice(string message, Color color) =>
             lbChatMessages.AddMessage(null, message, color);
 
-        protected override async ValueTask BroadcastPlayerOptionsAsync()
+        protected override ValueTask BroadcastPlayerOptionsAsync()
         {
             if (!IsHost)
-                return;
+                return ValueTask.CompletedTask;
 
             var sb = new ExtendedStringBuilder(LANCommands.PLAYER_OPTIONS_BROADCAST + " ", true);
             sb.Separator = ProgramConstants.LAN_DATA_SEPARATOR;
@@ -537,14 +537,14 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     sb.Append("-1");
             }
 
-            await BroadcastMessageAsync(sb.ToString()).ConfigureAwait(false);
+            return BroadcastMessageAsync(sb.ToString());
         }
 
-        protected override async ValueTask BroadcastPlayerExtraOptionsAsync()
+        protected override ValueTask BroadcastPlayerExtraOptionsAsync()
         {
             var playerExtraOptions = GetPlayerExtraOptions();
 
-            await BroadcastMessageAsync(playerExtraOptions.ToLanMessage(), true).ConfigureAwait(false);
+            return BroadcastMessageAsync(playerExtraOptions.ToLanMessage(), true);
         }
 
         protected override ValueTask HostLaunchGameAsync() => BroadcastMessageAsync(LANCommands.LAUNCH_GAME + " " + UniqueGameID);
@@ -800,19 +800,19 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         #region Command Handlers
 
-        private async ValueTask GameHost_HandleChatCommandAsync(string sender, string data)
+        private ValueTask GameHost_HandleChatCommandAsync(string sender, string data)
         {
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length < 2)
-                return;
+                return ValueTask.CompletedTask;
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
             if (colorIndex < 0 || colorIndex >= chatColors.Length)
-                return;
+                return ValueTask.CompletedTask;
 
-            await BroadcastMessageAsync(LANCommands.CHAT_LOBBY_COMMAND + " " + sender + ProgramConstants.LAN_DATA_SEPARATOR + data).ConfigureAwait(false);
+            return BroadcastMessageAsync(LANCommands.CHAT_LOBBY_COMMAND + " " + sender + ProgramConstants.LAN_DATA_SEPARATOR + data);
         }
 
         private void Player_HandleChatCommand(string data)
@@ -841,26 +841,28 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             ReturnNotification(sender);
         }
 
-        private async ValueTask HandleGetReadyCommandAsync()
+        private ValueTask HandleGetReadyCommandAsync()
         {
             if (!IsHost)
-                await GetReadyNotificationAsync().ConfigureAwait(false);
+                return GetReadyNotificationAsync();
+
+            return ValueTask.CompletedTask;
         }
 
-        private async ValueTask HandlePlayerOptionsRequestAsync(string sender, string data)
+        private ValueTask HandlePlayerOptionsRequestAsync(string sender, string data)
         {
             if (!IsHost)
-                return;
+                return ValueTask.CompletedTask;
 
             PlayerInfo pInfo = Players.Find(p => p.Name == sender);
 
             if (pInfo == null)
-                return;
+                return ValueTask.CompletedTask;
 
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length != 4)
-                return;
+                return ValueTask.CompletedTask;
 
             int side = Conversions.IntFromString(parts[0], -1);
             int color = Conversions.IntFromString(parts[1], -1);
@@ -868,25 +870,25 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             int team = Conversions.IntFromString(parts[3], -1);
 
             if (side < 0 || side > SideCount + RandomSelectorCount)
-                return;
+                return ValueTask.CompletedTask;
 
             if (color < 0 || color > MPColors.Count)
-                return;
+                return ValueTask.CompletedTask;
 
             if (Map.CoopInfo != null)
             {
                 if (Map.CoopInfo.DisallowedPlayerSides.Contains(side - 1) || side == SideCount + RandomSelectorCount)
-                    return;
+                    return ValueTask.CompletedTask;
 
                 if (Map.CoopInfo.DisallowedPlayerColors.Contains(color - 1))
-                    return;
+                    return ValueTask.CompletedTask;
             }
 
             if (start < 0 || start > Map.MaxPlayers)
-                return;
+                return ValueTask.CompletedTask;
 
             if (team < 0 || team > 4)
-                return;
+                return ValueTask.CompletedTask;
 
             if (side != pInfo.SideId
                 || start != pInfo.StartingLocation
@@ -901,7 +903,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             pInfo.TeamId = team;
 
             CopyPlayerDataToUI();
-            await BroadcastPlayerOptionsAsync().ConfigureAwait(false);
+            return BroadcastPlayerOptionsAsync();
         }
 
         private void HandlePlayerExtraOptionsBroadcast(string data) => ApplyPlayerExtraOptions(null, data);
@@ -1090,38 +1092,38 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
         }
 
-        private async ValueTask GameHost_HandleReadyRequestAsync(string sender, string autoReady)
+        private ValueTask GameHost_HandleReadyRequestAsync(string sender, string autoReady)
         {
             PlayerInfo pInfo = Players.Find(p => p.Name == sender);
 
             if (pInfo == null)
-                return;
+                return ValueTask.CompletedTask;
 
             pInfo.Ready = true;
             pInfo.AutoReady = Convert.ToBoolean(Conversions.IntFromString(autoReady, 0));
             CopyPlayerDataToUI();
-            await BroadcastPlayerOptionsAsync().ConfigureAwait(false);
+            return BroadcastPlayerOptionsAsync();
         }
 
-        private async ValueTask HandleGameLaunchCommandAsync(string gameId)
+        private ValueTask HandleGameLaunchCommandAsync(string gameId)
         {
             Players.ForEach(pInfo => pInfo.IsInGame = true);
             UniqueGameID = Conversions.IntFromString(gameId, -1);
 
             if (UniqueGameID < 0)
-                return;
+                return ValueTask.CompletedTask;
 
             CopyPlayerDataToUI();
-            await StartGameAsync().ConfigureAwait(false);
+            return StartGameAsync();
         }
 
         private ValueTask HandlePingAsync()
             => SendMessageToHostAsync(LANCommands.PING, cancellationTokenSource?.Token ?? default);
 
-        protected override async ValueTask BroadcastDiceRollAsync(int dieSides, int[] results)
+        protected override ValueTask BroadcastDiceRollAsync(int dieSides, int[] results)
         {
             string resultString = string.Join(",", results);
-            await SendMessageToHostAsync($"{LANCommands.DICE_ROLL} {dieSides},{resultString}", cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
+            return SendMessageToHostAsync($"{LANCommands.DICE_ROLL} {dieSides},{resultString}", cancellationTokenSource?.Token ?? default);
         }
 
         private ValueTask Host_HandleDiceRollAsync(string sender, string result)

@@ -106,12 +106,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             AddItem(openLinkItem);
         }
 
-        private async ValueTask InviteAsync()
+        private ValueTask InviteAsync()
         {
             // note it's assumed that if the channel name is specified, the game name must be also
             if (string.IsNullOrEmpty(contextMenuData.inviteChannelName) || ProgramConstants.IsInGame)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
             string messageBody = CnCNetCommands.GAME_INVITE + " " + contextMenuData.inviteChannelName + ";" + contextMenuData.inviteGameName;
@@ -121,8 +121,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 messageBody += ";" + contextMenuData.inviteChannelPassword;
             }
 
-            await connectionManager.SendCustomMessageAsync(new QueuedMessage(
-                IRCCommands.PRIVMSG + " " + GetIrcUser().Name + " :\u0001" + messageBody + "\u0001", QueuedMessageType.CHAT_MESSAGE, 0)).ConfigureAwait(false);
+            return connectionManager.SendCustomMessageAsync(new QueuedMessage(
+                IRCCommands.PRIVMSG + " " + GetIrcUser().Name + " :\u0001" + messageBody + "\u0001", QueuedMessageType.CHAT_MESSAGE, 0));
         }
 
         private void UpdateButtons()
@@ -187,14 +187,14 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
         }
 
-        private async ValueTask GetIrcUserIdentAsync(Action<string> callback)
+        private ValueTask GetIrcUserIdentAsync(Action<string> callback)
         {
             var ircUser = GetIrcUser();
 
             if (!string.IsNullOrEmpty(ircUser.Ident))
             {
                 callback.Invoke(ircUser.Ident);
-                return;
+                return ValueTask.CompletedTask;
             }
 
             void WhoIsReply(object sender, WhoEventArgs whoEventargs)
@@ -205,7 +205,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             connectionManager.WhoReplyReceived += WhoIsReply;
-            await connectionManager.SendWhoIsMessageAsync(ircUser.Name).ConfigureAwait(false);
+            return connectionManager.SendWhoIsMessageAsync(ircUser.Name);
         }
 
         private IRCUser GetIrcUser()

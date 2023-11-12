@@ -414,24 +414,24 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private void TbMapSearch_InputReceived(object sender, EventArgs e) => ListMaps();
 
-        private async ValueTask Dropdown_SelectedIndexChangedAsync(object sender)
+        private ValueTask Dropdown_SelectedIndexChangedAsync(object sender)
         {
             if (disableGameOptionUpdateBroadcast)
-                return;
+                return ValueTask.CompletedTask;
 
             var dd = (GameLobbyDropDown)sender;
             dd.HostSelectedIndex = dd.SelectedIndex;
-            await OnGameOptionChangedAsync().ConfigureAwait(false);
+            return OnGameOptionChangedAsync();
         }
 
-        private async ValueTask ChkBox_CheckedChangedAsync(object sender)
+        private ValueTask ChkBox_CheckedChangedAsync(object sender)
         {
             if (disableGameOptionUpdateBroadcast)
-                return;
+                return ValueTask.CompletedTask;
 
             var checkBox = (GameLobbyCheckBox)sender;
             checkBox.HostChecked = checkBox.Checked;
-            await OnGameOptionChangedAsync().ConfigureAwait(false);
+            return OnGameOptionChangedAsync();
         }
 
         protected virtual ValueTask OnGameOptionChangedAsync()
@@ -443,7 +443,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             return ValueTask.CompletedTask;
         }
 
-        protected async ValueTask DdGameModeMapFilter_SelectedIndexChangedAsync()
+        protected ValueTask DdGameModeMapFilter_SelectedIndexChangedAsync()
         {
             gameModeMapFilter = ddGameModeMapFilter.SelectedItem.Tag as GameModeMapFilter;
 
@@ -455,7 +455,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (lbGameModeMapList.SelectedIndex == -1)
                 lbGameModeMapList.SelectedIndex = 0; // Select default GameModeMap
             else
-                await ChangeMapAsync(GameModeMap).ConfigureAwait(false);
+                return ChangeMapAsync(GameModeMap);
+
+            return ValueTask.CompletedTask;
         }
 
         private void BtnPlayerExtraOptions_LeftClick(object sender, EventArgs e)

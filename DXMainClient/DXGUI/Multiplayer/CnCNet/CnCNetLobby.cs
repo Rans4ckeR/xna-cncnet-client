@@ -592,7 +592,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// Displays a message when the IRC server has informed that the local user
         /// has been banned from a channel that they're attempting to join.
         /// </summary>
-        private async ValueTask ConnectionManager_BannedFromChannelAsync(ChannelEventArgs e)
+        private ValueTask ConnectionManager_BannedFromChannelAsync(ChannelEventArgs e)
         {
             var game = lbGameList.HostedGames.Find(hg => ((HostedCnCNetGame)hg).ChannelName == e.ChannelName);
 
@@ -601,7 +601,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 var chatChannel = connectionManager.FindChannel(e.ChannelName);
                 chatChannel?.AddMessage(new ChatMessage(Color.White, string.Format(
                     "Cannot join chat channel {0}, you're banned!".L10N("Client:Main:PlayerBannedByChannel"), chatChannel.UIName)));
-                return;
+                return ValueTask.CompletedTask;
             }
 
             connectionManager.MainChannel.AddMessage(new ChatMessage(Color.White, string.Format(
@@ -611,10 +611,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (gameOfLastJoinAttempt != null)
             {
                 if (gameOfLastJoinAttempt.IsLoadedGame)
-                    await gameLoadingLobby.ClearAsync().ConfigureAwait(false);
+                    return gameLoadingLobby.ClearAsync();
                 else
-                    await gameLobby.ClearAsync(false).ConfigureAwait(false);
+                    return gameLobby.ClearAsync(false);
             }
+
+            return ValueTask.CompletedTask;
         }
 
         private ValueTask SharedUILogic_GameProcessStartedAsync()
@@ -909,13 +911,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 QueuedMessageType.INSTANT_MESSAGE, 0)).ConfigureAwait(false);
         }
 
-        private async ValueTask GameChannel_TargetChangeTooFastAsync(object sender, MessageEventArgs e)
+        private ValueTask GameChannel_TargetChangeTooFastAsync(object sender, MessageEventArgs e)
         {
             connectionManager.MainChannel.AddMessage(new ChatMessage(Color.White, e.Message));
-            await ClearGameJoinAttemptAsync((Channel)sender).ConfigureAwait(false);
+            return ClearGameJoinAttemptAsync((Channel)sender);
         }
 
-        private async ValueTask OnGameLocked(object sender)
+        private ValueTask OnGameLocked(object sender)
         {
             connectionManager.MainChannel.AddMessage(new ChatMessage(Color.White, "The selected game is locked!".L10N("Client:Main:GameLocked")));
             var channel = (Channel)sender;
@@ -927,7 +929,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 SortAndRefreshHostedGames();
             }
 
-            await ClearGameJoinAttemptAsync((Channel)sender).ConfigureAwait(false);
+            return ClearGameJoinAttemptAsync((Channel)sender);
         }
 
         private HostedCnCNetGame FindGameByChannelName(string channelName)
@@ -939,10 +941,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             return (HostedCnCNetGame)game;
         }
 
-        private async ValueTask GameChannel_InvalidPasswordEntered_NewGameAsync(object sender)
+        private ValueTask GameChannel_InvalidPasswordEntered_NewGameAsync(object sender)
         {
             connectionManager.MainChannel.AddMessage(new ChatMessage(Color.White, "Incorrect password!".L10N("Client:Main:PasswordWrong")));
-            await ClearGameJoinAttemptAsync((Channel)sender).ConfigureAwait(false);
+            return ClearGameJoinAttemptAsync((Channel)sender);
         }
 
         private async ValueTask GameChannel_UserAddedAsync(object sender, ChannelUserEventArgs e)
@@ -958,10 +960,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
         }
 
-        private async ValueTask ClearGameJoinAttemptAsync(Channel channel)
+        private ValueTask ClearGameJoinAttemptAsync(Channel channel)
         {
             ClearGameChannelEvents(channel);
-            await gameLobby.ClearAsync(false).ConfigureAwait(false);
+            return gameLobby.ClearAsync(false);
         }
 
         private void ClearGameChannelEvents(Channel channel)

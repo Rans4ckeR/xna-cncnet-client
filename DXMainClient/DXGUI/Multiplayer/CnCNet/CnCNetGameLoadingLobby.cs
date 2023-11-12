@@ -272,12 +272,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             UpdateDiscordPresence();
         }
 
-        private async ValueTask RemovePlayerAsync(string playerName)
+        private ValueTask RemovePlayerAsync(string playerName)
         {
             int index = Players.FindIndex(p => p.Name == playerName);
 
             if (index == -1)
-                return;
+                return ValueTask.CompletedTask;
 
             sndLeaveSound.Play();
 
@@ -290,8 +290,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 connectionManager.MainChannel.AddMessage(new ChatMessage(
                     Color.Yellow, "The game host left the game!".L10N("Client:Main:HostLeft")));
 
-                await ClearAsync().ConfigureAwait(false);
+                return ClearAsync();
             }
+
+            return ValueTask.CompletedTask;
         }
 
         private void Channel_MessageAdded(object sender, IRCMessageEventArgs e)
@@ -304,10 +306,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         protected override void AddNotice(string message, Color color) => channel.AddMessage(new ChatMessage(color, message));
 
-        protected override async ValueTask BroadcastOptionsAsync()
+        protected override ValueTask BroadcastOptionsAsync()
         {
             if (!IsHost)
-                return;
+                return ValueTask.CompletedTask;
 
             //if (Players.Count > 0)
             Players[0].Ready = true;
@@ -324,7 +326,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
             message.Remove(message.Length - 1, 1);
 
-            await channel.SendCTCPMessageAsync(message.ToString(), QueuedMessageType.GAME_SETTINGS_MESSAGE, 10).ConfigureAwait(false);
+            return channel.SendCTCPMessageAsync(message.ToString(), QueuedMessageType.GAME_SETTINGS_MESSAGE, 10);
         }
 
         protected override ValueTask SendChatMessageAsync(string message)
@@ -372,49 +374,53 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         #region CTCP Handlers
 
-        private async ValueTask HandleGetReadyNotificationAsync(string sender)
+        private ValueTask HandleGetReadyNotificationAsync(string sender)
         {
             if (sender != hostName)
-                return;
+                return ValueTask.CompletedTask;
 
-            await GetReadyNotificationAsync().ConfigureAwait(false);
+            return GetReadyNotificationAsync();
         }
 
-        private async ValueTask HandleNotAllPresentNotificationAsync(string sender)
+        private ValueTask HandleNotAllPresentNotificationAsync(string sender)
         {
             if (sender != hostName)
-                return;
+                return ValueTask.CompletedTask;
 
-            await NotAllPresentNotificationAsync().ConfigureAwait(false);
+            return NotAllPresentNotificationAsync();
         }
 
-        private async ValueTask HandleFileHashCommandAsync(string sender, string fileHash)
+        private ValueTask HandleFileHashCommandAsync(string sender, string fileHash)
         {
             if (!IsHost)
-                return;
+                return ValueTask.CompletedTask;
 
             if (fileHash != gameFilesHash)
             {
                 PlayerInfo pInfo = Players.Find(p => p.Name == sender);
 
                 if (pInfo == null)
-                    return;
+                    return ValueTask.CompletedTask;
 
                 pInfo.Verified = true;
 
-                await HandleCheaterNotificationAsync(hostName, sender).ConfigureAwait(false); // This is kinda hacky
+                return HandleCheaterNotificationAsync(hostName, sender); // This is kinda hacky
             }
+
+            return ValueTask.CompletedTask;
         }
 
-        private async ValueTask HandleCheaterNotificationAsync(string sender, string cheaterName)
+        private ValueTask HandleCheaterNotificationAsync(string sender, string cheaterName)
         {
             if (sender != hostName)
-                return;
+                return ValueTask.CompletedTask;
 
             AddNotice(string.Format("{0} - modified files detected! They could be cheating!".L10N("Client:Main:PlayerCheating"), cheaterName), Color.Red);
 
             if (IsHost)
-                await channel.SendCTCPMessageAsync(CnCNetCommands.INVALID_FILE_HASH + " " + cheaterName, QueuedMessageType.SYSTEM_MESSAGE, 0).ConfigureAwait(false);
+                return channel.SendCTCPMessageAsync(CnCNetCommands.INVALID_FILE_HASH + " " + cheaterName, QueuedMessageType.SYSTEM_MESSAGE, 0);
+
+            return ValueTask.CompletedTask;
         }
 
         private void HandleTunnelPing(string sender, int pingInMs)
@@ -490,10 +496,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             CopyPlayerDataToUI();
         }
 
-        private async ValueTask HandleStartGameCommandAsync(string sender, string data)
+        private ValueTask HandleStartGameCommandAsync(string sender, string data)
         {
             if (sender != hostName)
-                return;
+                return ValueTask.CompletedTask;
 
             string[] parts = data.Split(';');
 
@@ -502,19 +508,19 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             for (int i = 0; i < playerCount; i++)
             {
                 if (parts.Length < i * 2 + 1)
-                    return;
+                    return ValueTask.CompletedTask;
 
                 string pName = parts[i * 2];
                 string ipAndPort = parts[i * 2 + 1];
                 string[] ipAndPortSplit = ipAndPort.Split(':');
 
                 if (ipAndPortSplit.Length < 2)
-                    return;
+                    return ValueTask.CompletedTask;
 
                 int port = 0;
                 bool success = int.TryParse(ipAndPortSplit[1], out port);
                 if (!success)
-                    return;
+                    return ValueTask.CompletedTask;
 
                 PlayerInfo pInfo = Players.Find(p => p.Name == pName);
 
@@ -524,22 +530,24 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 pInfo.Port = port;
             }
 
-            await LoadGameAsync().ConfigureAwait(false);
+            return LoadGameAsync();
         }
 
-        private async ValueTask HandlePlayerReadyRequestAsync(string sender, int readyStatus)
+        private ValueTask HandlePlayerReadyRequestAsync(string sender, int readyStatus)
         {
             PlayerInfo pInfo = Players.Find(p => p.Name == sender);
 
             if (pInfo == null)
-                return;
+                return ValueTask.CompletedTask;
 
             pInfo.Ready = Convert.ToBoolean(readyStatus);
 
             CopyPlayerDataToUI();
 
             if (IsHost)
-                await BroadcastOptionsAsync().ConfigureAwait(false);
+                return BroadcastOptionsAsync();
+
+            return ValueTask.CompletedTask;
         }
 
         private void HandleTunnelServerChangeMessage(string sender, string hash)
@@ -632,12 +640,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             tbChatInput.TextColor = chatColor.XnaColor;
         }
 
-        private async ValueTask BroadcastGameAsync()
+        private ValueTask BroadcastGameAsync()
         {
             Channel broadcastChannel = connectionManager.FindChannel(gameCollection.GetGameBroadcastingChannelNameFromIdentifier(localGame));
 
             if (broadcastChannel == null)
-                return;
+                return ValueTask.CompletedTask;
 
             StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ");
             sb.Append(ProgramConstants.CNCNET_PROTOCOL_REVISION);
@@ -675,7 +683,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             sb.Append(";");
             sb.Append(0); // LoadedGameId
 
-            await broadcastChannel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 20).ConfigureAwait(false);
+            return broadcastChannel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 20);
         }
 
         public override string GetSwitchName() => "Load Game".L10N("Client:Main:LoadGame");

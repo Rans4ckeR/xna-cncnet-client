@@ -345,12 +345,12 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         return usedPorts;
     }
 
-    public async ValueTask SaveReplayAsync()
+    public ValueTask SaveReplayAsync()
     {
         if (!RecordingEnabled)
-            return;
+            return ValueTask.CompletedTask;
 
-        await replayHandler.StopRecordingAsync(gamePlayerIds, playerInfos, V3GameTunnelHandlers.Select(q => q.Tunnel).ToList()).ConfigureAwait(false);
+        return replayHandler.StopRecordingAsync(gamePlayerIds, playerInfos, V3GameTunnelHandlers.Select(q => q.Tunnel).ToList());
     }
 
     public async ValueTask ClearConnectionsAsync()

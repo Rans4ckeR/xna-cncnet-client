@@ -286,7 +286,7 @@ namespace DTAClient.DXGUI.Multiplayer
             UserINISettings.Instance.SaveSettings();
         }
 
-        public async ValueTask OpenAsync()
+        public ValueTask OpenAsync()
         {
             players.Clear();
             lbPlayerList.Clear();
@@ -319,7 +319,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 Logger.Log("No IPv4 address found for LAN.");
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red, "No IPv4 address found for LAN".L10N("Client:Main:NoLANIPv4")));
 
-                return;
+                return ValueTask.CompletedTask;
             }
 
             foreach (UnicastIPAddressInformation lanIpV4Address in lanIpV4Addresses)
@@ -358,14 +358,14 @@ namespace DTAClient.DXGUI.Multiplayer
             }
 
             if (!initSuccess)
-                return;
+                return ValueTask.CompletedTask;
 
             Logger.Log("Starting LAN listeners.");
 
             foreach ((Socket socket, IPEndPoint broadcastIpEndpoint) in sockets)
                 ListenAsync(socket, broadcastIpEndpoint, cancellationTokenSource.Token).HandleTask();
 
-            await SendAliveAsync(cancellationTokenSource.Token).ConfigureAwait(false);
+            return SendAliveAsync(cancellationTokenSource.Token);
         }
 
         private async ValueTask SendMessageAsync(string message, CancellationToken cancellationToken)
@@ -673,12 +673,14 @@ namespace DTAClient.DXGUI.Multiplayer
             Exited?.Invoke(this, EventArgs.Empty);
         }
 
-        private async ValueTask BtnNewGame_LeftClickAsync()
+        private ValueTask BtnNewGame_LeftClickAsync()
         {
             if (!ClientConfiguration.Instance.DisableMultiplayerGameLoading)
                 gameCreationWindow.Open();
             else
-                await GameCreationWindow_NewGameAsync().ConfigureAwait(false);
+                return GameCreationWindow_NewGameAsync();
+
+            return ValueTask.CompletedTask;
         }
 
         public override void Update(GameTime gameTime)

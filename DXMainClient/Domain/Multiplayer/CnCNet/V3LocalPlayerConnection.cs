@@ -46,7 +46,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
     /// Sends remote player data to the local game.
     /// </summary>
     /// <param name="data">The data to send to the game.</param>
-    public async ValueTask SendDataToGameAsync(ReadOnlyMemory<byte> data)
+    public ValueTask SendDataToGameAsync(ReadOnlyMemory<byte> data)
     {
         if (RemoteEndPoint.Equals(loopbackIpEndPoint) || data.Length < PlayerIdsSize)
         {
@@ -54,10 +54,10 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
             Logger.Log($"{GetType().Name}: Discarded remote data from {Socket.LocalEndPoint} to {RemoteEndPoint} for player {PlayerId}.");
 
 #endif
-            return;
+            return ValueTask.CompletedTask;
         }
 
-        await SendDataAsync(data).ConfigureAwait(false);
+        return SendDataAsync(data);
     }
 
     protected override ValueTask<SocketReceiveFromResult> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)

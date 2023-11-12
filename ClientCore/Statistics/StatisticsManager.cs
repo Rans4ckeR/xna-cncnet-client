@@ -265,7 +265,7 @@ namespace ClientCore.Statistics
             }
         }
 
-        private async ValueTask PurgeStatsAsync()
+        private ValueTask PurgeStatsAsync()
         {
             int removedCount = 0;
 
@@ -281,7 +281,9 @@ namespace ClientCore.Statistics
             }
 
             if (removedCount > 0)
-                await SaveDatabaseAsync().ConfigureAwait(false);
+                return SaveDatabaseAsync();
+
+            return ValueTask.CompletedTask;
         }
 
         public async ValueTask AddMatchAndSaveDatabaseAsync(bool addMatch, MatchStatistics ms)

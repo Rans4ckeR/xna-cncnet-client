@@ -128,25 +128,29 @@ internal sealed class V3GameTunnelHandler : IDisposable
     /// <summary>
     /// Forwards local game data to the remote host.
     /// </summary>
-    private async ValueTask LocalGameConnection_DataReceivedAsync(object sender, DataReceivedEventArgs e)
+    private ValueTask LocalGameConnection_DataReceivedAsync(object sender, DataReceivedEventArgs e)
     {
         OnRaiseLocalGameDataReceivedEvent(sender, e);
 
         if (remoteHostConnection is not null)
-            await remoteHostConnection.SendDataToRemotePlayerAsync(e.GameData, e.PlayerId).ConfigureAwait(false);
+            return remoteHostConnection.SendDataToRemotePlayerAsync(e.GameData, e.PlayerId);
+
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>
     /// Forwards remote player data to the local game.
     /// </summary>
-    private async ValueTask RemoteHostConnection_DataReceivedAsync(object sender, DataReceivedEventArgs e)
+    private ValueTask RemoteHostConnection_DataReceivedAsync(object sender, DataReceivedEventArgs e)
     {
         OnRaiseRemoteHostDataReceivedEvent(sender, e);
 
         V3LocalPlayerConnection v3LocalPlayerConnection = GetLocalPlayerConnection(e.PlayerId);
 
         if (v3LocalPlayerConnection is not null)
-            await v3LocalPlayerConnection.SendDataToGameAsync(e.GameData).ConfigureAwait(false);
+            return v3LocalPlayerConnection.SendDataToGameAsync(e.GameData);
+
+        return ValueTask.CompletedTask;
     }
 
     private V3LocalPlayerConnection GetLocalPlayerConnection(uint senderId)

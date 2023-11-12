@@ -226,7 +226,7 @@ namespace DTAClient.DXGUI.Generic
             Enabled = false;
         }
 
-        private async ValueTask BtnLaunch_LeftClickAsync()
+        private ValueTask BtnLaunch_LeftClickAsync()
         {
             int selectedMissionId = lbCampaignList.SelectedIndex;
 
@@ -238,10 +238,11 @@ namespace DTAClient.DXGUI.Generic
                 // Confront the user by showing the cheater screen
                 missionToLaunch = mission;
                 cheaterWindow.Enable();
-                return;
+
+                return ValueTask.CompletedTask;
             }
 
-            await LaunchMissionAsync(mission).ConfigureAwait(false);
+            return LaunchMissionAsync(mission);
         }
 
         private bool AreFilesModified()

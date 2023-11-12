@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientGUI;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer.CnCNet;
@@ -525,7 +525,7 @@ namespace DTAClient.DXGUI.Generic
         /// <summary>
         /// Attempts to "clean" the client session in a nice way if the user closes the game.
         /// </summary>
-        private async ValueTask CleanAsync()
+        private ValueTask CleanAsync()
         {
             Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
 
@@ -535,7 +535,9 @@ namespace DTAClient.DXGUI.Generic
                 Updater.StopUpdate();
 
             if (connectionManager.IsConnected)
-                await connectionManager.DisconnectAsync().ConfigureAwait(false);
+                return connectionManager.DisconnectAsync();
+
+            return ValueTask.CompletedTask;
         }
 
         /// <summary>

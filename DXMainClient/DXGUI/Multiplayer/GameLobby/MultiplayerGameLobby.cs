@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rampastring.XNAUI;
@@ -239,7 +239,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private void fsw_Created(object sender, FileSystemEventArgs e)
             => AddCallback(() => FSWEventAsync(e).HandleTask());
 
-        private async ValueTask FSWEventAsync(FileSystemEventArgs e)
+        private ValueTask FSWEventAsync(FileSystemEventArgs e)
         {
             Logger.Log("FSW Event: " + e.FullPath);
 
@@ -250,13 +250,15 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     bool success = SavedGameManager.InitSavedGames();
 
                     if (!success)
-                        return;
+                        return ValueTask.CompletedTask;
                 }
 
                 gameSaved = true;
 
-                await SavedGameManager.RenameSavedGameAsync().ConfigureAwait(false);
+                return SavedGameManager.RenameSavedGameAsync();
             }
+
+            return ValueTask.CompletedTask;
         }
 
         protected override ValueTask StartGameAsync()
@@ -314,12 +316,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
         }
 
-        protected virtual async ValueTask HandleLockGameButtonClickAsync()
+        protected virtual ValueTask HandleLockGameButtonClickAsync()
         {
             if (Locked)
-                await UnlockGameAsync(true).ConfigureAwait(false);
+                return UnlockGameAsync(true);
             else
-                await LockGameAsync().ConfigureAwait(false);
+                return LockGameAsync();
         }
 
         protected abstract ValueTask LockGameAsync();
@@ -382,10 +384,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             tbChatInput.Text = string.Empty;
         }
 
-        private async ValueTask ChkAutoReady_CheckedChangedAsync()
+        private ValueTask ChkAutoReady_CheckedChangedAsync()
         {
             UpdateLaunchGameButtonStatus();
-            await RequestReadyStatusAsync().ConfigureAwait(false);
+            return RequestReadyStatusAsync();
         }
 
         protected void ResetAutoReadyCheckbox()
@@ -485,7 +487,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// Handles the dice rolling command.
         /// </summary>
         /// <param name="dieType">The parameters given for the command by the user.</param>
-        private async ValueTask RollDiceCommandAsync(string dieType)
+        private ValueTask RollDiceCommandAsync(string dieType)
         {
             int dieSides = 6;
             int dieCount = 1;
@@ -498,7 +500,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     if (!int.TryParse(parts[0], out dieCount) || !int.TryParse(parts[1], out dieSides))
                     {
                         AddNotice("Invalid dice specified. Expected format: /roll <die count>d<die sides>".L10N("Client:Main:ChatboxCommandRollInvalidAndSyntax"));
-                        return;
+                        return ValueTask.CompletedTask;
                     }
                 }
             }
@@ -506,13 +508,13 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (dieCount > MAX_DICE || dieCount < 1)
             {
                 AddNotice("You can only between 1 to 10 dies at once.".L10N("Client:Main:ChatboxCommandRollInvalid2"));
-                return;
+                return ValueTask.CompletedTask;
             }
 
             if (dieSides > MAX_DIE_SIDES || dieSides < 2)
             {
                 AddNotice("You can only have between 2 and 100 sides in a die.".L10N("Client:Main:ChatboxCommandRollInvalid3"));
-                return;
+                return ValueTask.CompletedTask;
             }
 
             int[] results = new int[dieCount];
@@ -522,7 +524,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 results[i] = random.Next(1, dieSides + 1);
             }
 
-            await BroadcastDiceRollAsync(dieSides, results).ConfigureAwait(false);
+            return BroadcastDiceRollAsync(dieSides, results);
         }
 
         /// <summary>
@@ -736,11 +738,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             ddPlayerStarts[mTopIndex].SelectedIndex = e.StartingLocationIndex;
         }
 
-        private async ValueTask MapPreviewBox_StartingLocationAppliedAsync()
+        private ValueTask MapPreviewBox_StartingLocationAppliedAsync()
         {
             ClearReadyStatuses();
             CopyPlayerDataToUI();
-            await BroadcastPlayerOptionsAsync().ConfigureAwait(false);
+            return BroadcastPlayerOptionsAsync();
         }
 
         /// <summary>
