@@ -41,14 +41,14 @@ namespace DTAClient.Online
         /// </summary>
         private static readonly IList<Server> Servers = new List<Server>
         {
-            new("Burstfire.UK.EU.GameSurge.net", "GameSurge London, UK", new[] { 6667, 6668, 7000 }),
-            new("Gameservers.NJ.US.GameSurge.net", "GameSurge Newark, NJ", new[] { 6665, 6666, 6667, 6668, 6669, 7000, 8080 }),
-            new("Krypt.CA.US.GameSurge.net", "GameSurge Santa Ana, CA", new[] { 6666, 6667, 6668, 6669 }),
-            new("NuclearFallout.WA.US.GameSurge.net", "GameSurge Seattle, WA", new[] { 6667, 5960 }),
-            new("Stockholm.SE.EU.GameSurge.net", "GameSurge Stockholm, Sweden", new[] { 6660, 6666, 6667, 6668, 6669 }),
-            new("Prothid.NY.US.GameSurge.Net", "GameSurge NYC, NY", new[] { 5960, 6660, 6666, 6667, 6668, 6669 }),
-            new("LAN-Team.DE.EU.GameSurge.net", "GameSurge Nuremberg, Germany", new[] { 6660, 6666, 6667, 6668, 6669 }),
-            new("irc.gamesurge.net", "GameSurge", new[] { 6667 })
+            new("Burstfire.UK.EU.GameSurge.net", "GameSurge London, UK", new[] { 6667, 6668, 7000 }, []),
+            new("Gameservers.NJ.US.GameSurge.net", "GameSurge Newark, NJ", new[] { 6665, 6666, 6667, 6668, 6669, 7000, 8080 }, []),
+            new("Krypt.CA.US.GameSurge.net", "GameSurge Santa Ana, CA", new[] { 6666, 6667, 6668, 6669 }, []),
+            new("NuclearFallout.WA.US.GameSurge.net", "GameSurge Seattle, WA", new[] { 6667, 5960 }, []),
+            new("Stockholm.SE.EU.GameSurge.net", "GameSurge Stockholm, Sweden", new[] { 6660, 6666, 6667, 6668, 6669 }, []),
+            new("Prothid.NY.US.GameSurge.Net", "GameSurge NYC, NY", new[] { 5960, 6660, 6666, 6667, 6668, 6669 }, [6697]),
+            new("LAN-Team.DE.EU.GameSurge.net", "GameSurge Nuremberg, Germany", new[] { 6660, 6666, 6667, 6668, 6669 }, []),
+            new("irc.gamesurge.net", "GameSurge", new[] { 6667 }, [])
         }.AsReadOnly();
 
         private bool IsConnected { get; set; }
@@ -311,13 +311,13 @@ namespace DTAClient.Online
         private async ValueTask<IList<Server>> GetServerListSortedByLatencyAsync()
         {
             // Resolve the hostnames.
-            IEnumerable<(IPAddress IpAddress, string Name, int[] Ports)>[] servers =
+            IEnumerable<(IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts)>[] servers =
                 await ClientCore.Extensions.TaskExtensions.WhenAllSafe(Servers.Select(ResolveServerAsync)).ConfigureAwait(false);
 
             // Group the tuples by IPAddress to merge duplicate servers.
-            IEnumerable<IGrouping<IPAddress, (string Name, int[] Ports)>> serverInfosGroupedByIPAddress = servers
+            IEnumerable<IGrouping<IPAddress, (string Name, int[] Ports, int[] SecurePorts)>> serverInfosGroupedByIPAddress = servers
                 .SelectMany(server => server)
-                .GroupBy(serverInfo => serverInfo.IpAddress, serverInfo => (serverInfo.Name, serverInfo.Ports));
+                .GroupBy(serverInfo => serverInfo.IpAddress, serverInfo => (serverInfo.Name, serverInfo.Ports, serverInfo.SecurePorts));
             bool hasIPv6Internet = NetworkHelper.HasIPv6Internet();
             bool hasIPv4Internet = NetworkHelper.HasIPv4Internet();
 
@@ -326,33 +326,35 @@ namespace DTAClient.Online
             //   2. Concatenate serverNames.
             //   3. Remove duplicate ports.
             //   4. Construct and return a tuple that contains the IPAddress, concatenated serverNames and unique ports.
-            (IPAddress IpAddress, string Name, int[] Ports)[] serverInfos = serverInfosGroupedByIPAddress.Select(serverInfoGroup =>
+            (IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts)[] serverInfos = serverInfosGroupedByIPAddress.Select(serverInfoGroup =>
             {
                 IPAddress ipAddress = serverInfoGroup.Key;
                 string serverNames = string.Join(", ", serverInfoGroup.Where(serverInfo => !"GameSurge".Equals(serverInfo.Name))
                     .Select(serverInfo => serverInfo.Name));
                 int[] serverPorts = serverInfoGroup.SelectMany(serverInfo => serverInfo.Ports).Distinct().ToArray();
+                int[] serverSecurePorts = serverInfoGroup.SelectMany(serverInfo => serverInfo.SecurePorts).Distinct().ToArray();
 
-                return (ipAddress, serverNames, serverPorts);
+                return (ipAddress, serverNames, serverPorts, serverSecurePorts);
             }).
             Where(q => (q.ipAddress.AddressFamily is AddressFamily.InterNetworkV6 && hasIPv6Internet)
                 || (q.ipAddress.AddressFamily is AddressFamily.InterNetwork && hasIPv4Internet))
             .ToArray();
 
             // Do logging.
-            foreach ((IPAddress ipAddress, string name, int[] ports) in serverInfos)
+            foreach ((IPAddress ipAddress, string name, int[] ports, int[] securePorts) in serverInfos)
             {
                 string serverIPAddress = ipAddress.ToString();
                 string serverNames = string.Join(", ", name);
                 string serverPorts = string.Join(", ", ports.Select(port => port.ToString()));
+                string serverSecurePorts = string.Join(", ", securePorts.Select(port => port.ToString()));
 
-                Logger.Log($"Got a Lobby server. IP: {serverIPAddress}; Name: {serverNames}; Ports: {serverPorts}.");
+                Logger.Log($"Got a Lobby server. IP: {serverIPAddress}; Name: {serverNames}; Ports: {serverPorts}; SecurePorts: {serverSecurePorts}.");
             }
 
             Logger.Log($"The number of Lobby servers is {serverInfos.Length}.");
 
             // Test the latency.
-            foreach ((IPAddress ipAddress, string name, int[] _) in serverInfos.Where(q => failedServerIPs.Contains(q.IpAddress.ToString())))
+            foreach ((IPAddress ipAddress, string name, int[] _, int[] _) in serverInfos.Where(q => failedServerIPs.Contains(q.IpAddress.ToString())))
             {
                 Logger.Log($"Skipped a failed server {name} ({ipAddress}).");
             }
@@ -397,10 +399,10 @@ namespace DTAClient.Online
             return sortedServerAndLatencyResults.Select(taskResult => taskResult.Server).ToList();
         }
 
-        private static async Task<(Server Server, IPAddress IpAddress, long Result)> PingServerAsync((IPAddress IpAddress, string Name, int[] Ports) serverInfo)
+        private static async Task<(Server Server, IPAddress IpAddress, long Result)> PingServerAsync((IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts) serverInfo)
         {
             Logger.Log($"Attempting to ping {serverInfo.Name} ({serverInfo.IpAddress}).");
-            var server = new Server(serverInfo.IpAddress.ToString(), serverInfo.Name, serverInfo.Ports);
+            var server = new Server(serverInfo.IpAddress.ToString(), serverInfo.Name, serverInfo.Ports, serverInfo.SecurePorts);
             using var ping = new Ping();
 
             try
@@ -428,7 +430,7 @@ namespace DTAClient.Online
             }
         }
 
-        private static async Task<IEnumerable<(IPAddress IpAddress, string Name, int[] Ports)>> ResolveServerAsync(Server server)
+        private static async Task<IEnumerable<(IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts)>> ResolveServerAsync(Server server)
         {
             Logger.Log($"Attempting to DNS resolve {server.Name} ({server.Host}).");
 
@@ -443,14 +445,14 @@ namespace DTAClient.Online
                     $"{string.Join(", ", serverIPAddresses.Select(item => item.ToString()))}");
 
                 // Store each IPAddress in a different tuple.
-                return serverIPAddresses.Select(serverIPAddress => (serverIPAddress, server.Name, server.Ports));
+                return serverIPAddresses.Select(serverIPAddress => (serverIPAddress, server.Name, server.Ports, server.SecurePorts));
             }
             catch (SocketException ex)
             {
                 ProgramConstants.LogException(ex, $"Caught an exception when DNS resolving {server.Name} ({server.Host}) Lobby server.");
             }
 
-            return Array.Empty<(IPAddress IpAddress, string Name, int[] Ports)>();
+            return Array.Empty<(IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts)>();
         }
 
         public async ValueTask DisconnectAsync()

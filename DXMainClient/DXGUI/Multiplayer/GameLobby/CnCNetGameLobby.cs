@@ -1742,7 +1742,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         return StartGameAsync();
     }
 
-    protected override ValueTask StartGameAsync()
+    protected override async ValueTask StartGameAsync()
     {
         AddNotice("Starting game...".L10N("Client:Main:StartingGame"));
 
