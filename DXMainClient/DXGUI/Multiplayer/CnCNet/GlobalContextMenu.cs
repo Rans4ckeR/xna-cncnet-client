@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using ClientCore;
 using ClientCore.Extensions;
 using ClientGUI;
+using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.Online;
 using DTAClient.Online.EventArguments;
 using ClientCore.Extensions;
@@ -13,7 +15,7 @@ using TextCopy;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
-    public class GlobalContextMenu : XNAContextMenu
+    internal sealed class GlobalContextMenu : XNAContextMenu
     {
         private readonly string PRIVATE_MESSAGE = "Private Message".L10N("Client:Main:PrivateMessage");
         private readonly string ADD_FRIEND = "Add Friend".L10N("Client:Main:AddFriend");
@@ -35,8 +37,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private XNAContextMenuItem copyLinkItem;
         private XNAContextMenuItem openLinkItem;
 
-        protected readonly CnCNetManager connectionManager;
-        protected GlobalContextMenuData contextMenuData;
+        private readonly CnCNetManager connectionManager;
+        private GlobalContextMenuData contextMenuData;
 
         public EventHandler<JoinUserEventArgs> JoinEvent;
 
@@ -72,12 +74,12 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             toggleIgnoreItem = new XNAContextMenuItem()
             {
                 Text = BLOCK,
-                SelectAction = () => GetIrcUserIdent(cncnetUserData.ToggleIgnoreUser)
+                SelectAction = () => GetIrcUserIdentAsync(cncnetUserData.ToggleIgnoreUser).HandleTask()
             };
             invitePlayerItem = new XNAContextMenuItem()
             {
                 Text = INVITE,
-                SelectAction = Invite
+                SelectAction = () => InviteAsync().HandleTask()
             };
             joinPlayerItem = new XNAContextMenuItem()
             {
@@ -104,24 +106,23 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             AddItem(openLinkItem);
         }
 
-        private void Invite()
+        private ValueTask InviteAsync()
         {
             // note it's assumed that if the channel name is specified, the game name must be also
             if (string.IsNullOrEmpty(contextMenuData.inviteChannelName) || ProgramConstants.IsInGame)
             {
-                return;
+                return ValueTask.CompletedTask;
             }
 
-            string messageBody = ProgramConstants.GAME_INVITE_CTCP_COMMAND + " " + contextMenuData.inviteChannelName + ";" + contextMenuData.inviteGameName;
+            string messageBody = CnCNetCommands.GAME_INVITE + " " + contextMenuData.inviteChannelName + ";" + contextMenuData.inviteGameName;
 
             if (!string.IsNullOrEmpty(contextMenuData.inviteChannelPassword))
             {
                 messageBody += ";" + contextMenuData.inviteChannelPassword;
             }
 
-            connectionManager.SendCustomMessage(new QueuedMessage(
-                "PRIVMSG " + GetIrcUser().Name + " :\u0001" + messageBody + "\u0001", QueuedMessageType.CHAT_MESSAGE, 0
-            ));
+            return connectionManager.SendCustomMessageAsync(new QueuedMessage(
+                IRCCommands.PRIVMSG + " " + GetIrcUser().Name + " :\u0001" + messageBody + "\u0001", QueuedMessageType.CHAT_MESSAGE, 0));
         }
 
         private void UpdateButtons()
@@ -179,20 +180,21 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             {
                 ClipboardService.SetText(link);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ProgramConstants.LogException(ex, "Unable to copy link.");
                 XNAMessageBox.Show(WindowManager, "Error".L10N("Client:Main:Error"), "Unable to copy link".L10N("Client:Main:ClipboardCopyLinkFailed"));
             }
         }
 
-        private void GetIrcUserIdent(Action<string> callback)
+        private ValueTask GetIrcUserIdentAsync(Action<string> callback)
         {
             var ircUser = GetIrcUser();
 
             if (!string.IsNullOrEmpty(ircUser.Ident))
             {
                 callback.Invoke(ircUser.Ident);
-                return;
+                return ValueTask.CompletedTask;
             }
 
             void WhoIsReply(object sender, WhoEventArgs whoEventargs)
@@ -203,7 +205,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             connectionManager.WhoReplyReceived += WhoIsReply;
-            connectionManager.SendWhoIsMessage(ircUser.Name);
+            return connectionManager.SendWhoIsMessageAsync(ircUser.Name);
         }
 
         private IRCUser GetIrcUser()
