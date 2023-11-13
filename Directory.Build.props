@@ -3,12 +3,16 @@
     <ComVisible>false</ComVisible>
     <CLSCompliant>false</CLSCompliant>
     <Platforms>AnyCPU;x64;ARM64;x86</Platforms>
-    <AnalysisMode Condition="$(Configuration.Contains(Debug))">All</AnalysisMode>
     <EnforceCodeStyleInBuild Condition="$(Configuration.Contains(Debug))">true</EnforceCodeStyleInBuild>
+    <AnalysisMode Condition="$(Configuration.Contains(Debug))">All</AnalysisMode>
     <AnalysisMode Condition="!$(Configuration.Contains(Debug))">Recommended</AnalysisMode>
     <AnalysisModeDocumentation Condition="!$(Configuration.Contains(Debug))">None</AnalysisModeDocumentation>
     <AnalysisModeNaming Condition="!$(Configuration.Contains(Debug))">None</AnalysisModeNaming>
     <AnalysisModeStyle Condition="!$(Configuration.Contains(Debug))">None</AnalysisModeStyle>
+    <AnalysisLevel>preview</AnalysisLevel>
+    <LangVersion>preview</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)build\VSCompatibleLayer.props" Condition="'$(BuildingInsideVisualStudio)' == 'True'" />
@@ -28,7 +32,7 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Condition="$(Configuration.Contains(Debug))" Include="StyleCop.Analyzers" Version="1.2.0-beta.435">
+    <PackageReference Condition="$(Configuration.Contains(Debug))" Include="StyleCop.Analyzers" Version="1.2.0-beta.507">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

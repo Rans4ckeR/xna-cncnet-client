@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Rampastring.Tools;
 using System.IO;
@@ -15,7 +15,6 @@ namespace ClientCore
         private const string GENERAL = "General";
         private const string AUDIO = "Audio";
         private const string SETTINGS = "Settings";
-        private const string LINKS = "Links";
         private const string TRANSLATIONS = "Translations";
 
         private const string CLIENT_SETTINGS = "DTACnCNetClient.ini";
@@ -53,14 +52,7 @@ namespace ClientCore
         /// <returns>The object of the ClientConfiguration class.</returns>
         public static ClientConfiguration Instance
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new ClientConfiguration();
-                }
-                return _instance;
-            }
+            get { return _instance ??= new ClientConfiguration(); }
         }
 
         public void RefreshSettings()
@@ -100,7 +92,7 @@ namespace ClientCore
 
         public string AltUIBackgroundColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "AltUIBackgroundColor", "196,196,196");
 
-        public string WindowBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "WindowBorderColor", "128,128,128"); 
+        public string WindowBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "WindowBorderColor", "128,128,128");
 
         public string PanelBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "PanelBorderColor", "255,255,255");
 
@@ -209,13 +201,13 @@ namespace ClientCore
 
         public string LongGameName => clientDefinitionsIni.GetStringValue(SETTINGS, "LongGameName", "Tiberian Sun");
 
-        public string LongSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "LongSupportURL", "http://www.moddb.com/members/rampastring");
+        public string LongSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "LongSupportURL", $"{Uri.UriSchemeHttps}://www.moddb.com/members/rampastring");
 
         public string ShortSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ShortSupportURL", "www.moddb.com/members/rampastring");
 
-        public string ChangelogURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ChangelogURL", "http://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/change-log");
+        public string ChangelogURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ChangelogURL", $"{Uri.UriSchemeHttps}://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/change-log");
 
-        public string CreditsURL => clientDefinitionsIni.GetStringValue(SETTINGS, "CreditsURL", "http://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/credits#Rampastring");
+        public string CreditsURL => clientDefinitionsIni.GetStringValue(SETTINGS, "CreditsURL", $"{Uri.UriSchemeHttps}://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/credits#Rampastring");
 
         public string ManualDownloadURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ManualDownloadURL", string.Empty);
 
@@ -337,7 +329,7 @@ namespace ClientCore
         public bool DisplayPlayerCountInTopBar => clientDefinitionsIni.GetBooleanValue(SETTINGS, "DisplayPlayerCountInTopBar", false);
 
         /// <summary>
-        /// The name of the executable in the main game directory that selects 
+        /// The name of the executable in the main game directory that selects
         /// the correct main client executable.
         /// For example, DTA.exe in case of DTA.
         /// </summary>
@@ -400,7 +392,8 @@ namespace ClientCore
     /// </summary>
     public class ClientConfigurationException : Exception
     {
-        public ClientConfigurationException(string message) : base(message)
+        public ClientConfigurationException(string message, Exception ex = null)
+            : base(message, ex)
         {
         }
     }
