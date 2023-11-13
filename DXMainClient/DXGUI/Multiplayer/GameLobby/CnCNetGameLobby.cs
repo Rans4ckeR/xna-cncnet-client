@@ -155,12 +155,12 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         AddChatBoxCommand(new(
             CnCNetLobbyCommands.TUNNELINFO,
-            "View tunnel server information".L10N("Client:Main:TunnelInfo"),
+            "View tunnel server information".L10N("Client:Main:TunnelInfoCommand"),
             false,
             PrintTunnelServerInformation));
         AddChatBoxCommand(new(
             CnCNetLobbyCommands.CHANGETUNNEL,
-            "Change the used CnCNet tunnel server (game host only)".L10N("Client:Main:ChangeTunnel"),
+            "Change the used CnCNet tunnel server (game host only)".L10N("Client:Main:ChangeTunnelCommand"),
             true,
             _ => ShowTunnelSelectionWindow("Select tunnel server:".L10N("Client:Main:SelectTunnelServer"))));
         AddChatBoxCommand(new(
@@ -766,7 +766,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         if (Players.Count > 1)
         {
-            AddNotice("Contacting remote hosts...".L10N("Client:Main:ConnectingTunnel"));
+            AddNotice("Contacting remote hosts...".L10N("Client:Main:LaunchConnectingTunnel"));
 
             if (tunnelHandler.CurrentTunnel?.Version == Constants.TUNNEL_VERSION_2)
                 await HostLaunchGameV2Async().ConfigureAwait(false);
@@ -793,10 +793,10 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (playerPorts.Count < Players.Count)
         {
             ShowTunnelSelectionWindow(("An error occured while contacting " +
-                "the CnCNet tunnel server.\nTry picking a different tunnel server:").L10N("Client:Main:ConnectTunnelError1"));
+                "the CnCNet tunnel server.\nTry picking a different tunnel server:").L10N("Client:Main:LaunchConnectTunnelError1"));
             AddNotice(string.Format(CultureInfo.CurrentCulture, "An error occured while contacting the specified CnCNet " +
                 "tunnel server. Please try using a different tunnel server " +
-                "(accessible by typing /{0} in the chat box).".L10N("Client:Main:ConnectTunnelError2"), CnCNetLobbyCommands.CHANGETUNNEL),
+                "(accessible by typing /{0} in the chat box).".L10N("Client:Main:LaunchConnectTunnelError2"), CnCNetLobbyCommands.CHANGETUNNEL),
                 ERROR_MESSAGE_COLOR);
             return;
         }

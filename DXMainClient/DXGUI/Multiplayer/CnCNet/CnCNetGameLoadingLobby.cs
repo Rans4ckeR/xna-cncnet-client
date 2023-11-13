@@ -585,16 +585,15 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         protected override async ValueTask HostStartGameAsync()
         {
-            AddNotice("Contacting tunnel server...".L10N("Client:Main:ConnectingTunnel"));
+            AddNotice("Contacting tunnel server...".L10N("Client:Main:StartConnectingTunnel"));
             List<int> playerPorts = await tunnelHandler.CurrentTunnel.GetPlayerPortInfoAsync(SGPlayers.Count).ConfigureAwait(false);
 
             if (playerPorts.Count < Players.Count)
             {
                 ShowTunnelSelectionWindow(("An error occured while contacting " +
-                        "the CnCNet tunnel server." + Environment.NewLine +
-                        "Try picking a different tunnel server:").L10N("Client:Main:ConnectTunnelError1"));
+                        "the CnCNet tunnel server.\nTry picking a different tunnel server:").L10N("Client:Main:ConnectTunnelError1"));
                 AddNotice(("An error occured while contacting the specified CnCNet " +
-                    "tunnel server. Please try using a different tunnel server ").L10N("Client:Main:ConnectTunnelError2"), Color.Yellow);
+                    "tunnel server. Please try using a different tunnel server.").L10N("Client:Main:ConnectTunnelError2"), Color.Yellow);
                 return;
             }
 
