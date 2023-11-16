@@ -21,7 +21,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using ClientCore.Enums;
-using DTAConfig;
+using System.Net;
 using ClientCore.Extensions;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
@@ -1455,8 +1455,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             try
             {
                 string revision = splitMessage[0];
+                int clientProtocolNumber = int.Parse(ProgramConstants.CNCNET_PROTOCOL_REVISION[1..], CultureInfo.InvariantCulture);
 
-                if (revision != ProgramConstants.CNCNET_PROTOCOL_REVISION)
+                if (!int.TryParse(revision[1..], CultureInfo.InvariantCulture, out int gameProtocolNumber) || gameProtocolNumber > clientProtocolNumber)
                     return;
 
                 string gameVersion = splitMessage[1];
@@ -1480,13 +1481,21 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     return;
 
                 CnCNetTunnel tunnel = null;
+                string tunnelAddress = null;
+                int? tunnelPort = null;
+                const int CNCNET_PROTOCOL_REVISION_DYNAMIC_TUNNELS = 11;
 
-                if (!ProgramConstants.CNCNET_DYNAMIC_TUNNELS.Equals(tunnelHash, StringComparison.OrdinalIgnoreCase))
+                if (gameProtocolNumber < CNCNET_PROTOCOL_REVISION_DYNAMIC_TUNNELS)
+                {
+                    string[] tunnelAddressAndPort = tunnelHash.Split(':');
+
+                    tunnelAddress = tunnelAddressAndPort[0];
+                    tunnelPort = tunnelAddressAndPort.Length > 1 ? int.Parse(tunnelAddressAndPort[1]) : -1;
+                    tunnel = tunnelHandler.Tunnels.Find(t => t.IPAddresses.Contains(IPAddress.Parse(tunnelAddress)) && t.Port == tunnelPort) ?? tunnelHandler.Tunnels.Find(t => t.IPAddresses.Contains(IPAddress.Parse(tunnelAddress)));
+                }
+                else if (!ProgramConstants.CNCNET_DYNAMIC_TUNNELS.Equals(tunnelHash, StringComparison.OrdinalIgnoreCase))
                 {
                     tunnel = tunnelHandler.Tunnels.Find(t => t.Hash.Equals(tunnelHash, StringComparison.OrdinalIgnoreCase));
-
-                    if (tunnel == null)
-                        return;
                 }
 
                 var game = new HostedCnCNetGame(gameRoomChannelName, revision, gameVersion, maxPlayers,
@@ -1498,8 +1507,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 game.IsLadder = isLadder;
                 game.Game = cncnetGame;
                 game.Locked = locked || (game.IsLoadedGame && !game.Players.Contains(ProgramConstants.PLAYERNAME));
-                game.Incompatible = cncnetGame == localGame && game.GameVersion != ProgramConstants.GAME_VERSION;
-                game.TunnelServer = tunnel;
+                game.Incompatible = (cncnetGame == localGame && game.GameVersion != ProgramConstants.GAME_VERSION) || tunnel is null;
+                game.TunnelServer = tunnel ?? (tunnelAddress is not null ? CnCNetTunnel.Parse(tunnelAddress, tunnelPort) : null);
 
                 if (isClosed)
                 {
