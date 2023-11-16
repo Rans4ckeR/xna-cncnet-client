@@ -102,7 +102,7 @@ namespace ClientCore
             EnableMapSharing = new BoolSetting(iniFile, MULTIPLAYER, "EnableMapSharing", true);
             AlwaysDisplayTunnelList = new BoolSetting(iniFile, MULTIPLAYER, "AlwaysDisplayTunnelList", false);
             MapSortState = new IntSetting(iniFile, MULTIPLAYER, "MapSortState", (int)SortDirection.None);
-            UseLegacyTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseLegacyTunnels", false);
+            UseLegacyTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseLegacyTunnels", true);
             UseP2P = new BoolSetting(iniFile, MULTIPLAYER, "UseP2P", false);
             UseDynamicTunnels = new BoolSetting(iniFile, MULTIPLAYER, "UseDynamicTunnels", true);
             EnableReplays = new BoolSetting(iniFile, MULTIPLAYER, "EnableReplays", false);
