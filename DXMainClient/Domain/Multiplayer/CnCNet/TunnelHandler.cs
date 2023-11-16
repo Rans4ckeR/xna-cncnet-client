@@ -180,19 +180,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 {
                     var tunnel = CnCNetTunnel.Parse(serverInfo, hasIPv6Internet, hasIPv4Internet);
 
-                    if (tunnel == null)
-                        continue;
-
-                    if (tunnel.RequiresPassword)
-                        continue;
-
-                    if (tunnel.Version is not Constants.TUNNEL_VERSION_2 and not Constants.TUNNEL_VERSION_3)
-                        continue;
-
-                    if (tunnel.Version is Constants.TUNNEL_VERSION_2 && !UserINISettings.Instance.UseLegacyTunnels)
-                        continue;
-
-                    if (tunnel.Version is Constants.TUNNEL_VERSION_3 && UserINISettings.Instance.UseLegacyTunnels)
+                    if (tunnel is null)
                         continue;
 
                     returnValue.Add(tunnel);

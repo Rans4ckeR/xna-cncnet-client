@@ -1441,8 +1441,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         string[] parts = message.Split(';');
         int checkBoxIntegerCount = (CheckBoxes.Count / 32) + 1;
         int partIndex = checkBoxIntegerCount + DropDowns.Count;
+        bool dynamicTunnelsSupported = parts.Length > 13;
 
-        if (parts.Length < partIndex + 10)
+        if (parts.Length < partIndex + 10 - (dynamicTunnelsSupported ? 0 : 1))
         {
             AddNotice(("The game host has sent an invalid game options message! " +
                 "The game host's game version might be different from yours.").L10N("Client:Main:HostGameOptionInvalid"), Color.Red);
@@ -1599,7 +1600,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         RandomSeed = randomSeed;
 
-        bool newDynamicTunnelsSetting = Conversions.BooleanFromString(parts[partIndex + 9], true);
+        bool newDynamicTunnelsSetting = dynamicTunnelsSupported && Conversions.BooleanFromString(parts[partIndex + 9], true);
 
         if (newDynamicTunnelsSetting != v3ConnectionState.DynamicTunnelsEnabled)
             await ChangeDynamicTunnelsSettingAsync(newDynamicTunnelsSetting).ConfigureAwait(false);

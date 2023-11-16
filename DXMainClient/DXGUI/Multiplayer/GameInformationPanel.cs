@@ -3,6 +3,8 @@ using Rampastring.XNAUI;
 using Microsoft.Xna.Framework;
 using DTAClient.Domain.Multiplayer;
 using ClientCore.Extensions;
+using System.Globalization;
+using DTAClient.Domain.Multiplayer.CnCNet;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -27,6 +29,8 @@ namespace DTAClient.DXGUI.Multiplayer
         private XNALabel lblMap;
         private XNALabel lblGameVersion;
         private XNALabel lblHost;
+        private XNALabel lblTunnel;
+        private XNALabel lblTunnelVersion;
         private XNALabel lblPing;
         private XNALabel lblPlayers;
         private XNALabel[] lblPlayerNames;
@@ -53,11 +57,17 @@ namespace DTAClient.DXGUI.Multiplayer
             lblHost = new XNALabel(WindowManager);
             lblHost.ClientRectangle = new Rectangle(6, 102, 0, 0);
 
+            lblTunnel = new XNALabel(WindowManager);
+            lblTunnel.ClientRectangle = new Rectangle(6, 126, 0, 0);
+
+            lblTunnelVersion = new XNALabel(WindowManager);
+            lblTunnelVersion.ClientRectangle = new Rectangle(6, 150, 0, 0);
+
             lblPing = new XNALabel(WindowManager);
-            lblPing.ClientRectangle = new Rectangle(6, 126, 0, 0);
+            lblPing.ClientRectangle = new Rectangle(6, 174, 0, 0);
 
             lblPlayers = new XNALabel(WindowManager);
-            lblPlayers.ClientRectangle = new Rectangle(6, 150, 0, 0);
+            lblPlayers.ClientRectangle = new Rectangle(6, 198, 0, 0);
 
             lblPlayerNames = new XNALabel[MAX_PLAYERS];
             for (int i = 0; i < lblPlayerNames.Length / 2; i++)
@@ -81,6 +91,8 @@ namespace DTAClient.DXGUI.Multiplayer
             AddChild(lblMap);
             AddChild(lblGameVersion);
             AddChild(lblHost);
+            AddChild(lblTunnel);
+            AddChild(lblTunnelVersion);
             AddChild(lblPing);
             AddChild(lblPlayers);
             AddChild(lblGameInformation);
@@ -94,7 +106,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public void SetInfo(GenericHostedGame game)
         {
-            string gameModeName = game.GameMode.L10N($"INI:GameModes:{game.GameMode}:UIName", notify: false);
+            string gameModeName = game.GameMode.L10N($"INI:GameModes:{game.GameMode}:UIName", false);
 
             lblGameMode.Text = Renderer.GetStringWithLimitedWidth("Game mode:".L10N("Client:Main:GameInfoGameMode") + " " + Renderer.GetSafeString(gameModeName, lblGameMode.FontIndex),
                 lblGameMode.FontIndex, Width - lblGameMode.X * 2);
@@ -114,6 +126,18 @@ namespace DTAClient.DXGUI.Multiplayer
 
             lblHost.Text = "Host:".L10N("Client:Main:GameInfoHost") + " " + Renderer.GetSafeString(game.HostName, lblHost.FontIndex);
             lblHost.Visible = true;
+
+            if (game is HostedCnCNetGame hostedCnCNetGame)
+            {
+                lblTunnel.Text = "Tunnel:".L10N("Client:Main:GameInfoTunnel") + " " +
+                    Renderer.GetSafeString(hostedCnCNetGame.TunnelServer?.Name ?? hostedCnCNetGame.TunnelServer?.Address ?? "Unknown".L10N("Client:Main:GameInfoTunnelUnknown"), lblTunnel.FontIndex);
+                lblTunnel.Visible = true;
+
+                lblTunnelVersion.Text = "Tunnel Version:".L10N("Client:Main:GameInfoTunnelVersion") + " " +
+                    Renderer.GetSafeString(hostedCnCNetGame.TunnelServer?.Version > 0 ? hostedCnCNetGame.TunnelServer.Version.ToString(CultureInfo.InvariantCulture) : "Unknown".L10N("Client:Main:GameInfoTunnelVersionUnknown"), lblTunnelVersion.FontIndex);
+                lblTunnelVersion.Visible = true;
+            }
+
             lblPing.Text = game.Ping > 0 ? "Ping:".L10N("Client:Main:GameInfoPing") + " " + game.Ping + " ms" : "Ping: Unknown".L10N("Client:Main:GameInfoPingUnknown");
             lblPing.Visible = true;
 

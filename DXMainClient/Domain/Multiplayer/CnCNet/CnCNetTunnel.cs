@@ -101,6 +101,9 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
         }
 
+        public static CnCNetTunnel Parse(string ipAddress, int? port)
+            => new() { Address = ipAddress, Port = port ?? 0 };
+
         public string Address
         {
             get => ipAddress;

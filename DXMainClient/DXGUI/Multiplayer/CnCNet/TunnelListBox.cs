@@ -6,6 +6,8 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using ClientCore;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -26,7 +28,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             int headerHeight = (int)Renderer.GetTextDimensions("Name", HeaderFontIndex).Y;
 
-            Width = 466;
+            Width = 230 + 70 + 76 + 90 + 90 + 90 + 90;
             Height = LineHeight * 12 + headerHeight + 3;
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1);
@@ -34,6 +36,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             AddColumn("Official".L10N("Client:Main:OfficialHeader"), 70);
             AddColumn("Ping".L10N("Client:Main:PingHeader"), 76);
             AddColumn("Players".L10N("Client:Main:PlayersHeader"), 90);
+            AddColumn("Password".L10N("Client:Main:PasswordHeader"), 90);
+            AddColumn("Version".L10N("Client:Main:VersionHeader"), 90);
+            AddColumn("Compatible".L10N("Client:Main:CompatibleHeader"), 90);
             AllowRightClickUnselect = false;
             AllowKeyboardInput = true;
         }
@@ -80,16 +85,22 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             foreach (CnCNetTunnel tunnel in tunnelHandler.Tunnels)
             {
                 List<string> info = new List<string>();
+                bool compatible = !tunnel.RequiresPassword && (tunnel.Version is Constants.TUNNEL_VERSION_3 || (tunnel.Version is Constants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
 
                 info.Add(tunnel.Name);
                 info.Add(Conversions.BooleanToString(tunnel.Official, BooleanStringStyle.YESNO));
+
                 if (tunnel.PingInMs < 0)
                     info.Add("Unknown".L10N("Client:Main:UnknownPing"));
                 else
                     info.Add(tunnel.PingInMs + " ms");
-                info.Add(tunnel.Clients + " / " + tunnel.MaxClients);
 
-                AddItem(info, true);
+                info.Add(tunnel.Clients + " / " + tunnel.MaxClients);
+                info.Add(Conversions.BooleanToString(tunnel.RequiresPassword, BooleanStringStyle.YESNO));
+                info.Add(tunnel.Version.ToString(CultureInfo.InvariantCulture));
+                info.Add(Conversions.BooleanToString(compatible, BooleanStringStyle.YESNO));
+
+                AddItem(info, compatible);
 
                 if ((tunnel.Official || tunnel.Recommended) && tunnel.PingInMs > -1)
                 {
