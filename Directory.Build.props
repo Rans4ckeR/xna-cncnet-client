@@ -1,5 +1,10 @@
 <Project>
   <PropertyGroup>
+    <Title>CnCNet Client</Title>
+    <Company>CnCNet</Company>
+    <Product>CnCNet RS Client</Product>
+    <Copyright>Copyright © CnCNet, Rampastring 2011-2023</Copyright>
+    <Trademark>CnCNet</Trademark>
     <ComVisible>false</ComVisible>
     <CLSCompliant>false</CLSCompliant>
     <Platforms>AnyCPU;x64;ARM64;x86</Platforms>

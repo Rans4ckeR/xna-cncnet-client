@@ -1,11 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Title>CnCNet Client</Title>
     <Description>CnCNet Client Core Library</Description>
-    <Company>CnCNet</Company>
-    <Product>CnCNet RS Client</Product>
-    <Copyright>Copyright © CnCNet, Rampastring 2011-2023</Copyright>
-    <Trademark>CnCNet</Trademark>
     <AssemblyName>ClientCore</AssemblyName>
     <RootNamespace>ClientCore</RootNamespace>
   </PropertyGroup>
@@ -43,8 +38,8 @@
     <EmbeddedResource Include="Resources\yricon.png" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="1.1.7897-rs0002" Condition="'!$(Configuration.Contains(Debug))'" />
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="1.1.7897-rs0002" Condition="'$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="2.3.14" Condition="'!$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="2.3.14" Condition="'$(Configuration.Contains(Debug))'" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TranslationNotifierGenerator\TranslationNotifierGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

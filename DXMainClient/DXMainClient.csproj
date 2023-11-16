@@ -2,12 +2,7 @@
   <PropertyGroup>
     <OutputType Condition="'$(Engine)' != 'UniversalGL'">WinExe</OutputType>
     <OutputType Condition="'$(Engine)' == 'UniversalGL'">Exe</OutputType>
-    <Title>CnCNet Client</Title>
     <Description>CnCNet Main Client Library</Description>
-    <Company>CnCNet</Company>
-    <Product>CnCNet RS Client</Product>
-    <Copyright>Copyright © CnCNet, Rampastring 2011-2023</Copyright>
-    <Trademark>CnCNet</Trademark>
     <AssemblyName>DXMainClient</AssemblyName>
     <RootNamespace>DTAClient</RootNamespace>
     <ApplicationIcon>clienticon.ico</ApplicationIcon>
@@ -26,10 +21,10 @@
   <ItemGroup>
     <PackageReference Include="DiscordRichPresence" Version="1.2.1.24" />
     <PackageReference Include="lzo.net" Version="0.0.6" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="OpenMcdf" Version="2.3.0" />
-    <PackageReference Include="System.Management" Version="7.0.2" />
-    <PackageReference Include="System.DirectoryServices" Version="7.0.1" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
     <PackageReference Include="System.ServiceModel.Http" Version="6.2.0" />
   </ItemGroup>
   <ItemGroup>

@@ -17,6 +17,7 @@ jobs:
       InformationalVersion: ${{ steps.gitversion.outputs.InformationalVersion }}
       SemVer: ${{ steps.gitversion.outputs.SemVer }}
       PreReleaseTag: ${{ steps.gitversion.outputs.PreReleaseTag }}
+      Sha: ${{ steps.gitversion.outputs.Sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@main
@@ -30,6 +31,7 @@ jobs:
         id: gitversion
         uses: gittools/actions/gitversion/execute@main
   publish:
+    name: Publish
     runs-on: windows-latest
     needs: calculate-version
     env:
@@ -37,6 +39,7 @@ jobs:
       AssemblySemFileVer: ${{ needs.calculate-version.outputs.AssemblySemFileVer }}
       InformationalVersion: ${{ needs.calculate-version.outputs.InformationalVersion }}
       SemVer: ${{ needs.calculate-version.outputs.SemVer }}
+      Sha: ${{ needs.calculate-version.outputs.Sha }}
     strategy:
       matrix:
         game: [Ares,TS,YR]
@@ -44,8 +47,8 @@ jobs:
     steps:
     - uses: actions/checkout@main
       with:
-        fetch-depth: 0
-    - name: Setup .NET Core SDK
+        ref: ${{ env.Sha }}
+    - name: Setup .NET SDK
       uses: actions/setup-dotnet@main
       with:
         dotnet-version: '8.x.x'
@@ -61,25 +64,23 @@ jobs:
         path: ${{ format('{0}-v{1}-{2}.zip', matrix.game, env.SemVer, matrix.framework) }}
         if-no-files-found: error
   release:
+    name: Release
     needs: [calculate-version, publish]
     env:
       PreReleaseTag: ${{ needs.calculate-version.outputs.PreReleaseTag }}
       SemVer: ${{ needs.calculate-version.outputs.SemVer }}
+      Sha: ${{ needs.calculate-version.outputs.Sha }}
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@main
+        with:
+          ref: ${{ env.Sha }}
       - name: Download Artifacts
         uses: actions/download-artifact@main
         with:
           path: ./artifacts
-      - name: Prerelease
-        if: ${{ env.PreReleaseTag != '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (Get-Item ./artifacts/*/*.zip) --generate-notes --target ${{ github.sha }} --prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Release
-        if: ${{ env.PreReleaseTag == '' }}
-        run: gh release create ${{ format('v{0}', env.SemVer) }} (Get-Item ./artifacts/*/*.zip) --generate-notes --target ${{ github.sha }}
+        run: gh release create ${{ format('v{0}', env.SemVer) }} (Get-Item ./artifacts/*/*.zip) --generate-notes --target ${{ github.sha }} ${{ env.PreReleaseTag != '' && '--prerelease' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
