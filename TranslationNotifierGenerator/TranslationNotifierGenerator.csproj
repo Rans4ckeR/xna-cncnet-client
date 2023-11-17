@@ -10,6 +10,7 @@
     <Platform>AnyCPU</Platform>
     <Configurations>Debug;Release</Configurations>
     <EnforceCodeStyleInBuild Condition="$(Configuration.Contains(Debug))">true</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AnalysisMode Condition="$(Configuration.Contains(Debug))">All</AnalysisMode>
     <AnalysisMode Condition="!$(Configuration.Contains(Debug))">Recommended</AnalysisMode>
     <AnalysisModeDocumentation Condition="!$(Configuration.Contains(Debug))">None</AnalysisModeDocumentation>

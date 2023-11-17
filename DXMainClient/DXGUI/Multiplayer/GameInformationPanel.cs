@@ -131,12 +131,17 @@ namespace DTAClient.DXGUI.Multiplayer
             {
                 lblTunnel.Text = "Tunnel:".L10N("Client:Main:GameInfoTunnel") + " " +
                     Renderer.GetSafeString(hostedCnCNetGame.TunnelServer?.Name ?? hostedCnCNetGame.TunnelServer?.Address ?? "Unknown".L10N("Client:Main:GameInfoTunnelUnknown"), lblTunnel.FontIndex);
-                lblTunnel.Visible = true;
-
                 lblTunnelVersion.Text = "Tunnel Version:".L10N("Client:Main:GameInfoTunnelVersion") + " " +
                     Renderer.GetSafeString(hostedCnCNetGame.TunnelServer?.Version > 0 ? hostedCnCNetGame.TunnelServer.Version.ToString(CultureInfo.InvariantCulture) : "Unknown".L10N("Client:Main:GameInfoTunnelVersionUnknown"), lblTunnelVersion.FontIndex);
-                lblTunnelVersion.Visible = true;
             }
+            else
+            {
+                lblTunnel.Text = "Tunnel:".L10N("Client:Main:GameInfoTunnel") + " " + "N/A".L10N("Client:Main:GameInfoTunnelNotApplicable");
+                lblTunnelVersion.Text = "Tunnel Version:".L10N("Client:Main:GameInfoTunnelVersion") + " " + "N/A".L10N("Client:Main:GameInfoTunnelVersionNotApplicable");
+            }
+
+            lblTunnel.Visible = true;
+            lblTunnelVersion.Visible = true;
 
             lblPing.Text = game.Ping > 0 ? "Ping:".L10N("Client:Main:GameInfoPing") + " " + game.Ping + " ms" : "Ping: Unknown".L10N("Client:Main:GameInfoPingUnknown");
             lblPing.Visible = true;

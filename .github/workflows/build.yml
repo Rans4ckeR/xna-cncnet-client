@@ -56,7 +56,7 @@ jobs:
       run: ./BuildScripts/Build-${{matrix.game}}.ps1 Release ${{matrix.framework}} ${{env.AssemblySemVer}} ${{env.AssemblySemFileVer}} ${{env.InformationalVersion}}
       shell: pwsh
     - name: Zip
-      run: 7z a -r "${{ format('{0}-v{1}-{2}.zip', matrix.game, env.SemVer, matrix.framework) }}" "./Compiled/${{matrix.game}}/${{matrix.framework}}/*.*"
+      run: 7z a -r "${{ format('{0}-v{1}-{2}.zip', matrix.game, env.SemVer, matrix.framework) }}" "./Compiled/${{matrix.game}}/${{matrix.framework}}/*.*" "-x!*.xml"
     - name: Upload Artifacts
       uses: actions/upload-artifact@main
       with:
