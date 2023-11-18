@@ -21,7 +21,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         {
             this.tunnelHandler = tunnelHandler;
 
-            tunnelHandler.TunnelsRefreshed += TunnelHandler_TunnelsRefreshed;
+            tunnelHandler.TunnelsRefreshed += (_, _) => TunnelHandler_TunnelsRefreshed();
             tunnelHandler.TunnelPinged += TunnelHandler_TunnelPinged;
 
             SelectedIndexChanged += TunnelListBox_SelectedIndexChanged;
@@ -52,6 +52,18 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private bool isManuallySelectedTunnel;
         private string manuallySelectedTunnelHash;
+        private bool compatibilityFilter;
+
+        public bool CompatibilityFilter
+        {
+            get => compatibilityFilter;
+            set
+            {
+                compatibilityFilter = value;
+
+                TunnelHandler_TunnelsRefreshed();
+            }
+        }
 
         /// <summary>
         /// Selects a tunnel from the list with the given address.
@@ -76,7 +88,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         public bool IsTunnelSelected(string hash) =>
             tunnelHandler.Tunnels.FindIndex(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase)) == SelectedIndex;
 
-        private void TunnelHandler_TunnelsRefreshed(object sender, EventArgs e)
+        private void TunnelHandler_TunnelsRefreshed()
         {
             ClearItems();
 
@@ -85,7 +97,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             foreach (CnCNetTunnel tunnel in tunnelHandler.Tunnels)
             {
                 List<string> info = new List<string>();
-                bool compatible = !tunnel.RequiresPassword && (tunnel.Version is ProgramConstants.TUNNEL_VERSION_3 || (tunnel.Version is ProgramConstants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
+                bool compatible = !tunnel.RequiresPassword && ((tunnel.Version is ProgramConstants.TUNNEL_VERSION_3 && !CompatibilityFilter) || (tunnel.Version is ProgramConstants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
 
                 info.Add(tunnel.Name);
                 info.Add(Conversions.BooleanToString(tunnel.Official, BooleanStringStyle.YESNO));

@@ -23,6 +23,7 @@ using Microsoft.Xna.Framework;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
+using System.Net.Sockets;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby;
 
@@ -372,7 +373,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
                 50)).ConfigureAwait(false);
 
             await connectionManager.SendCustomMessageAsync(new(
-                FormattableString.Invariant($"{IRCCommands.TOPIC} {channel.ChannelName} :{ProgramConstants.CNCNET_PROTOCOL_REVISION}:{localGame.ToLower()}"),
+                FormattableString.Invariant($"{IRCCommands.TOPIC} {channel.ChannelName} :{(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION)}:{localGame.ToLower()}"),
                 QueuedMessageType.SYSTEM_MESSAGE,
                 50)).ConfigureAwait(false);
 
@@ -462,7 +463,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private async ValueTask TunnelSelectionWindow_TunnelSelectedAsync(TunnelEventArgs e)
     {
         await channel.SendCTCPMessageAsync(
-            $"{CnCNetCommands.CHANGE_TUNNEL_SERVER} {e.Tunnel.Hash}",
+            $"{CnCNetCommands.CHANGE_TUNNEL_SERVER} {(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? $"{e.Tunnel.Address}:{e.Tunnel.Port}" : e.Tunnel.Hash)}",
             QueuedMessageType.SYSTEM_MESSAGE,
             10).ConfigureAwait(false);
         await HandleTunnelServerChangeAsync(e.Tunnel).ConfigureAwait(false);
@@ -788,7 +789,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private async ValueTask HostLaunchGameV2Async()
     {
-        List<int> playerPorts = await tunnelHandler.CurrentTunnel.GetPlayerPortInfoAsync(Players.Count).ConfigureAwait(false);
+        List<int> playerPorts = await tunnelHandler.CurrentTunnel.GetPlayerPortInfoAsync(Players.Count).ConfigureAwait(true);
 
         if (playerPorts.Count < Players.Count)
         {
@@ -804,7 +805,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         string playerPortsV2String = SetGamePlayerPortsV2(playerPorts);
 
         await channel.SendCTCPMessageAsync(
-            $"{CnCNetCommands.GAME_START_V2} {UniqueGameID} {playerPortsV2String}", QueuedMessageType.SYSTEM_MESSAGE, PRIORITY_START_GAME).ConfigureAwait(false);
+            $"{CnCNetCommands.GAME_START_V2} {UniqueGameID} {playerPortsV2String}", QueuedMessageType.SYSTEM_MESSAGE, PRIORITY_START_GAME).ConfigureAwait(true);
         Players.ForEach(pInfo => pInfo.IsInGame = true);
         await StartGameAsync().ConfigureAwait(false);
     }
@@ -1753,10 +1754,10 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         fhc.CalculateHashes(GameModeMaps.GameModes);
 
-        if (gameFilesHash != await fhc.GetCompleteHashAsync().ConfigureAwait(false))
+        if (gameFilesHash != await fhc.GetCompleteHashAsync().ConfigureAwait(true))
         {
             Logger.Log("Game files modified during client session!");
-            await channel.SendCTCPMessageAsync(CnCNetCommands.CHEAT_DETECTED, QueuedMessageType.INSTANT_MESSAGE, 0).ConfigureAwait(false);
+            await channel.SendCTCPMessageAsync(CnCNetCommands.CHEAT_DETECTED, QueuedMessageType.INSTANT_MESSAGE, 0).ConfigureAwait(true);
             HandleCheatDetectedMessage(ProgramConstants.PLAYERNAME);
         }
 
@@ -2419,7 +2420,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return ValueTask.CompletedTask;
 
         StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ")
-            .Append(ProgramConstants.CNCNET_PROTOCOL_REVISION)
+            .Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION)
             .Append(';')
             .Append(ProgramConstants.GAME_VERSION)
             .Append(';')
@@ -2448,7 +2449,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             .Append(';')
             .Append(GameMode.UntranslatedUIName)
             .Append(';')
-            .Append(tunnelHandler.CurrentTunnel?.Hash ?? ProgramConstants.CNCNET_DYNAMIC_TUNNELS)
+            .Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? tunnelHandler.CurrentTunnel.IPAddresses.Single(q => q.AddressFamily is AddressFamily.InterNetwork) + ":" + tunnelHandler.CurrentTunnel.Port : tunnelHandler.CurrentTunnel?.Hash ?? ProgramConstants.CNCNET_DYNAMIC_TUNNELS)
             .Append(';')
             .Append(0); // LoadedGameId
         return broadcastChannel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 20);

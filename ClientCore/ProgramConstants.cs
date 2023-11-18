@@ -39,6 +39,7 @@ namespace ClientCore
         public const string QRES_EXECUTABLE = "qres.dat";
 
         public const string CNCNET_PROTOCOL_REVISION = "R11";
+        public const string CNCNET_PROTOCOL_COMPATIBILITY_REVISION = "R9";
         public const string LAN_PROTOCOL_REVISION = "RL7";
         public const int TUNNEL_VERSION_2 = 2;
         public const int TUNNEL_VERSION_3 = 3;

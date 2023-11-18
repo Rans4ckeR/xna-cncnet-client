@@ -167,7 +167,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
             try
             {
-                string addressString = $"{Uri.UriSchemeHttp}://{Address}:{Port}/request?clients={playerCount}";
+                string addressString = $"{Uri.UriSchemeHttp}://{(IPAddress.AddressFamily is AddressFamily.InterNetworkV6 ? "[" : null)}{Address}{(IPAddress.AddressFamily is AddressFamily.InterNetworkV6 ? "]" : null)}:{Port}/request?clients={playerCount}";
 
                 Logger.Log($"Contacting tunnel at {addressString}");
 

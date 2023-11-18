@@ -244,19 +244,19 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             if (!IsHost)
             {
-                await RequestReadyStatusAsync().ConfigureAwait(false);
+                await RequestReadyStatusAsync().ConfigureAwait(true);
                 return;
             }
 
             if (Players.Find(p => !p.Ready) != null)
             {
-                await GetReadyNotificationAsync().ConfigureAwait(false);
+                await GetReadyNotificationAsync().ConfigureAwait(true);
                 return;
             }
 
             if (Players.Count != SGPlayers.Count)
             {
-                await NotAllPresentNotificationAsync().ConfigureAwait(false);
+                await NotAllPresentNotificationAsync().ConfigureAwait(true);
                 return;
             }
 
@@ -333,12 +333,12 @@ namespace DTAClient.DXGUI.Multiplayer
             spawnMapFileInfo.Delete();
             var spawnMapStreamWriter = new StreamWriter(spawnMapFileInfo.FullName);
 
-            await using (spawnMapStreamWriter.ConfigureAwait(false))
+            await using (spawnMapStreamWriter.ConfigureAwait(true))
             {
-                await spawnMapStreamWriter.WriteLineAsync("[Map]").ConfigureAwait(false);
-                await spawnMapStreamWriter.WriteLineAsync("Size=0,0,50,50").ConfigureAwait(false);
-                await spawnMapStreamWriter.WriteLineAsync("LocalSize=0,0,50,50").ConfigureAwait(false);
-                await spawnMapStreamWriter.WriteLineAsync().ConfigureAwait(false);
+                await spawnMapStreamWriter.WriteLineAsync("[Map]").ConfigureAwait(true);
+                await spawnMapStreamWriter.WriteLineAsync("Size=0,0,50,50").ConfigureAwait(true);
+                await spawnMapStreamWriter.WriteLineAsync("LocalSize=0,0,50,50").ConfigureAwait(true);
+                await spawnMapStreamWriter.WriteLineAsync().ConfigureAwait(true);
             }
 
             gameLoadTime = DateTime.Now;

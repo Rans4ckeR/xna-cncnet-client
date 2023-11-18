@@ -58,7 +58,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     public void Setup(CnCNetTunnel tunnel)
     {
         InitialTunnel = tunnel;
-        tunnelHandler.CurrentTunnel = !DynamicTunnelsEnabled ? InitialTunnel : GetEligibleTunnels().MinBy(q => q.PingInMs);
+        tunnelHandler.CurrentTunnel = InitialTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 || !DynamicTunnelsEnabled ? InitialTunnel : GetEligibleTunnels().MinBy(q => q.PingInMs);
     }
 
     public void PinTunnels()

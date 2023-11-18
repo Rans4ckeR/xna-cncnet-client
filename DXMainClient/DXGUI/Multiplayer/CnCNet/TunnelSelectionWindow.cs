@@ -4,6 +4,7 @@ using ClientCore.Extensions;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using ClientCore;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -101,7 +102,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         public void Open(string description, CnCNetTunnel cnCNetTunnel)
         {
             lblDescription.Text = description;
-            originalTunnelHash = cnCNetTunnel.Hash;
+            originalTunnelHash = cnCNetTunnel?.Hash;
+            lbTunnelList.CompatibilityFilter = cnCNetTunnel?.Version is ProgramConstants.TUNNEL_VERSION_2;
 
             if (cnCNetTunnel is not null)
                 lbTunnelList.SelectTunnel(cnCNetTunnel);

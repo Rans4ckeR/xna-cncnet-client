@@ -18,7 +18,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using ClientCore.Extensions;
+using System.Linq;
+using System.Net.Sockets;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -53,7 +54,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 new IntCommandHandler(CnCNetCommands.TUNNEL_PING, HandleTunnelPing),
                 new StringCommandHandler(CnCNetCommands.OPTIONS, (sender, data) => HandleOptionsMessageAsync(sender, data).HandleTask()),
                 new NoParamCommandHandler(CnCNetCommands.INVALID_SAVED_GAME_INDEX, HandleInvalidSaveIndexCommand),
-                new StringCommandHandler(CnCNetCommands.START_GAME, (sender, data) => HandleStartGameCommandAsync(sender, data).HandleTask()),
+                new StringCommandHandler(CnCNetCommands.START_GAME, (sender, data) => HandleStartGameCommandAsync(sender, data).HandleTask(true)),
                 new IntCommandHandler(CnCNetCommands.PLAYER_READY, (sender, readyStatus) => HandlePlayerReadyRequestAsync(sender, readyStatus).HandleTask()),
                 new StringCommandHandler(CnCNetCommands.CHANGE_TUNNEL_SERVER, HandleTunnelServerChangeMessage)
             };
@@ -224,7 +225,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
                 await connectionManager.SendCustomMessageAsync(new QueuedMessage(
                     string.Format(IRCCommands.TOPIC + " {0} :{1}", channel.ChannelName,
-                    ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLower()),
+                    tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLower()),
                     QueuedMessageType.SYSTEM_MESSAGE, 50)).ConfigureAwait(false);
 
                 gameFilesHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
@@ -366,7 +367,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private async ValueTask TunnelSelectionWindow_TunnelSelectedAsync(TunnelEventArgs e)
         {
             await channel.SendCTCPMessageAsync(
-                $"{CnCNetCommands.CHANGE_TUNNEL_SERVER} {e.Tunnel.Hash}",
+                $"{CnCNetCommands.CHANGE_TUNNEL_SERVER} {(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? $"{e.Tunnel.Address}:{e.Tunnel.Port}" : e.Tunnel.Hash)}",
                 QueuedMessageType.SYSTEM_MESSAGE,
                 10).ConfigureAwait(false);
             HandleTunnelServerChange(e.Tunnel);
@@ -586,7 +587,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         protected override async ValueTask HostStartGameAsync()
         {
             AddNotice("Contacting tunnel server...".L10N("Client:Main:StartConnectingTunnel"));
-            List<int> playerPorts = await tunnelHandler.CurrentTunnel.GetPlayerPortInfoAsync(SGPlayers.Count).ConfigureAwait(false);
+            List<int> playerPorts = await tunnelHandler.CurrentTunnel.GetPlayerPortInfoAsync(SGPlayers.Count).ConfigureAwait(true);
 
             if (playerPorts.Count < Players.Count)
             {
@@ -608,7 +609,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 sb.Append(";");
             }
             sb.Remove(sb.Length - 1, 1);
-            await channel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 9).ConfigureAwait(false);
+            await channel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 9).ConfigureAwait(true);
 
             AddNotice("Starting game...".L10N("Client:Main:StartingGame"));
 
@@ -647,7 +648,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return ValueTask.CompletedTask;
 
             StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ");
-            sb.Append(ProgramConstants.CNCNET_PROTOCOL_REVISION);
+            sb.Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION);
             sb.Append(";");
             sb.Append(ProgramConstants.GAME_VERSION);
             sb.Append(";");
@@ -678,7 +679,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             sb.Append(";");
             sb.Append((string)lblGameModeValue.Tag);
             sb.Append(";");
-            sb.Append(tunnelHandler.CurrentTunnel?.Hash ?? ProgramConstants.CNCNET_DYNAMIC_TUNNELS);
+            sb.Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? tunnelHandler.CurrentTunnel.IPAddresses.Single(q => q.AddressFamily is AddressFamily.InterNetwork) + ":" + tunnelHandler.CurrentTunnel.Port : tunnelHandler.CurrentTunnel?.Hash ?? ProgramConstants.CNCNET_DYNAMIC_TUNNELS);
             sb.Append(";");
             sb.Append(0); // LoadedGameId
 
