@@ -40,6 +40,8 @@ namespace ClientCore
 
         public const string CNCNET_PROTOCOL_REVISION = "R11";
         public const string LAN_PROTOCOL_REVISION = "RL7";
+        public const int TUNNEL_VERSION_2 = 2;
+        public const int TUNNEL_VERSION_3 = 3;
         public const int LAN_INGAME_PORT = 1234;
         public const int LAN_LOBBY_PORT = 1232;
         public const int LAN_GAME_LOBBY_PORT = 1233;

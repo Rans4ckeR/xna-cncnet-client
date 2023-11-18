@@ -19,6 +19,17 @@ internal static class Constants
             DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
         };
 
-    internal const int TUNNEL_VERSION_2 = 2;
-    internal const int TUNNEL_VERSION_3 = 3;
+    public static HttpClient CnCNetNoRedirectHttpClient
+        => new(
+            new SocketsHttpHandler
+            {
+                PooledConnectionLifetime = TimeSpan.FromMinutes(15),
+                AutomaticDecompression = DecompressionMethods.All,
+                AllowAutoRedirect = false
+            },
+            true)
+        {
+            Timeout = TimeSpan.FromSeconds(10),
+            DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
+        };
 }

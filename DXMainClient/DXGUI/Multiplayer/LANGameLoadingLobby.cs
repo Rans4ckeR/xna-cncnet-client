@@ -129,7 +129,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                 var fhc = new FileHashCalculator();
                 fhc.CalculateHashes(gameModes);
-                localFileHash = fhc.GetCompleteHash();
+                localFileHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
             }
             else
             {
@@ -149,7 +149,7 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             var fhc = new FileHashCalculator();
             fhc.CalculateHashes(gameModes);
-            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + fhc.GetCompleteHash(), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
+            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + await fhc.GetCompleteHashAsync().ConfigureAwait(false), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             UpdateDiscordPresence(true);
         }
 

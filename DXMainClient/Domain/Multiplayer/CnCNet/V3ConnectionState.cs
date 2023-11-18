@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using DTAClient.Domain.Multiplayer.CnCNet.Replays;
 using DTAClient.Domain.Multiplayer.CnCNet.UPNP;
 using Rampastring.Tools;
+using ClientCore;
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
@@ -377,7 +378,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     }
 
     public IEnumerable<CnCNetTunnel> GetEligibleTunnels()
-        => tunnelHandler.Tunnels.Where(q => !q.RequiresPassword && q.PingInMs > -1 && q.Clients < q.MaxClients - 8 && q.Version is Constants.TUNNEL_VERSION_3);
+        => tunnelHandler.Tunnels.Where(q => !q.RequiresPassword && q.PingInMs > -1 && q.Clients < q.MaxClients - 8 && q.Version is ProgramConstants.TUNNEL_VERSION_3);
 
     public string HandleTunnelPingsMessage(string playerName, string tunnelPingsMessage)
     {

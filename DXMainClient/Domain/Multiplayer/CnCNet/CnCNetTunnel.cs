@@ -162,8 +162,8 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// <returns>A list of player ports to use.</returns>
         public async ValueTask<List<int>> GetPlayerPortInfoAsync(int playerCount)
         {
-            if (Version != Constants.TUNNEL_VERSION_2)
-                throw new InvalidOperationException($"{nameof(GetPlayerPortInfoAsync)} only works with version {Constants.TUNNEL_VERSION_2} tunnels.");
+            if (Version != ProgramConstants.TUNNEL_VERSION_2)
+                throw new InvalidOperationException($"{nameof(GetPlayerPortInfoAsync)} only works with version {ProgramConstants.TUNNEL_VERSION_2} tunnels.");
 
             try
             {

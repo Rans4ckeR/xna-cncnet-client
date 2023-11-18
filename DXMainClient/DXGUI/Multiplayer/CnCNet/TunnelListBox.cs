@@ -85,7 +85,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             foreach (CnCNetTunnel tunnel in tunnelHandler.Tunnels)
             {
                 List<string> info = new List<string>();
-                bool compatible = !tunnel.RequiresPassword && (tunnel.Version is Constants.TUNNEL_VERSION_3 || (tunnel.Version is Constants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
+                bool compatible = !tunnel.RequiresPassword && (tunnel.Version is ProgramConstants.TUNNEL_VERSION_3 || (tunnel.Version is ProgramConstants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
 
                 info.Add(tunnel.Name);
                 info.Add(Conversions.BooleanToString(tunnel.Official, BooleanStringStyle.YESNO));

@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientCore.CnCNet5;
 using ClientGUI;
 using DTAClient.Domain;
@@ -227,7 +227,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLower()),
                     QueuedMessageType.SYSTEM_MESSAGE, 50)).ConfigureAwait(false);
 
-                gameFilesHash = fhc.GetCompleteHash();
+                gameFilesHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
 
                 gameBroadcastTimer.Enabled = true;
                 gameBroadcastTimer.Start();
@@ -236,7 +236,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             else
             {
                 await channel.SendCTCPMessageAsync(
-                    CnCNetCommands.FILE_HASH + " " + fhc.GetCompleteHash(), QueuedMessageType.SYSTEM_MESSAGE, 10).ConfigureAwait(false);
+                    CnCNetCommands.FILE_HASH + " " + await fhc.GetCompleteHashAsync().ConfigureAwait(false), QueuedMessageType.SYSTEM_MESSAGE, 10).ConfigureAwait(false);
                 await channel.SendCTCPMessageAsync(
                     CnCNetCommands.TUNNEL_PING + " " + tunnelHandler.CurrentTunnel.PingInMs, QueuedMessageType.SYSTEM_MESSAGE, 10).ConfigureAwait(false);
 

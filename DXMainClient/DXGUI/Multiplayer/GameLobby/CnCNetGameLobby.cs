@@ -360,7 +360,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         fhc.CalculateHashes(GameModeMaps.GameModes);
 
-        gameFilesHash = fhc.GetCompleteHash();
+        gameFilesHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
 
         v3ConnectionState.PinTunnels();
 
@@ -768,9 +768,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         {
             AddNotice("Contacting remote hosts...".L10N("Client:Main:LaunchConnectingTunnel"));
 
-            if (tunnelHandler.CurrentTunnel?.Version == Constants.TUNNEL_VERSION_2)
+            if (tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_2)
                 await HostLaunchGameV2Async().ConfigureAwait(false);
-            else if (v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel?.Version == Constants.TUNNEL_VERSION_3)
+            else if (v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_3)
                 await HostLaunchGameV3Async().ConfigureAwait(false);
             else
                 throw new InvalidOperationException("Unknown tunnel server version!");
@@ -1002,7 +1002,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     protected override IPAddress GetIPAddressForPlayer(PlayerInfo player)
     {
-        if (v3ConnectionState.P2PEnabled || v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel.Version == Constants.TUNNEL_VERSION_3)
+        if (v3ConnectionState.P2PEnabled || v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel.Version == ProgramConstants.TUNNEL_VERSION_3)
             return IPAddress.Loopback.MapToIPv4();
 
         return base.GetIPAddressForPlayer(player);
@@ -1697,7 +1697,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     /// </summary>
     private ValueTask ClientLaunchGameV2Async(string sender, string message)
     {
-        if (tunnelHandler.CurrentTunnel.Version != Constants.TUNNEL_VERSION_2)
+        if (tunnelHandler.CurrentTunnel.Version != ProgramConstants.TUNNEL_VERSION_2)
             return ValueTask.CompletedTask;
 
         if (!sender.Equals(hostName, StringComparison.OrdinalIgnoreCase))
@@ -1753,7 +1753,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         fhc.CalculateHashes(GameModeMaps.GameModes);
 
-        if (gameFilesHash != fhc.GetCompleteHash())
+        if (gameFilesHash != await fhc.GetCompleteHashAsync().ConfigureAwait(false))
         {
             Logger.Log("Game files modified during client session!");
             await channel.SendCTCPMessageAsync(CnCNetCommands.CHEAT_DETECTED, QueuedMessageType.INSTANT_MESSAGE, 0).ConfigureAwait(false);
@@ -1767,7 +1767,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         base.WriteSpawnIniAdditions(iniFile);
 
-        if (tunnelHandler.CurrentTunnel?.Version == Constants.TUNNEL_VERSION_2)
+        if (tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_2)
         {
             iniFile.SetStringValue("Tunnel", "Ip", tunnelHandler.CurrentTunnel.Address);
             iniFile.SetIntValue("Tunnel", "Port", tunnelHandler.CurrentTunnel.Port);

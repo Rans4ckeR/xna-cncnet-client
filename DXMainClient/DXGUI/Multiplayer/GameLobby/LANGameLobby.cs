@@ -143,7 +143,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 var fhc = new FileHashCalculator();
                 fhc.CalculateHashes(GameModeMaps.GameModes);
-                localFileHash = fhc.GetCompleteHash();
+                localFileHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
 
                 await RefreshMapSelectionUIAsync().ConfigureAwait(false);
             }
@@ -189,7 +189,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             var fhc = new FileHashCalculator();
             fhc.CalculateHashes(GameModeMaps.GameModes);
-            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + fhc.GetCompleteHash(), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
+            await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + await fhc.GetCompleteHashAsync().ConfigureAwait(false), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             ResetAutoReadyCheckbox();
         }
 

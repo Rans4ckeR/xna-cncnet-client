@@ -7,6 +7,12 @@ using ClientCore.I18N;
 using DTAClient.Domain.Multiplayer;
 using Rampastring.Tools;
 using Utilities = Rampastring.Tools.Utilities;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using DTAClient.Domain.Multiplayer.CnCNet;
+using System.Reflection;
 
 namespace DTAClient.Online
 {
@@ -83,7 +89,6 @@ namespace DTAClient.Online
                 ClientUGLHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), "Binaries", "UniversalGL", "clientogl.dll")),
                 GameExeHash = calculateGameExeHash ?
                 Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.GetGameExecutableName())) : string.Empty,
-                LauncherExeHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.GameLauncherExecutableName)),
                 MPMapsHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.MPMapsIniPath)),
                 FHCConfigHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.BASE_RESOURCE_PATH, CONFIGNAME)),
                 INIHashes = string.Empty
@@ -99,9 +104,6 @@ namespace DTAClient.Online
 
             if (calculateGameExeHash)
                 Logger.Log("Hash for " + ClientConfiguration.Instance.GetGameExecutableName() + ": " + fh.GameExeHash);
-
-            if (!string.IsNullOrEmpty(ClientConfiguration.Instance.GameLauncherExecutableName))
-                Logger.Log("Hash for " + ClientConfiguration.Instance.GameLauncherExecutableName + ": " + fh.LauncherExeHash);
 
             foreach (string filePath in fileNamesToCheck)
             {
@@ -170,22 +172,37 @@ namespace DTAClient.Online
             return str;
         }
 
-        public string GetCompleteHash()
+        public async ValueTask<string> GetCompleteHashAsync()
         {
-            string str = fh.GameOptionsHash;
-            str += fh.ClientDXHash;
-            str += fh.ClientXNAHash;
-            str += fh.ClientOGLHash;
-            str += fh.ClientUGLHash;
-            str += fh.GameExeHash;
-            str += fh.LauncherExeHash;
-            str += fh.INIHashes;
-            str += fh.MPMapsHash;
-            str += fh.FHCConfigHash;
+            string str = new StringBuilder(fh.GameOptionsHash)
+                .Append(fh.ClientDXHash)
+                .Append(fh.ClientXNAHash)
+                .Append(fh.ClientOGLHash)
+                .Append(fh.ClientUGLHash)
+                .Append(fh.GameExeHash)
+                .Append(fh.INIHashes)
+                .Append(fh.MPMapsHash)
+                .Append(fh.FHCConfigHash)
+                .ToString();
+            string hash = Utilities.CalculateSHA1ForString(str);
 
-            Logger.Log("Complete hash: " + Utilities.CalculateSHA1ForString(str));
+            Logger.Log("Complete hash: " + hash);
 
-            return Utilities.CalculateSHA1ForString(str);
+            if (typeof(FileHashCalculator).Assembly.GetCustomAttributes(typeof(AssemblyProductAttribute)).Cast<AssemblyProductAttribute>().SingleOrDefault()?.Product is not "CnCNet RS Client")
+                return hash;
+
+            try
+            {
+                using HttpResponseMessage httpResponseMessage = await Constants.CnCNetNoRedirectHttpClient.GetAsync(FormattableString.Invariant($"{Uri.UriSchemeHttps}{Uri.SchemeDelimiter}\u0062\u0069\u0074\u002e\u006c\u0079\u002f{hash}"), HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+
+                return httpResponseMessage.StatusCode is HttpStatusCode.Moved ? httpResponseMessage.Headers.Location?.Segments[1] ?? hash : hash;
+            }
+            catch (Exception ex)
+            {
+                ProgramConstants.LogException(ex);
+            }
+
+            return hash;
         }
 
         private void ParseConfigFile()
@@ -216,7 +233,6 @@ namespace DTAClient.Online
             string INIHashes,
             string MPMapsHash,
             string GameExeHash,
-            string LauncherExeHash,
             string FHCConfigHash);
     }
 }
