@@ -17,7 +17,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -128,7 +127,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 await this.client.SendAsync(buffer, SocketFlags.None, CancellationToken.None).ConfigureAwait(false);
 
                 var fhc = new FileHashCalculator();
-                fhc.CalculateHashes(gameModes);
+                fhc.CalculateHashes();
                 localFileHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
             }
             else
@@ -148,7 +147,7 @@ namespace DTAClient.DXGUI.Multiplayer
         public async ValueTask PostJoinAsync()
         {
             var fhc = new FileHashCalculator();
-            fhc.CalculateHashes(gameModes);
+            fhc.CalculateHashes();
             await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + await fhc.GetCompleteHashAsync().ConfigureAwait(false), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             UpdateDiscordPresence(true);
         }

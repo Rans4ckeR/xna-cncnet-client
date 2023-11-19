@@ -19,7 +19,6 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
@@ -142,7 +141,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 SendHostPlayerJoinedMessageAsync(cancellationTokenSource.Token).HandleTask();
 
                 var fhc = new FileHashCalculator();
-                fhc.CalculateHashes(GameModeMaps.GameModes);
+                fhc.CalculateHashes();
                 localFileHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
 
                 await RefreshMapSelectionUIAsync().ConfigureAwait(false);
@@ -188,7 +187,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         public async ValueTask PostJoinAsync()
         {
             var fhc = new FileHashCalculator();
-            fhc.CalculateHashes(GameModeMaps.GameModes);
+            fhc.CalculateHashes();
             await SendMessageToHostAsync(LANCommands.FILE_HASH + " " + await fhc.GetCompleteHashAsync().ConfigureAwait(false), cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             ResetAutoReadyCheckbox();
         }

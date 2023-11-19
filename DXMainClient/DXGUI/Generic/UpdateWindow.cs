@@ -1,15 +1,16 @@
 ﻿using ClientGUI;
-using DTAClient.Domain;
 using ClientCore.Extensions;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using ClientCore;
-#if WINFORMS
 using System.Runtime.InteropServices;
-#endif
 using ClientUpdater;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Com;
+using Windows.Win32.UI.Shell;
 
 namespace DTAClient.DXGUI.Generic
 {
@@ -30,6 +31,8 @@ namespace DTAClient.DXGUI.Generic
         private const double DOT_TIME = 0.66;
         private const int MAX_DOTS = 5;
 
+        private static readonly Guid CLSID_TaskbarList = new(0x56FDF344, 0xFD6D, 0x11D0, 0x95, 0x8A, 0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90);
+
         public UpdateWindow(WindowManager windowManager)
             : base(windowManager)
         {
@@ -43,9 +46,7 @@ namespace DTAClient.DXGUI.Generic
 
         private XNAProgressBar prgCurrentFile;
         private XNAProgressBar prgTotal;
-#if WINFORMS
-        private TaskbarProgress tbp;
-#endif
+        private ITaskbarList4 tbp;
 
         private bool isStartingForceUpdate;
 
@@ -139,10 +140,16 @@ namespace DTAClient.DXGUI.Generic
             Updater.UpdateProgressChanged += Updater_UpdateProgressChanged;
             Updater.LocalFileCheckProgressChanged += Updater_LocalFileCheckProgressChanged;
             Updater.OnFileDownloadCompleted += Updater_OnFileDownloadCompleted;
-#if WINFORMS
 
-            tbp = new TaskbarProgress();
-#endif
+            if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                return;
+
+            HRESULT coCreateInstanceResult = PInvoke.CoCreateInstance(CLSID_TaskbarList, null, CLSCTX.CLSCTX_INPROC_SERVER, out ITaskbarList4 ppv);
+
+            if (coCreateInstanceResult.Failed)
+                throw Marshal.GetExceptionForHR(coCreateInstanceResult)!;
+
+            tbp = ppv;
         }
 
         private void Updater_FileIdentifiersUpdated()
@@ -211,7 +218,9 @@ namespace DTAClient.DXGUI.Generic
             lblTotalProgressPercentageValue.Text = prgTotal.Value.ToString() + "%";
             lblCurrentFile.Text = "Current file:".L10N("Client:Main:CurrentFile") + " " + currFileName;
             lblUpdaterStatus.Text = "Downloading files".L10N("Client:Main:DownloadingFiles");
-#if WINFORMS
+
+            if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                return;
 
             /*/ TODO Improve the updater
              * When the updater thread in DTAUpdater.dll has completed the update, it will
@@ -225,14 +234,13 @@ namespace DTAClient.DXGUI.Generic
              * /*/
             try
             {
-                tbp.SetState(WindowManager.GetWindowHandle(), TaskbarProgress.TaskbarStates.Normal);
-                tbp.SetValue(WindowManager.GetWindowHandle(), prgTotal.Value, prgTotal.Maximum);
+                tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NORMAL);
+                tbp.SetProgressValue((HWND)WindowManager.GetWindowHandle(), (ulong)prgTotal.Value, (ulong)prgTotal.Maximum);
             }
             catch (Exception ex)
             {
                 ProgramConstants.LogException(ex);
             }
-#endif
         }
 
         private void Updater_OnFileDownloadCompleted(string archiveName)
@@ -252,9 +260,9 @@ namespace DTAClient.DXGUI.Generic
 
         private void HandleUpdateCompleted()
         {
-#if WINFORMS
-            tbp.SetState(WindowManager.GetWindowHandle(), TaskbarProgress.TaskbarStates.NoProgress);
-#endif
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
+
             UpdateCompleted?.Invoke(this, EventArgs.Empty);
         }
 
@@ -265,9 +273,9 @@ namespace DTAClient.DXGUI.Generic
 
         private void HandleUpdateFailed(string updateFailureErrorMessage)
         {
-#if WINFORMS
-            tbp.SetState(WindowManager.GetWindowHandle(), TaskbarProgress.TaskbarStates.NoProgress);
-#endif
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
+
             UpdateFailed?.Invoke(this, new UpdateFailureEventArgs(updateFailureErrorMessage));
         }
 
@@ -283,9 +291,9 @@ namespace DTAClient.DXGUI.Generic
         {
             isStartingForceUpdate = false;
 
-#if WINFORMS
-            tbp.SetState(WindowManager.GetWindowHandle(), TaskbarProgress.TaskbarStates.NoProgress);
-#endif
+            if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+                tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
+
             UpdateCancelled?.Invoke(this, EventArgs.Empty);
         }
 
@@ -355,69 +363,4 @@ namespace DTAClient.DXGUI.Generic
             get { return reason; }
         }
     }
-#if WINFORMS
-
-    /// <summary>
-    /// For utilizing the taskbar progress bar introduced in Windows 7:
-    /// http://stackoverflow.com/questions/1295890/windows-7-progress-bar-in-taskbar-in-c
-    /// </summary>
-    public class TaskbarProgress
-    {
-        public enum TaskbarStates
-        {
-            NoProgress = 0,
-            Indeterminate = 0x1,
-            Normal = 0x2,
-            Error = 0x4,
-            Paused = 0x8
-        }
-
-        [ComImportAttribute()]
-        [GuidAttribute("ea1afb91-9e28-4b86-90e9-9e9f8a5eefaf")]
-        [InterfaceTypeAttribute(ComInterfaceType.InterfaceIsIUnknown)]
-        private interface ITaskbarList3
-        {
-            // ITaskbarList
-            [PreserveSig]
-            void HrInit();
-            [PreserveSig]
-            void AddTab(IntPtr hwnd);
-            [PreserveSig]
-            void DeleteTab(IntPtr hwnd);
-            [PreserveSig]
-            void ActivateTab(IntPtr hwnd);
-            [PreserveSig]
-            void SetActiveAlt(IntPtr hwnd);
-
-            // ITaskbarList2
-            [PreserveSig]
-            void MarkFullscreenWindow(IntPtr hwnd, [MarshalAs(UnmanagedType.Bool)] bool fFullscreen);
-
-            // ITaskbarList3
-            [PreserveSig]
-            void SetProgressValue(IntPtr hwnd, UInt64 ullCompleted, UInt64 ullTotal);
-            [PreserveSig]
-            void SetProgressState(IntPtr hwnd, TaskbarStates state);
-        }
-
-        [GuidAttribute("56FDF344-FD6D-11d0-958A-006097C9A090")]
-        [ClassInterfaceAttribute(ClassInterfaceType.None)]
-        [ComImportAttribute()]
-        private class TaskbarInstance
-        {
-        }
-
-        private ITaskbarList3 taskbarInstance = (ITaskbarList3)new TaskbarInstance();
-
-        public void SetState(IntPtr windowHandle, TaskbarStates taskbarState)
-        {
-            taskbarInstance.SetProgressState(windowHandle, taskbarState);
-        }
-
-        public void SetValue(IntPtr windowHandle, double progressValue, double progressMax)
-        {
-            taskbarInstance.SetProgressValue(windowHandle, (ulong)progressValue, (ulong)progressMax);
-        }
-    }
-#endif
 }

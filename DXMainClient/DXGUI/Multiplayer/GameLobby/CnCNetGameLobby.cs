@@ -359,7 +359,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         var fhc = new FileHashCalculator();
 
-        fhc.CalculateHashes(GameModeMaps.GameModes);
+        fhc.CalculateHashes();
 
         gameFilesHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
 
@@ -1752,7 +1752,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         var fhc = new FileHashCalculator();
 
-        fhc.CalculateHashes(GameModeMaps.GameModes);
+        fhc.CalculateHashes();
 
         if (gameFilesHash != await fhc.GetCompleteHashAsync().ConfigureAwait(true))
         {

@@ -64,8 +64,6 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private CnCNetManager connectionManager;
 
-        private List<GameMode> gameModes;
-
         private TunnelHandler tunnelHandler;
         private TunnelSelectionWindow tunnelSelectionWindow;
         private XNAClientButton btnChangeTunnel;
@@ -215,7 +213,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         public async ValueTask OnJoinedAsync()
         {
             FileHashCalculator fhc = new FileHashCalculator();
-            fhc.CalculateHashes(gameModes);
+            fhc.CalculateHashes();
 
             if (IsHost)
             {

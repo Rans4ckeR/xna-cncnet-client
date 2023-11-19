@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using ClientCore;
 using ClientCore.I18N;
-using DTAClient.Domain.Multiplayer;
 using Rampastring.Tools;
 using Utilities = Rampastring.Tools.Utilities;
 using System.Net;
@@ -78,7 +77,7 @@ namespace DTAClient.Online
 
         public FileHashCalculator() => ParseConfigFile();
 
-        public void CalculateHashes(List<GameMode> gameModes)
+        public void CalculateHashes()
         {
             fh = new FileHashes
             {

@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using Rampastring.Tools;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
 using ClientCore.I18N;
 using ClientCore.Extensions;
 

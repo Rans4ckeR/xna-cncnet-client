@@ -60,7 +60,7 @@ namespace DTAClient.Domain.Multiplayer
         /// </summary>
         public List<int> DisallowedPlayerSides = new List<int>();
 
-        /// </summary>
+        /// <summary>
         /// Override for minimum amount of players needed to play any map in this game mode.
         /// </summary>
         public int MinPlayersOverride { get; private set; } = -1;

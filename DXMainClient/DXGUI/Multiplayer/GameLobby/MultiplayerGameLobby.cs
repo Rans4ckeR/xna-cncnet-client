@@ -16,7 +16,6 @@ using ClientCore.Extensions;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using Microsoft.Xna.Framework.Graphics;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {

@@ -10,7 +10,7 @@ namespace DTAClient.Domain
     /// <summary>
     /// A class for handling Discord integration.
     /// </summary>
-    public class DiscordHandler : IDisposable
+    public partial class DiscordHandler : IDisposable
     {
         private DiscordRpcClient client;
 
@@ -144,7 +144,7 @@ namespace DTAClient.Domain
             bool isHost = false, bool isPassworded = false,
             bool isLocked = false, bool resetTimer = false)
         {
-            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
             string stateString = $"{state} [{players}/{maxPlayers}] • {roomName}";
             if (isHost)
                 stateString += "👑";
@@ -196,7 +196,7 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string map, string mode, string state, string side, bool resetTimer = false)
         {
-            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
             CurrentPresence = new RichPresence()
             {
                 State = $"{state}",
@@ -217,7 +217,7 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string mission, string difficulty, string side, bool resetTimer = false)
         {
-            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
             CurrentPresence = new RichPresence()
             {
                 State = "Playing Mission",
@@ -308,5 +308,8 @@ namespace DTAClient.Domain
 
             client.Dispose();
         }
+
+        [GeneratedRegex("[^a-zA-Z0-9]")]
+        private static partial Regex SideKeyRegex();
     }
 }

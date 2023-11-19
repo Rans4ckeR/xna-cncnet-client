@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 #Requires -Version 7.2
 
-param($Configuration = "Release", $Framework = "net7.0", $AssemblySemVer = "0.0.0", $AssemblySemFileVer = "0.0.0.0", $InformationalVersion = "0.0.0-local")
+param($Configuration = "Release", $Framework = "net8.0", $AssemblySemVer = "0.0.0", $AssemblySemFileVer = "0.0.0.0", $InformationalVersion = "0.0.0-local")
 
 . $PSScriptRoot\Common.ps1
 

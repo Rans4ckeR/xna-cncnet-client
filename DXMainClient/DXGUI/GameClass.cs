@@ -10,7 +10,6 @@ using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using System;
-using ClientCore.Extensions;
 using DTAClient.Domain.Multiplayer;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.DXGUI.Multiplayer;
@@ -27,7 +26,6 @@ using MainMenu = DTAClient.DXGUI.Generic.MainMenu;
 using System.Diagnostics;
 #endif
 #if WINFORMS
-using System.Windows.Forms;
 using System.IO;
 #endif
 
@@ -96,7 +94,7 @@ namespace DTAClient.DXGUI
 
                 // Create startup failure file that the launcher can check for this error
                 // and handle it by redirecting the user to another version instead
-                File.WriteAllBytesAsync(SafePath.CombineFilePath(clientDirectory.FullName, startupFailureFile), new byte[] { 1 }).HandleTask();
+                File.WriteAllBytes(SafePath.CombineFilePath(clientDirectory.FullName, startupFailureFile), [1]);
 
                 string launcherExe = ClientConfiguration.Instance.LauncherExe;
                 if (string.IsNullOrEmpty(launcherExe))

@@ -23,7 +23,6 @@ namespace ClientGUI
         /// When a control is added as singleton, the same instance will be returned every time one is requested by the control's name.
         /// </summary>
         /// <param name="serviceCollection">Service collection for our dependency injection.</param>
-        /// <param name="controlType">The control type to add.</param>
         /// <returns>IServiceCollection.</returns>
         public static IServiceCollection AddSingletonXnaControl<T>(this IServiceCollection serviceCollection)
         {
@@ -38,7 +37,6 @@ namespace ClientGUI
         /// When a control is added as transient, a new instance will be instantiated every time one is requested by the control's name.
         /// </summary>
         /// <param name="serviceCollection">Service collection for our dependency injection.</param>
-        /// <param name="controlType">The control type to add.</param>
         /// <returns>IServiceCollection.</returns>
         public static IServiceCollection AddTransientXnaControl<T>(this IServiceCollection serviceCollection)
         {

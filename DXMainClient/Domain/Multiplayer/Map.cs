@@ -13,7 +13,6 @@ using System.Threading.Tasks;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Point = Microsoft.Xna.Framework.Point;
-using ClientCore.Extensions;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace DTAClient.Domain.Multiplayer

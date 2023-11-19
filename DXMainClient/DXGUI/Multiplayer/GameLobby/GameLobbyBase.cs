@@ -18,7 +18,6 @@ using ClientCore.Enums;
 using ClientCore.Extensions;
 using DTAClient.DXGUI.Multiplayer.CnCNet;
 using DTAClient.Online.EventArguments;
-using ClientCore.Extensions;
 using TextCopy;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby

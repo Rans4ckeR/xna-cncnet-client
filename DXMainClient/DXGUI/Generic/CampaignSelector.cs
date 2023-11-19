@@ -11,7 +11,6 @@ using Rampastring.XNAUI.XNAControls;
 using Rampastring.XNAUI;
 using Rampastring.Tools;
 using ClientUpdater;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Generic
 {
