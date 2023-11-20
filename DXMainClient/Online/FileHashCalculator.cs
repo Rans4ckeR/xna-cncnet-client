@@ -194,7 +194,7 @@ namespace DTAClient.Online
             {
                 using HttpResponseMessage httpResponseMessage = await Constants.CnCNetNoRedirectHttpClient.GetAsync(FormattableString.Invariant($"{Uri.UriSchemeHttps}{Uri.SchemeDelimiter}\u0062\u0069\u0074\u002e\u006c\u0079\u002f{hash}"), HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
 
-                return httpResponseMessage.StatusCode is HttpStatusCode.Moved ? httpResponseMessage.Headers.Location?.Segments[1] ?? hash : hash;
+                return httpResponseMessage.StatusCode is HttpStatusCode.Moved ? httpResponseMessage.Headers.Location?.Segments[1].Replace("/", null) ?? hash : hash;
             }
             catch (Exception ex)
             {

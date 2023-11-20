@@ -33,6 +33,8 @@ namespace DTAClient.DXGUI.Generic
 
         private static readonly Guid CLSID_TaskbarList = new(0x56FDF344, 0xFD6D, 0x11D0, 0x95, 0x8A, 0x00, 0x60, 0x97, 0xC9, 0xA0, 0x90);
 
+        private bool disposedValue;
+
         public UpdateWindow(WindowManager windowManager)
             : base(windowManager)
         {
@@ -343,6 +345,26 @@ namespace DTAClient.DXGUI.Generic
                     new Vector2(wrect.Right + xOffset, wrect.Bottom - 15.0f), lblUpdaterStatus.TextColor);
                 xOffset += 3.0f;
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    if (tbp is not null && OperatingSystem.IsWindowsVersionAtLeast(5))
+                    {
+                        PInvoke.CoUninitialize();
+
+                        tbp = null;
+                    }
+                }
+
+                disposedValue = true;
+            }
+
+            base.Dispose(disposing);
         }
     }
 
