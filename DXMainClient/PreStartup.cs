@@ -216,7 +216,7 @@ namespace DTAClient
                 return;
 
             string error = string.Format(("You seem to be running {0} from a write-protected directory.\n\n" + 
-                "For {1} to function properly when run from a write-protected directory, it needs administrative priveleges.\n\n" +
+                "For {1} to function properly when run from a write-protected directory, it needs administrative privileges.\n\n" +
                 "Would you like to restart the client with administrative rights?\n\n" +
                 "Please also make sure that your security software isn't blocking {1}.").L10N("Client:Main:AdminRequiredText"), ProgramConstants.GAME_NAME_LONG, ProgramConstants.GAME_NAME_SHORT);
 
@@ -224,10 +224,9 @@ namespace DTAClient
 
             using var _ = Process.Start(new ProcessStartInfo
             {
-                FileName = "dotnet",
-                Arguments = SafePath.CombineFilePath(ProgramConstants.StartupExecutable),
+                FileName = SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.LauncherExe),
                 Verb = "runas",
-                CreateNoWindow = true
+                UseShellExecute = true
             });
             Environment.Exit(1);
         }
