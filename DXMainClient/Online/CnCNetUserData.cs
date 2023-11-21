@@ -63,12 +63,12 @@ namespace DTAClient.Online
                     return (await File.ReadAllLinesAsync(listFile.FullName).ConfigureAwait(false)).ToList();
 
                 Logger.Log($"Loading {path} failed! File does not exist.");
-                return new();
+                return [];
             }
             catch (Exception ex)
             {
                 ProgramConstants.LogException(ex, $"Loading {path} list failed!");
-                return new();
+                return [];
             }
         }
 
@@ -84,17 +84,17 @@ namespace DTAClient.Online
 
                     await using (fileStream.ConfigureAwait(false))
                     {
-                        return (await JsonSerializer.DeserializeAsync<List<T>>(fileStream).ConfigureAwait(false)) ?? new List<T>();
+                        return (await JsonSerializer.DeserializeAsync<List<T>>(fileStream).ConfigureAwait(false)) ?? [];
                     }
                 }
 
                 Logger.Log($"Loading {path} failed! File does not exist.");
-                return new();
+                return [];
             }
             catch (Exception ex)
             {
                 ProgramConstants.LogException(ex, $"Loading {path} list failed!");
-                return new();
+                return [];
             }
         }
 

@@ -35,7 +35,7 @@ namespace ClientCore
         {
             int saveGameCount = GetSaveGameCount();
 
-            List<string> timestamps = new List<string>();
+            List<string> timestamps = [];
 
             string saveGameDirectory = GetSaveGameDirectoryPath();
 

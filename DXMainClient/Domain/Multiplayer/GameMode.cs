@@ -58,7 +58,7 @@ namespace DTAClient.Domain.Multiplayer
         /// <summary>
         /// List of side indices players cannot select in this game mode.
         /// </summary>
-        public List<int> DisallowedPlayerSides = new List<int>();
+        public List<int> DisallowedPlayerSides = [];
 
         /// <summary>
         /// Override for minimum amount of players needed to play any map in this game mode.
@@ -69,12 +69,12 @@ namespace DTAClient.Domain.Multiplayer
 
         private string forcedOptionsSection;
 
-        public List<Map> Maps = new List<Map>();
+        public List<Map> Maps = [];
 
-        public List<KeyValuePair<string, bool>> ForcedCheckBoxValues = new List<KeyValuePair<string, bool>>();
-        public List<KeyValuePair<string, int>> ForcedDropDownValues = new List<KeyValuePair<string, int>>();
+        public List<KeyValuePair<string, bool>> ForcedCheckBoxValues = [];
+        public List<KeyValuePair<string, int>> ForcedDropDownValues = [];
 
-        private List<KeyValuePair<string, string>> ForcedSpawnIniOptions = new List<KeyValuePair<string, string>>();
+        private List<KeyValuePair<string, string>> ForcedSpawnIniOptions = [];
 
         public int CoopDifficultyLevel { get; set; }
 

@@ -30,12 +30,12 @@ namespace DTAClient.DXGUI.Multiplayer
         /// <summary>
         /// The list of players in the current saved game.
         /// </summary>
-        protected List<SavedGamePlayer> SGPlayers = new List<SavedGamePlayer>();
+        protected List<SavedGamePlayer> SGPlayers = [];
 
         /// <summary>
         /// The list of players in the game lobby.
         /// </summary>
-        protected List<PlayerInfo> Players = new List<PlayerInfo>();
+        protected List<PlayerInfo> Players = [];
 
         protected bool IsHost = false;
 
@@ -64,7 +64,7 @@ namespace DTAClient.DXGUI.Multiplayer
         protected XNAClientButton btnLoadGame;
         protected XNAClientButton btnLeaveGame;
 
-        private List<MultiplayerColor> MPColors = new List<MultiplayerColor>();
+        private List<MultiplayerColor> MPColors = [];
 
         private bool isSettingUp;
         private FileSystemWatcher fsw;

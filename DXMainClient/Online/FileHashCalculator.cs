@@ -213,7 +213,7 @@ namespace DTAClient.Online
             if (keys == null || keys.Count < 1)
                 return;
 
-            List<string> filenames = new List<string>();
+            List<string> filenames = [];
             foreach (string key in keys)
             {
                 string value = config.GetStringValue("FilenameList", key, string.Empty);

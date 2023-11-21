@@ -74,7 +74,7 @@ namespace DTAClient.DXGUI.Generic
 
         private StatisticsManager sm;
         private MapLoader mapLoader;
-        private List<int> listedGameIndexes = new List<int>();
+        private List<int> listedGameIndexes = [];
 
         private (string Name, string UIName)[] sides;
 
@@ -477,7 +477,7 @@ namespace DTAClient.DXGUI.Generic
 
             MatchStatistics ms = sm.GetMatchByIndex(listedGameIndexes[lbGameList.SelectedIndex]);
 
-            List<PlayerStatistics> players = new List<PlayerStatistics>();
+            List<PlayerStatistics> players = [];
 
             for (int i = 0; i < ms.GetPlayerCount(); i++)
             {
@@ -493,7 +493,7 @@ namespace DTAClient.DXGUI.Generic
                 PlayerStatistics ps = players[i];
 
                 //List<string> items = new List<string>();
-                List<XNAListBoxItem> items = new List<XNAListBoxItem>();
+                List<XNAListBoxItem> items = [];
 
                 if (ps.Color > -1 && ps.Color < mpColors.Count)
                     textColor = mpColors[ps.Color].XnaColor;
@@ -587,7 +587,7 @@ namespace DTAClient.DXGUI.Generic
         {
             int gameCount = sm.GetMatchCount();
 
-            List<string> gameModes = new List<string>();
+            List<string> gameModes = [];
 
             cmbGameModeFilter.Items.Clear();
 
@@ -644,18 +644,17 @@ namespace DTAClient.DXGUI.Generic
             {
                 MatchStatistics ms = sm.GetMatchByIndex(gameIndex);
                 string dateTime = ms.DateAndTime.ToShortDateString() + " " + ms.DateAndTime.ToShortTimeString();
-                List<string> info = new List<string>();
-                info.Add(Renderer.GetSafeString(dateTime, lbGameList.FontIndex));
-                info.Add(mapLoader.TranslatedMapNames.ContainsKey(ms.MapName)
-                    ? mapLoader.TranslatedMapNames[ms.MapName]
-                    : ms.MapName);
-                info.Add(ms.GameMode.L10N($"INI:GameModes:{ms.GameMode}:UIName"));
-                if (ms.AverageFPS == 0)
-                    info.Add("-");
-                else
-                    info.Add(ms.AverageFPS.ToString());
-                info.Add(Renderer.GetSafeString(TimeSpan.FromSeconds(ms.LengthInSeconds).ToString(), lbGameList.FontIndex));
-                info.Add(Conversions.BooleanToString(ms.SawCompletion, BooleanStringStyle.YESNO));
+                List<string> info =
+                [
+                    Renderer.GetSafeString(dateTime, lbGameList.FontIndex),
+                    mapLoader.TranslatedMapNames.ContainsKey(ms.MapName)
+                        ? mapLoader.TranslatedMapNames[ms.MapName]
+                        : ms.MapName,
+                    ms.GameMode.L10N($"INI:GameModes:{ms.GameMode}:UIName"),
+                    ms.AverageFPS == 0 ? "-" : ms.AverageFPS.ToString(),
+                    Renderer.GetSafeString(TimeSpan.FromSeconds(ms.LengthInSeconds).ToString(), lbGameList.FontIndex),
+                    Conversions.BooleanToString(ms.SawCompletion, BooleanStringStyle.YESNO),
+                ];
                 lbGameList.AddItem(info, true);
             }
         }

@@ -12,7 +12,7 @@ namespace DTAClient.Online
     {
         public SortedUserCollection(Func<T, T, int> userComparer)
         {
-            dictionary = new Dictionary<string, LinkedListNode<T>>();
+            dictionary = [];
             linkedList = new LinkedList<T>();
             this.userComparer = userComparer;
         }

@@ -46,7 +46,7 @@ namespace DTAClient.Domain.Multiplayer
 
             IniFile gameOptionsIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), "GameOptions.ini"));
 
-            List<MultiplayerColor> mpColors = new List<MultiplayerColor>();
+            List<MultiplayerColor> mpColors = [];
 
             List<string> colorKeys = gameOptionsIni.GetSectionKeys("MPColors");
 

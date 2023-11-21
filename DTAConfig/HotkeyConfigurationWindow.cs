@@ -37,7 +37,7 @@ namespace DTAConfig
             Keys.RightShift
         };
 
-        private List<GameCommand> gameCommands = new List<GameCommand>();
+        private List<GameCommand> gameCommands = [];
 
         private XNAClientDropDown ddCategory;
         private XNAMultiColumnListBox lbHotkeys;
@@ -75,7 +75,7 @@ namespace DTAConfig
             ddCategory.ClientRectangle = new Rectangle(lblCategory.Right + 12,
                 lblCategory.Y - 1, 250, ddCategory.Height);
 
-            HashSet<string> categories = new HashSet<string>();
+            HashSet<string> categories = [];
 
             foreach (var command in gameCommands)
             {

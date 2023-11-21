@@ -33,7 +33,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private int loadedGameTextWidth;
 
-        public List<GenericHostedGame> HostedGames = new();
+        public List<GenericHostedGame> HostedGames = [];
 
         public double GameLifetime { get; set; } = 35.0;
 

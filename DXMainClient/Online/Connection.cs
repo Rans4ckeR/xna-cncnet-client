@@ -57,7 +57,7 @@ namespace DTAClient.Online
 
         public Random Rng { get; } = new();
 
-        private readonly List<QueuedMessage> messageQueue = new();
+        private readonly List<QueuedMessage> messageQueue = [];
         private TimeSpan messageQueueDelay;
 
         private Socket socket;
@@ -76,7 +76,7 @@ namespace DTAClient.Online
         /// prevent a server that first accepts a connection and then drops it
         /// right afterwards from preventing online play.
         /// </summary>
-        private readonly List<string> failedServerIPs = new();
+        private readonly List<string> failedServerIPs = [];
         private volatile string currentConnectedServerIP;
 
         private static readonly SemaphoreSlim messageQueueLocker = new(1, 1);
@@ -688,7 +688,7 @@ namespace DTAClient.Online
                         string modeChannelName = parameters[0];
                         string modeString = parameters[1];
                         List<string> modeParameters =
-                            parameters.Count > 2 ? parameters.GetRange(2, parameters.Count - 2) : new List<string>();
+                            parameters.Count > 2 ? parameters.GetRange(2, parameters.Count - 2) : [];
                         connectionManager.OnChannelModesChanged(modeUserName, modeChannelName, modeString, modeParameters);
                         break;
                     case IRCCommands.KICK:
@@ -758,7 +758,7 @@ namespace DTAClient.Online
         {
             int prefixEnd = -1;
             prefix = command = string.Empty;
-            parameters = new List<string>();
+            parameters = [];
 
             // Grab the prefix if it is present. If a message begins
             // with a colon, the characters following the colon until

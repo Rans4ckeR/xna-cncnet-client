@@ -54,7 +54,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// The side indices that this check box disallows when checked.
         /// Defaults to -1, which means none.
         /// </summary>
-        public List<int> DisallowedSideIndices = new List<int>();
+        public List<int> DisallowedSideIndices = [];
 
         public bool AllowChanges { get; set; } = true;
 

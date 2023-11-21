@@ -51,12 +51,12 @@ public class Translation : ICloneable
     public string Author { get; private set; } = string.Empty;
 
     /// <summary>Stores the translation values (including default values for missing strings).</summary>
-    private Dictionary<string, string> Values { get; } = new();
+    private Dictionary<string, string> Values { get; } = [];
 
     // public bool IsRightToLeft { get; set; } // TODO
 
     /// <summary>Contains all keys within <see cref="Values"/> with missing translations.</summary>
-    private readonly HashSet<string> MissingKeys = new();
+    private readonly HashSet<string> MissingKeys = [];
 
     /// <summary>Used to write missing translation table entries to a file.</summary>
     public const string MISSING_KEY_PREFIX = "; ";  // a hack but hey it works

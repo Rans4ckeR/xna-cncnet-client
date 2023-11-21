@@ -25,7 +25,7 @@ namespace DTAClient.Domain.Multiplayer
         /// <summary>
         /// List of game modes.
         /// </summary>
-        public List<GameMode> GameModes = new List<GameMode>();
+        public List<GameMode> GameModes = [];
 
         public GameModeMapCollection GameModeMaps;
 
@@ -35,9 +35,9 @@ namespace DTAClient.Domain.Multiplayer
         /// replaced by the game mode entries of the value string array
         /// when map is added to game mode map lists.
         /// </summary>
-        private Dictionary<string, string[]> GameModeAliases = new Dictionary<string, string[]>();
+        private Dictionary<string, string[]> GameModeAliases = [];
 
-        private Dictionary<string, string> _translatedMapNames = new();
+        private Dictionary<string, string> _translatedMapNames = [];
 
         /// <summary>
         /// A dictionary of translated map names. Used to look up the 
@@ -80,7 +80,7 @@ namespace DTAClient.Domain.Multiplayer
                 return;
             }
 
-            List<Map> maps = new List<Map>();
+            List<Map> maps = [];
 
             foreach (string key in keys)
             {

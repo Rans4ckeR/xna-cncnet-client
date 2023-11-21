@@ -53,7 +53,7 @@ namespace DTAClient.Domain.Multiplayer
         public static List<TeamStartMapping> FromListString(string str)
         {
             if (string.IsNullOrWhiteSpace(str))
-                return new List<TeamStartMapping>();
+                return [];
 
             var parts = str.Split(LIST_SEPARATOR);
 

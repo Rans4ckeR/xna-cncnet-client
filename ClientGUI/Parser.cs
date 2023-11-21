@@ -19,9 +19,11 @@ namespace ClientGUI
             if (_instance != null)
                 throw new InvalidOperationException("Only one instance of Parser can exist at a time.");
 
-            globalConstants = new Dictionary<string, int>();
-            globalConstants.Add("RESOLUTION_WIDTH", windowManager.RenderResolutionX);
-            globalConstants.Add("RESOLUTION_HEIGHT", windowManager.RenderResolutionY);
+            globalConstants = new Dictionary<string, int>
+            {
+                { "RESOLUTION_WIDTH", windowManager.RenderResolutionX },
+                { "RESOLUTION_HEIGHT", windowManager.RenderResolutionY }
+            };
 
             IniSection parserConstantsSection = ClientConfiguration.Instance.GetParserConstants();
             if (parserConstantsSection != null)

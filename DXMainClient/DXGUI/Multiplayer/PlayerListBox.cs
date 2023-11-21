@@ -35,7 +35,7 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             this.gameCollection = gameCollection;
 
-            Users = new List<ChannelUser>();
+            Users = [];
 
             var assembly = Assembly.GetAssembly(typeof(GameCollection));
             using Stream cncnetIconStream = assembly.GetManifestResourceStream("ClientCore.Resources.cncneticon.png");

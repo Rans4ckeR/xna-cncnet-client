@@ -56,7 +56,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             connectionManager.ConnectionLost += ConnectionManager_ConnectionLost;
         }
 
-        public List<CnCNetTunnel> Tunnels { get; private set; } = new();
+        public List<CnCNetTunnel> Tunnels { get; private set; } = [];
 
         public CnCNetTunnel CurrentTunnel { get; set; }
 
@@ -191,7 +191,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 }
             }
 
-            if (!returnValue.Any())
+            if (returnValue.Count is 0)
                 return returnValue;
 
             try

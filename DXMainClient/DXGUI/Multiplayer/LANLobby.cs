@@ -52,7 +52,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public event EventHandler Exited;
 
-        private readonly List<(Socket Socket, IPEndPoint BroadcastIpEndpoint)> sockets = new();
+        private readonly List<(Socket Socket, IPEndPoint BroadcastIpEndpoint)> sockets = [];
         private readonly IPEndPoint loopBackIpEndPoint = new(IPAddress.Loopback, ProgramConstants.LAN_LOBBY_PORT);
 
         private XNAListBox lbPlayerList;
@@ -73,7 +73,7 @@ namespace DTAClient.DXGUI.Multiplayer
         private int localGameIndex;
         private GameCollection gameCollection;
         private Encoding encoding;
-        private List<LANLobbyUser> players = new List<LANLobbyUser>();
+        private List<LANLobbyUser> players = [];
         private TimeSpan timeSinceAliveMessage = TimeSpan.Zero;
         private MapLoader mapLoader;
         private DiscordHandler discordHandler;
@@ -313,7 +313,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     .ToList();
             }
 
-            if (!lanIpV4Addresses.Any())
+            if (lanIpV4Addresses.Count is 0)
             {
                 Logger.Log("No IPv4 address found for LAN.");
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red, "No IPv4 address found for LAN".L10N("Client:Main:NoLANIPv4")));

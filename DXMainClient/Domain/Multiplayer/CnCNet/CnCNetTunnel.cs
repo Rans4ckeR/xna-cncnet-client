@@ -67,7 +67,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     return null;
                 }
 
-                tunnel.IPAddresses = new List<IPAddress> { primaryIpAddress };
+                tunnel.IPAddresses = [primaryIpAddress];
 
                 if (secondaryIpAddress is not null)
                     tunnel.IPAddresses.Add(secondaryIpAddress);
@@ -192,7 +192,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 ProgramConstants.LogException(ex, "Unable to connect to the specified tunnel server.");
             }
 
-            return new List<int>();
+            return [];
         }
 
         public async ValueTask UpdatePingAsync(CancellationToken cancellationToken)

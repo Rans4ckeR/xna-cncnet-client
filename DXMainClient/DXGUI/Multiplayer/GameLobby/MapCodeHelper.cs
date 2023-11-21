@@ -110,7 +110,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             IniSection section = iniFile.GetSection(sectionName);
             if (section == null)
-                return new List<KeyValuePair<string, string>>();
+                return [];
             return section.Keys;
         }
     }

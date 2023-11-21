@@ -62,7 +62,7 @@ namespace DTAConfig.Settings
             if (section == null)
                 throw new ArgumentNullException(nameof(section));
 
-            List<FileSourceDestinationInfo> result = new List<FileSourceDestinationInfo>();
+            List<FileSourceDestinationInfo> result = [];
             string fileInfo;
 
             for (int i = 0;

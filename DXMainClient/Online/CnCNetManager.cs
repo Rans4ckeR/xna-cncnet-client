@@ -98,11 +98,11 @@ namespace DTAClient.Online
         /// <summary>
         /// The list of all users that we can see on the IRC network.
         /// </summary>
-        public List<IRCUser> UserList = new List<IRCUser>();
+        public List<IRCUser> UserList = [];
 
         private Connection connection;
 
-        private List<Channel> channels = new List<Channel>();
+        private List<Channel> channels = [];
 
         private GameCollection gameCollection;
         private readonly CnCNetUserData cncNetUserData;

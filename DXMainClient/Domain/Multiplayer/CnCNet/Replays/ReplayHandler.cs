@@ -16,7 +16,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet.Replays;
 
 internal sealed class ReplayHandler : IAsyncDisposable
 {
-    private readonly Dictionary<uint, FileStream> replayFileStreams = new();
+    private readonly Dictionary<uint, FileStream> replayFileStreams = [];
 
     private DateTimeOffset startTimestamp;
     private DirectoryInfo replayDirectory;
@@ -49,7 +49,7 @@ internal sealed class ReplayHandler : IAsyncDisposable
 
         FileInfo spawnFile = SafePath.GetFile(replayDirectory.FullName, ProgramConstants.SPAWNER_SETTINGS);
         string settings = null;
-        Dictionary<uint, string> playerMappings = new();
+        Dictionary<uint, string> playerMappings = [];
 
         if (spawnFile.Exists)
         {

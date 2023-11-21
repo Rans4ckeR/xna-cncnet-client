@@ -54,7 +54,7 @@ namespace DTAClient
         {
             bool noAudio = false;
             bool multipleInstanceMode = false;
-            List<string> unknownStartupParams = new List<string>();
+            List<string> unknownStartupParams = [];
 
             for (int arg = 0; arg < args.Length; arg++)
             {

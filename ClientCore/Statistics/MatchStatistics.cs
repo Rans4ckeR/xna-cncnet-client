@@ -23,7 +23,7 @@ namespace ClientCore.Statistics
             MapIsCoop = mapIsCoop;
         }
 
-        public List<PlayerStatistics> Players = new List<PlayerStatistics>();
+        public List<PlayerStatistics> Players = [];
 
         public int LengthInSeconds { get; set; }
 

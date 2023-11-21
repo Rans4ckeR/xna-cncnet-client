@@ -384,7 +384,7 @@ namespace ClientCore.Statistics
 
         public int GetCoopRankForDefaultMap(string mapName, int requiredPlayerCount)
         {
-            List<MatchStatistics> matches = new List<MatchStatistics>();
+            List<MatchStatistics> matches = [];
 
             // Filter out unfitting games
             foreach (MatchStatistics ms in Statistics)
@@ -552,7 +552,7 @@ namespace ClientCore.Statistics
 
         public int GetSkirmishRankForDefaultMap(string mapName, int requiredPlayerCount)
         {
-            List<MatchStatistics> matches = new List<MatchStatistics>();
+            List<MatchStatistics> matches = [];
 
             // Filter out unfitting games
             foreach (MatchStatistics ms in Statistics)

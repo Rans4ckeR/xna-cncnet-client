@@ -345,7 +345,7 @@ namespace ClientCore
 
         private void LoadFavoriteMaps(IniFile iniFile)
         {
-            FavoriteMaps = new List<string>();
+            FavoriteMaps = [];
             bool legacyMapsLoaded = LoadLegacyFavoriteMaps(iniFile);
             var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
             foreach (KeyValuePair<string, string> keyValuePair in favoriteMapsSection.Keys)
@@ -424,7 +424,7 @@ namespace ClientCore
         /// <returns>Whether or not legacy favorites were loaded.</returns>
         private bool LoadLegacyFavoriteMaps(IniFile iniFile)
         {
-            var legacyFavoriteMaps = new StringListSetting(iniFile, OPTIONS, FAVORITE_MAPS, new List<string>());
+            var legacyFavoriteMaps = new StringListSetting(iniFile, OPTIONS, FAVORITE_MAPS, []);
             if (!legacyFavoriteMaps.Value?.Any() ?? true)
                 return false;
 

@@ -269,7 +269,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public List<TeamStartMapping> GetTeamStartMappings()
             => chkBoxUseTeamStartMappings.Checked ?
-                teamStartMappingsPanel.GetTeamStartMappings() : new List<TeamStartMapping>();
+                teamStartMappingsPanel.GetTeamStartMappings() : [];
 
         public void EnableControls(bool enable)
         {

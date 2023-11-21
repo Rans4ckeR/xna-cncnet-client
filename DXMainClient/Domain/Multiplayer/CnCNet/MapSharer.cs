@@ -30,9 +30,9 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
         public static event EventHandler<SHA1EventArgs> MapDownloadStarted;
 
-        private volatile static List<string> MapDownloadQueue = new();
-        private volatile static List<Map> MapUploadQueue = new();
-        private volatile static List<string> UploadedMaps = new();
+        private volatile static List<string> MapDownloadQueue = [];
+        private volatile static List<Map> MapUploadQueue = [];
+        private volatile static List<string> UploadedMaps = [];
 
         private static readonly object locker = new();
 
@@ -220,7 +220,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
                 MapDownloadQueue.Remove(sha1);
 
-                if (MapDownloadQueue.Any())
+                if (MapDownloadQueue.Count is not 0)
                 {
                     Logger.Log("MapSharer: Continuing custom map downloads.");
                     DownloadAsync(MapDownloadQueue[0], myGameId, mapName).HandleTask();

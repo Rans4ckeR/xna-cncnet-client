@@ -38,7 +38,7 @@ namespace DTAConfig.OptionPanels
 
         GameCollection gameCollection;
 
-        List<XNAClientCheckBox> followedGameChks = new List<XNAClientCheckBox>();
+        List<XNAClientCheckBox> followedGameChks = [];
 
         public override void Initialize()
         {

@@ -362,7 +362,7 @@ namespace DTAConfig.OptionPanels
 
         private void GetRenderers()
         {
-            renderers = new List<DirectDrawWrapper>();
+            renderers = [];
 
             var renderersIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), RENDERERS_INI));
 

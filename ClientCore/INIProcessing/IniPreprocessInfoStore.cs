@@ -34,7 +34,7 @@ namespace ClientCore.INIProcessing
         private const string StoreIniName = "ProcessedIniInfo.ini";
         private const string ProcessedINIsSection = "ProcessedINIs";
 
-        public List<PreprocessedIniInfo> PreprocessedIniInfos { get; } = new List<PreprocessedIniInfo>();
+        public List<PreprocessedIniInfo> PreprocessedIniInfos { get; } = [];
 
         /// <summary>
         /// Loads the preprocessed INI information.

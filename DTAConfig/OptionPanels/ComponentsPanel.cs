@@ -19,7 +19,7 @@ namespace DTAConfig.OptionPanels
         {
         }
 
-        List<XNAClientButton> installationButtons = new List<XNAClientButton>();
+        List<XNAClientButton> installationButtons = [];
 
         bool downloadCancelled = false;
 

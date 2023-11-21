@@ -46,9 +46,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private readonly GameCollection gameCollection;
     private readonly CnCNetUserData cncnetUserData;
     private readonly PrivateMessagingWindow pmWindow;
-    private readonly List<uint> gamePlayerIds = new();
-    private readonly List<string> hostUploadedMaps = new();
-    private readonly List<string> chatCommandDownloadedMaps = new();
+    private readonly List<uint> gamePlayerIds = [];
+    private readonly List<string> hostUploadedMaps = [];
+    private readonly List<string> chatCommandDownloadedMaps = [];
 
     private TunnelSelectionWindow tunnelSelectionWindow;
     private XNAClientButton btnChangeTunnel;
@@ -112,8 +112,8 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         this.cncnetUserData = cncnetUserData;
         this.pmWindow = pmWindow;
         localGame = ClientConfiguration.Instance.LocalGame;
-        ctcpCommandHandlers = new()
-        {
+        ctcpCommandHandlers =
+        [
             new IntCommandHandler(CnCNetCommands.OPTIONS_REQUEST, (playerName, options) => HandleOptionsRequestAsync(playerName, options).HandleTask()),
             new IntCommandHandler(CnCNetCommands.READY_REQUEST, (playerName, options) => HandleReadyRequestAsync(playerName, options).HandleTask()),
             new StringCommandHandler(CnCNetCommands.PLAYER_OPTIONS, ApplyPlayerOptions),
@@ -146,7 +146,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             new StringCommandHandler(CnCNetCommands.PLAYER_TUNNEL_PINGS, HandleTunnelPingsMessage),
             new StringCommandHandler(CnCNetCommands.PLAYER_P2P_REQUEST, (playerName, p2pRequestMessage) => HandleP2PRequestMessageAsync(playerName, p2pRequestMessage, true).HandleTask()),
             new StringCommandHandler(CnCNetCommands.PLAYER_P2P_PINGS, (playerName, p2pPingsMessage) => HandleP2PPingsMessageAsync(playerName, p2pPingsMessage).HandleTask())
-        };
+        ];
 
         MapSharer.MapDownloadFailed += (_, e) => WindowManager.AddCallback(() => MapSharer_HandleMapDownloadFailedAsync(e).HandleTask());
         MapSharer.MapDownloadComplete += (_, e) => WindowManager.AddCallback(() => MapSharer_HandleMapDownloadCompleteAsync(e).HandleTask());
@@ -405,7 +405,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         int ping;
 
-        if (v3ConnectionState.DynamicTunnelsEnabled && v3ConnectionState.PinnedTunnels.Any())
+        if (v3ConnectionState.DynamicTunnelsEnabled && v3ConnectionState.PinnedTunnels.Count is not 0)
             ping = v3ConnectionState.PinnedTunnels.Min(q => q.Ping);
         else if (tunnelHandler.CurrentTunnel == null)
             return;
@@ -923,7 +923,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         if (v3ConnectionState.DynamicTunnelsEnabled)
         {
-            if (v3ConnectionState.V3GameTunnelHandlers.Any() && v3ConnectionState.V3GameTunnelHandlers.TrueForAll(q => q.Tunnel.ConnectSucceeded))
+            if (v3ConnectionState.V3GameTunnelHandlers.Count is not 0 && v3ConnectionState.V3GameTunnelHandlers.TrueForAll(q => q.Tunnel.ConnectSucceeded))
                 await SetLocalPlayerConnectedAsync().ConfigureAwait(false);
         }
         else
@@ -2041,7 +2041,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void HandleTunnelPingsMessage(string playerName, string tunnelPingsMessage)
     {
-        if (!v3ConnectionState.PinnedTunnels.Any())
+        if (v3ConnectionState.PinnedTunnels.Count is 0)
             return;
 
         string selectedTunnelHash = v3ConnectionState.HandleTunnelPingsMessage(playerName, tunnelPingsMessage);
@@ -2096,7 +2096,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         P2PPlayer p2pPlayer = v3ConnectionState.P2PPlayers.Single(q => q.RemotePlayerName.Equals(playerName, StringComparison.OrdinalIgnoreCase));
 
-        if (p2pPlayer.RemotePingResults.Any() && p2pPlayer.LocalPingResults.Any())
+        if (p2pPlayer.RemotePingResults.Count is not 0 && p2pPlayer.LocalPingResults.Count is not 0)
             AddNotice(string.Format(CultureInfo.CurrentCulture, "Player {0} P2P negotiated ({1}ms)".L10N("Client:Main:PlayerP2PNegotiated"), playerName, p2pPlayer.LocalPingResults.Min(q => q.Ping)));
     }
 

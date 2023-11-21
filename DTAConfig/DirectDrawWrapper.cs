@@ -76,8 +76,8 @@ namespace DTAConfig
 
         private string ddrawDLLPath;
         private string resConfigFileName;
-        private List<string> filesToCopy = new List<string>();
-        private List<OSVersion> disallowedOSList = new List<OSVersion>();
+        private List<string> filesToCopy = [];
+        private List<OSVersion> disallowedOSList = [];
 
         /// <summary>
         /// Reads the properties of this DirectDrawWrapper from an INI section.

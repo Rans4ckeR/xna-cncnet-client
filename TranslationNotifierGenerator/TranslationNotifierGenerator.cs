@@ -35,7 +35,7 @@ namespace TranslationNotifierGenerator
             if (!namespaceName.Split(new char[] { '.' }).All(name => SyntaxFacts.IsValidIdentifier(name)))
                 throw new Exception("The namespace can not contain invalid characters.");
 
-            Dictionary<string, string> translations = new();
+            Dictionary<string, string> translations = [];
             foreach (var tree in compilation.SyntaxTrees)
             {
                 context.CancellationToken.ThrowIfCancellationRequested();

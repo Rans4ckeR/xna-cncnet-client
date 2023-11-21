@@ -267,7 +267,7 @@ namespace ClientCore
         /// <exception cref="IniParseException">Thrown when the syntax of the list is invalid.</exception>
         private List<TranslationGameFile> ParseTranslationGameFiles()
         {
-            List<TranslationGameFile> gameFiles = new();
+            List<TranslationGameFile> gameFiles = [];
 
             for (int i = 0; clientDefinitionsIni.KeyExists(TRANSLATIONS, $"GameFile{i}"); i++)
             {

@@ -402,7 +402,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                     msg = overMessage + msg;
 
-                    List<string> commands = new List<string>();
+                    List<string> commands = [];
 
                     while (true)
                     {

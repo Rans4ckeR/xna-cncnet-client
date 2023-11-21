@@ -19,20 +19,20 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     private const int PINNED_DYNAMIC_TUNNELS = 15;
 
     private readonly TunnelHandler tunnelHandler;
-    private readonly List<(string RemotePlayerName, CnCNetTunnel Tunnel, int CombinedPing)> playerTunnels = new();
-    private readonly Dictionary<string, string> playerP2PRequestMessages = new();
+    private readonly List<(string RemotePlayerName, CnCNetTunnel Tunnel, int CombinedPing)> playerTunnels = [];
+    private readonly Dictionary<string, string> playerP2PRequestMessages = [];
     private readonly ReplayHandler replayHandler = new();
 
     private IPAddress publicIpV4Address;
     private IPAddress publicIpV6Address;
-    private List<ushort> p2pIpV6PortIds = new();
+    private List<ushort> p2pIpV6PortIds = [];
     private InternetGatewayDevice internetGatewayDevice;
     private List<PlayerInfo> playerInfos;
     private List<uint> gamePlayerIds;
-    private List<(ushort InternalPort, ushort ExternalPort)> ipV6P2PPorts = new();
-    private List<(ushort InternalPort, ushort ExternalPort)> ipV4P2PPorts = new();
+    private List<(ushort InternalPort, ushort ExternalPort)> ipV6P2PPorts = [];
+    private List<(ushort InternalPort, ushort ExternalPort)> ipV4P2PPorts = [];
 
-    public List<(int Ping, string Hash)> PinnedTunnels { get; private set; } = new();
+    public List<(int Ping, string Hash)> PinnedTunnels { get; private set; } = [];
 
     public string PinnedTunnelPingsMessage { get; private set; }
 
@@ -46,9 +46,9 @@ internal sealed class V3ConnectionState : IAsyncDisposable
 
     public CancellationTokenSource StunCancellationTokenSource { get; private set; }
 
-    public List<(List<string> RemotePlayerNames, V3GameTunnelHandler Tunnel)> V3GameTunnelHandlers { get; } = new();
+    public List<(List<string> RemotePlayerNames, V3GameTunnelHandler Tunnel)> V3GameTunnelHandlers { get; } = [];
 
-    public List<P2PPlayer> P2PPlayers { get; } = new();
+    public List<P2PPlayer> P2PPlayers { get; } = [];
 
     public V3ConnectionState(TunnelHandler tunnelHandler)
     {
@@ -78,7 +78,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
 
     public async ValueTask<bool> HandlePlayerP2PRequestAsync()
     {
-        if (!ipV6P2PPorts.Any() && !ipV4P2PPorts.Any())
+        if (ipV6P2PPorts.Count is 0 && ipV4P2PPorts.Count is 0)
         {
             StunCancellationTokenSource?.Cancel();
             StunCancellationTokenSource?.Dispose();
@@ -107,8 +107,8 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     }
 
     public string GetP2PRequestCommand()
-        => $" {publicIpV4Address}\t{(!ipV4P2PPorts.Any() ? null : ipV4P2PPorts.Select(q => q.ExternalPort.ToString(CultureInfo.InvariantCulture)).DefaultIfEmpty().Aggregate((q, r) => $"{q}-{r}"))}" +
-        $";{publicIpV6Address}\t{(!ipV6P2PPorts.Any() ? null : ipV6P2PPorts.Select(q => q.ExternalPort.ToString(CultureInfo.InvariantCulture)).DefaultIfEmpty().Aggregate((q, r) => $"{q}-{r}"))}";
+        => $" {publicIpV4Address}\t{(ipV4P2PPorts.Count is 0 ? null : ipV4P2PPorts.Select(q => q.ExternalPort.ToString(CultureInfo.InvariantCulture)).DefaultIfEmpty().Aggregate((q, r) => $"{q}-{r}"))}" +
+        $";{publicIpV6Address}\t{(ipV6P2PPorts.Count is 0 ? null : ipV6P2PPorts.Select(q => q.ExternalPort.ToString(CultureInfo.InvariantCulture)).DefaultIfEmpty().Aggregate((q, r) => $"{q}-{r}"))}";
 
     public string GetP2PPingCommand(string playerName)
         => $" {playerName}-{P2PPlayers.Single(q => q.RemotePlayerName.Equals(playerName, StringComparison.OrdinalIgnoreCase)).LocalPingResults.Select(q => $"{q.RemoteIpAddress};{q.Ping}\t").DefaultIfEmpty().Aggregate((q, r) => $"{q}{r}")}";
@@ -145,11 +145,11 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         => playerP2PRequestMessages[playerName] = p2pRequestMessage;
 
     public string GetP2PRequest(string playerName)
-        => playerP2PRequestMessages.TryGetValue(playerName, out string p2pRequestMessage) ? p2pRequestMessage : null;
+        => playerP2PRequestMessages.GetValueOrDefault(playerName);
 
     public async ValueTask<bool> PingRemotePlayerAsync(string playerName, string p2pRequestMessage)
     {
-        List<(IPAddress RemoteIpAddress, long Ping)> localPingResults = new();
+        List<(IPAddress RemoteIpAddress, long Ping)> localPingResults = [];
         string[] splitLines = p2pRequestMessage.Split(';');
         string[] ipV4splitLines = splitLines[0].Split('\t');
         string[] ipV6splitLines = splitLines[1].Split('\t');
@@ -177,12 +177,12 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         }
         else
         {
-            remoteP2PPlayer = new(playerName, Array.Empty<ushort>(), Array.Empty<ushort>(), new(), new());
+            remoteP2PPlayer = new(playerName, Array.Empty<ushort>(), Array.Empty<ushort>(), [], []);
         }
 
         P2PPlayers.Add(remoteP2PPlayer with { LocalPingResults = localPingResults, RemoteIpV6Ports = remoteIpV6Ports, RemoteIpV4Ports = remoteIpV4Ports });
 
-        return localPingResults.Any();
+        return localPingResults.Count is not 0;
     }
 
     public string UpdateRemotePingResults(string senderName, string p2pPingsMessage, string localPlayerName)
@@ -197,7 +197,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
             return null;
 
         string[] pingResults = splitLines[1].Split('\t', StringSplitOptions.RemoveEmptyEntries);
-        List<(IPAddress IpAddress, long Ping)> playerPings = new();
+        List<(IPAddress IpAddress, long Ping)> playerPings = [];
 
         foreach (string pingResult in pingResults)
         {
@@ -217,14 +217,14 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         }
         else
         {
-            p2pPlayer = new(senderName, Array.Empty<ushort>(), Array.Empty<ushort>(), new(), new());
+            p2pPlayer = new(senderName, Array.Empty<ushort>(), Array.Empty<ushort>(), [], []);
         }
 
         p2pPlayer = p2pPlayer with { RemotePingResults = playerPings };
 
         P2PPlayers.Add(p2pPlayer);
 
-        return !p2pPlayer.LocalPingResults.Any() ? GetP2PRequest(senderName) : null;
+        return p2pPlayer.LocalPingResults.Count is 0 ? GetP2PRequest(senderName) : null;
     }
 
     public void StartV3ConnectionListeners(
@@ -256,11 +256,11 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         }
         else
         {
-            List<string> p2pPlayerTunnels = new();
+            List<string> p2pPlayerTunnels = [];
 
             if (P2PEnabled)
             {
-                foreach (var (remotePlayerName, remoteIpV6Ports, remoteIpV4Ports, localPingResults, remotePingResults) in P2PPlayers.Where(q => q.RemotePingResults.Any() && q.LocalPingResults.Any()))
+                foreach (var (remotePlayerName, remoteIpV6Ports, remoteIpV4Ports, localPingResults, remotePingResults) in P2PPlayers.Where(q => q.RemotePingResults.Count is not 0 && q.LocalPingResults.Count is not 0))
                 {
                     (IPAddress selectedRemoteIpAddress, long combinedPing) = localPingResults
                         .Where(q => q.RemoteIpAddress is not null && remotePingResults
@@ -297,7 +297,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
                             gameLocalPlayerId,
                             remoteHostConnectedAction,
                             remoteHostConnectionFailedAction,
-                            new() { remotePlayerName },
+                            [remotePlayerName],
                             new(selectedRemoteIpAddress, remotePort),
                             localPort,
                             cancellationToken);
@@ -448,7 +448,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
 
     private async ValueTask CloseP2PPortsAsync()
     {
-        List<Task> tasks = new();
+        List<Task> tasks = [];
 
         if (internetGatewayDevice is not null)
         {

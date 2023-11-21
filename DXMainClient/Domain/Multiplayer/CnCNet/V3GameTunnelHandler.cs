@@ -13,7 +13,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet;
 /// </summary>
 internal sealed class V3GameTunnelHandler : IDisposable
 {
-    private readonly Dictionary<uint, V3LocalPlayerConnection> localGameConnections = new();
+    private readonly Dictionary<uint, V3LocalPlayerConnection> localGameConnections = [];
     private readonly CancellationTokenSource connectionErrorCancellationTokenSource = new();
 
     private V3RemotePlayerConnection remoteHostConnection;
@@ -121,7 +121,7 @@ internal sealed class V3GameTunnelHandler : IDisposable
         localGamePlayerConnection.RaiseDataReceivedEvent -= localGameConnectionDataReceivedFunc;
         localGamePlayerConnection.Dispose();
 
-        if (!localGameConnections.Any())
+        if (localGameConnections.Count is 0)
             Dispose();
     }
 
@@ -154,7 +154,7 @@ internal sealed class V3GameTunnelHandler : IDisposable
     }
 
     private V3LocalPlayerConnection GetLocalPlayerConnection(uint senderId)
-        => localGameConnections.TryGetValue(senderId, out V3LocalPlayerConnection connection) ? connection : null;
+        => localGameConnections.GetValueOrDefault(senderId);
 
     private void RemoteHostConnection_Connected(object sender, EventArgs e)
     {

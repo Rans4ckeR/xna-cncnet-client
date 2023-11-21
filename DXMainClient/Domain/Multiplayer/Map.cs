@@ -226,7 +226,7 @@ namespace DTAClient.Domain.Multiplayer
         private readonly string customMapFilePath;
 
         [JsonInclude]
-        public List<string> waypoints = new List<string>();
+        public List<string> waypoints = [];
 
         /// <summary>
         /// The pixel coordinates of the map's player starting locations.
@@ -235,7 +235,7 @@ namespace DTAClient.Domain.Multiplayer
         public List<Point> startingLocations;
 
         [JsonInclude]
-        public List<TeamStartMappingPreset> TeamStartMappingPresets = new List<TeamStartMappingPreset>();
+        public List<TeamStartMappingPreset> TeamStartMappingPresets = [];
 
         [JsonIgnore]
         public List<TeamStartMapping> TeamStartMappings => TeamStartMappingPresets?.FirstOrDefault()?.TeamStartMappings;
@@ -437,7 +437,7 @@ namespace DTAClient.Domain.Multiplayer
 
         private void GetTeamStartMappingPresets(IniSection section)
         {
-            TeamStartMappingPresets = new List<TeamStartMappingPreset>();
+            TeamStartMappingPresets = [];
             for (int i = 0; ; i++)
             {
                 try
@@ -459,7 +459,7 @@ namespace DTAClient.Domain.Multiplayer
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, $"Unable to parse team start mappings. Map: \"{Name}\".");
-                    TeamStartMappingPresets = new List<TeamStartMappingPreset>();
+                    TeamStartMappingPresets = [];
                 }
             }
         }
@@ -468,7 +468,7 @@ namespace DTAClient.Domain.Multiplayer
         {
             if (startingLocations == null)
             {
-                startingLocations = new List<Point>();
+                startingLocations = [];
 
                 foreach (string waypoint in waypoints)
                 {

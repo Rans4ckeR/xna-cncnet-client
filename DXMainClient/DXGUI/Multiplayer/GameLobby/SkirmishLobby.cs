@@ -364,7 +364,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (keys == null)
             {
-                keys = new List<string>(); // No point skip parsing all settings if only AI info is missing.
+                keys = []; // No point skip parsing all settings if only AI info is missing.
                 //Logger.Log("AI player information doesn't exist in skirmish settings!");
                 //InitDefaultSettings();
                 //return;

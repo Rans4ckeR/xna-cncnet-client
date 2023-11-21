@@ -168,7 +168,7 @@ internal static class UPnPHandler
             if (stunPublicIpV6Address is not null && localPublicIpV6Address is not null && !stunPublicIpV6Address.Equals(localPublicIpV6Address))
             {
                 publicIpV6Address = stunPublicIpV6Address;
-                ipV6P2PPorts = ipV6StunPortMapping.Any() ? ipV6StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
+                ipV6P2PPorts = ipV6StunPortMapping.Count is not 0 ? ipV6StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
             }
             else
             {
@@ -246,12 +246,12 @@ internal static class UPnPHandler
 #else
                     ProgramConstants.LogException(ex, $"P2P: Could not open P2P IPV4 router ports.");
 #endif
-                    ipV4P2PPorts = ipV4StunPortMapping.Any() ? ipV4StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
+                    ipV4P2PPorts = ipV4StunPortMapping.Count is not 0 ? ipV4StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
                 }
             }
             else
             {
-                ipV4P2PPorts = ipV4StunPortMapping.Any() ? ipV4StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
+                ipV4P2PPorts = ipV4StunPortMapping.Count is not 0 ? ipV4StunPortMapping : p2pReservedPorts.Select(q => (q, q)).ToList();
             }
         }
 

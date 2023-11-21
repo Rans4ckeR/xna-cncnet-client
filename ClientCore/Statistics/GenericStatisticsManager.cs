@@ -6,7 +6,7 @@ namespace ClientCore.Statistics
 {
     public abstract class GenericStatisticsManager
     {
-        protected List<MatchStatistics> Statistics = new List<MatchStatistics>();
+        protected List<MatchStatistics> Statistics = [];
 
         protected static async ValueTask<string> GetStatDatabaseVersionAsync(string scorePath)
         {

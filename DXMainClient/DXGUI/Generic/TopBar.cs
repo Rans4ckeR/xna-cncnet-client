@@ -49,7 +49,7 @@ namespace DTAClient.DXGUI.Generic
 
         public SwitchType LastSwitchType { get; private set; }
 
-        private List<ISwitchable> primarySwitches = new List<ISwitchable>();
+        private List<ISwitchable> primarySwitches = [];
         private ISwitchable cncnetLobbySwitch;
         private ISwitchable privateMessageSwitch;
 

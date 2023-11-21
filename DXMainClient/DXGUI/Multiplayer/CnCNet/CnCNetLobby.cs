@@ -120,7 +120,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private string localGameID;
         private CnCNetGame localGame;
 
-        private readonly List<string> followedGames = new List<string>();
+        private readonly List<string> followedGames = [];
 
         private bool isJoiningGame;
         private HostedCnCNetGame gameOfLastJoinAttempt;
@@ -153,7 +153,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         public override void Initialize()
         {
-            invitationIndex = new InvitationIndex();
+            invitationIndex = [];
 
             ClientRectangle = new Rectangle(0, 0, WindowManager.RenderResolutionX - 64,
                 WindowManager.RenderResolutionY - 64);

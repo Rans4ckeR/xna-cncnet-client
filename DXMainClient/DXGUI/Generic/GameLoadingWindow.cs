@@ -31,7 +31,7 @@ namespace DTAClient.DXGUI.Generic
         private XNAClientButton btnDelete;
         private XNAClientButton btnCancel;
 
-        private List<SavedGame> savedGames = new List<SavedGame>();
+        private List<SavedGame> savedGames = [];
 
         public override void Initialize()
         {

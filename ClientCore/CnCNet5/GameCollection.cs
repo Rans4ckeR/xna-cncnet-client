@@ -23,7 +23,7 @@ namespace ClientCore.CnCNet5
 
         public void Initialize()
         {
-            GameList = new List<CnCNetGame>();
+            GameList = [];
 
             var assembly = Assembly.GetAssembly(typeof(GameCollection));
             using Stream dtaIconStream = assembly.GetManifestResourceStream("ClientCore.Resources.dtaicon.png");
@@ -219,14 +219,14 @@ namespace ClientCore.CnCNet5
         {
             IniFile iniFile = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), "GameCollectionConfig.ini"));
 
-            List<CnCNetGame> customGames = new List<CnCNetGame>();
+            List<CnCNetGame> customGames = [];
 
             var section = iniFile.GetSection("CustomGames");
 
             if (section == null)
                 return customGames;
 
-            HashSet<string> customGameIDs = new HashSet<string>();
+            HashSet<string> customGameIDs = [];
             foreach (var kvp in section.Keys)
             {
                 if (!iniFile.SectionExists(kvp.Value))

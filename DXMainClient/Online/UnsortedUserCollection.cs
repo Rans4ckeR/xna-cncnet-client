@@ -10,7 +10,7 @@ namespace DTAClient.Online
     /// </summary>
     public class UnsortedUserCollection<T> : IUserCollection<T>
     {
-        private Dictionary<string, T> dictionary = new Dictionary<string, T>();
+        private Dictionary<string, T> dictionary = [];
 
         public int Count => dictionary.Count;
 

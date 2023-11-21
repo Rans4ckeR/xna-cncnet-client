@@ -83,7 +83,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// Holds the users that the local user has had conversations with
         /// during this client session.
         /// </summary>
-        private List<PrivateMessageUser> privateMessageUsers = new List<PrivateMessageUser>();
+        private List<PrivateMessageUser> privateMessageUsers = [];
 
         private PrivateMessageNotificationBox notificationBox;
 

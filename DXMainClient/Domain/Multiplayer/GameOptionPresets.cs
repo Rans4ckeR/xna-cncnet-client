@@ -33,8 +33,8 @@ namespace DTAClient.Domain.Multiplayer
 
         public string ProfileName { get; }
 
-        private Dictionary<string, bool> checkBoxValues = new Dictionary<string, bool>();
-        private Dictionary<string, int> dropDownValues = new Dictionary<string, int>();
+        private Dictionary<string, bool> checkBoxValues = [];
+        private Dictionary<string, int> dropDownValues = [];
 
         private void AddValues<T>(IniSection section, string keyName, Dictionary<string, T> dictionary, Converter<string, T> converter)
         {
@@ -115,10 +115,7 @@ namespace DTAClient.Domain.Multiplayer
         {
             LoadIniIfNotInitialized();
 
-            if (presets.TryGetValue(name, out GameOptionPreset value))
-                return value;
-
-            return null;
+            return presets.GetValueOrDefault(name);
         }
 
         public List<string> GetPresetNames()
@@ -158,7 +155,7 @@ namespace DTAClient.Domain.Multiplayer
         private void LoadIni()
         {
             gameOptionPresetsIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.ClientUserFilesPath, IniFileName));
-            presets = new Dictionary<string, GameOptionPreset>();
+            presets = [];
 
             IniSection presetsDefinitions = gameOptionPresetsIni.GetSection(PresetDefinitionsSectionName);
             if (presetsDefinitions == null)

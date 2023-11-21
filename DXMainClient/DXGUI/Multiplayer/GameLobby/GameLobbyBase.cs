@@ -72,8 +72,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected List<MultiplayerColor> MPColors;
 
-        public List<GameLobbyCheckBox> CheckBoxes = new List<GameLobbyCheckBox>();
-        public List<GameLobbyDropDown> DropDowns = new List<GameLobbyDropDown>();
+        public List<GameLobbyCheckBox> CheckBoxes = [];
+        public List<GameLobbyDropDown> DropDowns = [];
 
         protected DiscordHandler discordHandler;
 
@@ -136,8 +136,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected XNASuggestionTextBox tbMapSearch;
 
-        protected List<PlayerInfo> Players = new List<PlayerInfo>();
-        protected List<PlayerInfo> AIPlayers = new List<PlayerInfo>();
+        protected List<PlayerInfo> Players = [];
+        protected List<PlayerInfo> AIPlayers = [];
 
         protected PlayerInfo FindLocalPlayer() => Players.Find(p => ProgramConstants.PLAYERNAME.Equals(p.Name, StringComparison.OrdinalIgnoreCase));
 
@@ -157,7 +157,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected int SideCount { get; private set; }
         protected int RandomSelectorCount { get; private set; } = 1;
 
-        protected List<int[]> RandomSelectors = new List<int[]>();
+        protected List<int[]> RandomSelectors = [];
 
         private readonly bool isMultiplayer;
 
@@ -633,7 +633,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         protected void RefreshForFavoriteMapRemoved()
         {
-            if (!gameModeMapFilter.GetGameModeMaps().Any())
+            if (gameModeMapFilter.GetGameModeMaps().Count is 0)
             {
                 LoadDefaultGameModeMap();
                 return;
@@ -787,7 +787,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             string[] sides = ClientConfiguration.Instance.Sides.Split(',').ToArray();
             SideCount = sides.Length;
 
-            List<string> selectorNames = new();
+            List<string> selectorNames = [];
             GetRandomSelectors(selectorNames, RandomSelectors);
             RandomSelectorCount = RandomSelectors.Count + 1;
             MapPreviewBox.RandomSelectorCount = RandomSelectorCount;
@@ -988,7 +988,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             foreach (string randomSelector in keys)
             {
-                List<int> randomSides = new List<int>();
+                List<int> randomSides = [];
                 try
                 {
                     string[] tmp = GameOptionsIni.GetStringValue("RandomSelectors", randomSelector, string.Empty).Split(',');
@@ -1220,7 +1220,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             // Gather list of available colors
 
-            List<int> freeColors = new List<int>();
+            List<int> freeColors = [];
 
             for (int cId = 0; cId < MPColors.Count; cId++)
                 freeColors.Add(cId);
@@ -1239,8 +1239,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             // Gather list of available starting locations
 
-            List<int> freeStartingLocations = new List<int>();
-            List<int> takenStartingLocations = new List<int>();
+            List<int> freeStartingLocations = [];
+            List<int> takenStartingLocations = [];
 
             for (int i = 0; i < Map.MaxPlayers; i++)
                 freeStartingLocations.Add(i);
@@ -1280,7 +1280,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 pHouseInfo.RandomizeSide(pInfo, SideCount, random, GetDisallowedSides(), RandomSelectors, RandomSelectorCount);
 
                 pHouseInfo.RandomizeColor(pInfo, freeColors, MPColors, random);
-                pHouseInfo.RandomizeStart(pInfo, random, freeStartingLocations, takenStartingLocations, teamStartMappings.Any());
+                pHouseInfo.RandomizeStart(pInfo, random, freeStartingLocations, takenStartingLocations, teamStartMappings.Count is not 0);
             }
 
             return houseInfos;
@@ -1388,7 +1388,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
 
             // The spawner assigns players to SpawnX houses based on their in-game color index
-            List<int> multiCmbIndexes = new List<int>();
+            List<int> multiCmbIndexes = [];
             var sortedColorList = MPColors.OrderBy(mpc => mpc.GameColorIndex).ToList();
 
             for (int cId = 0; cId < sortedColorList.Count; cId++)
@@ -1608,7 +1608,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!supplementalMapFiles.Any())
                 return;
 
-            List<string> supplementalFileNames = new();
+            List<string> supplementalFileNames = [];
             foreach (string file in supplementalMapFiles)
             {
                 try
@@ -1664,7 +1664,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 .Select(ext => $"{baseFileName}.{ext}".ToUpperInvariant())
                 .ToList();
 
-            if (!supplementalMapFileNames.Any())
+            if (supplementalMapFileNames.Count is 0)
                 return new List<string>();
 
             // Get full file paths for all possible supplemental files

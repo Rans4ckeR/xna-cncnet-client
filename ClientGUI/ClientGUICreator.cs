@@ -13,7 +13,7 @@ namespace ClientGUI
     /// </summary>
     public static class ClientGUICreator
     {
-        private static List<Type> controlTypes = new();
+        private static List<Type> controlTypes = [];
 
         private static IServiceProvider serviceProvider;
 

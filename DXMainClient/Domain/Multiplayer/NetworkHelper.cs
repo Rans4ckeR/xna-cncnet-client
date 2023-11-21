@@ -90,7 +90,7 @@ internal static class NetworkHelper
         => NetworkInterface.GetAllNetworkInterfaces()
         .Where(q => q.OperationalStatus is OperationalStatus.Up && q.NetworkInterfaceType is not NetworkInterfaceType.Loopback)
         .Select(q => q.GetIPProperties())
-        .Where(q => q.GatewayAddresses.Any());
+        .Where(q => q.GatewayAddresses.Count is not 0);
 
     [SupportedOSPlatform("windows")]
     private static IEnumerable<(IPAddress IpAddress, PrefixOrigin PrefixOrigin, SuffixOrigin SuffixOrigin)> GetWindowsPublicIpAddresses()
@@ -198,7 +198,7 @@ internal static class NetworkHelper
         var stunPortMapping = new List<(ushort InternalPort, ushort ExternalPort)>();
         var matchingStunServerIpAddresses = stunServerIpAddresses.Where(q => q.AddressFamily == addressFamily).ToList();
 
-        if (!matchingStunServerIpAddresses.Any())
+        if (matchingStunServerIpAddresses.Count is 0)
         {
             Logger.Log($"P2P: No {addressFamily} STUN servers found.");
 
@@ -232,7 +232,7 @@ internal static class NetworkHelper
         else
             Logger.Log($"P2P: {addressFamily} STUN detection failed.");
 
-        if (stunPortMapping.Any())
+        if (stunPortMapping.Count is not 0)
         {
             Logger.Log($"P2P: {addressFamily} STUN detection detected mapped ports, running STUN keep alive.");
 #pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed

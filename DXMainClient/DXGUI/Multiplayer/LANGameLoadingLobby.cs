@@ -352,7 +352,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                     msg = overMessage + msg;
 
-                    List<string> commands = new List<string>();
+                    List<string> commands = [];
 
                     while (true)
                     {

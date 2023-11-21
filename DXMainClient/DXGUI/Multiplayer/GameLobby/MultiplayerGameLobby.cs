@@ -37,8 +37,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             TopBar = topBar;
 
-            chatBoxCommands = new List<ChatBoxCommand>
-            {
+            chatBoxCommands =
+            [
                 new(CnCNetLobbyCommands.HIDEMAPS, "Hide map list (game host only)".L10N("Client:Main:ChatboxCommandHideMapsHelp"), true,
                     s => HideMapList()),
                 new(CnCNetLobbyCommands.SHOWMAPS, "Show map list (game host only)".L10N("Client:Main:ChatboxCommandShowMapsHelp"), true,
@@ -55,7 +55,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 new(CnCNetLobbyCommands.ROLL, "Roll dice, for example /roll 3d6".L10N("Client:Main:ChatboxCommandRollHelp"), false, dieType => RollDiceCommandAsync(dieType).HandleTask()),
                 new(CnCNetLobbyCommands.SAVEOPTIONS, "Save game option preset so it can be loaded later".L10N("Client:Main:ChatboxCommandSaveOptionsHelp"), false, HandleGameOptionPresetSaveCommand),
                 new(CnCNetLobbyCommands.LOADOPTIONS, "Load game option preset".L10N("Client:Main:ChatboxCommandLoadOptionsHelp"), true, presetName => HandleGameOptionPresetLoadCommandAsync(presetName).HandleTask())
-            };
+            ];
 
             chkAutoReady_CheckedChangedFunc = (_, _) => ChkAutoReady_CheckedChangedAsync().HandleTask();
         }
@@ -771,7 +771,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
             }
 
-            List<int> occupiedColorIds = new List<int>();
+            List<int> occupiedColorIds = [];
             foreach (PlayerInfo player in Players)
             {
                 if (occupiedColorIds.Contains(player.ColorId) && player.ColorId > 0)

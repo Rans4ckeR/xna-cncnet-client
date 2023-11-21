@@ -19,7 +19,7 @@ namespace ClientGUI
         /// <summary>
         /// Index of the preferred drop-down item.
         /// </summary>
-        public List<int> PreferredItemIndexes { get; set; } = new List<int>();
+        public List<int> PreferredItemIndexes { get; set; } = [];
 
         /// <summary>
         /// Creates a new preferred item drop-down control.

@@ -38,7 +38,7 @@ namespace ClientCore.Statistics.GameParsers
 
                 string line;
 
-                List<PlayerStatistics> takeoverAIs = new List<PlayerStatistics>();
+                List<PlayerStatistics> takeoverAIs = [];
                 PlayerStatistics currentPlayer = null;
 
                 bool sawCompletion = false;

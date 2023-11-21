@@ -89,7 +89,7 @@ namespace DTAClient.Online
             }
         }
 
-        List<ChatMessage> messages = new List<ChatMessage>();
+        List<ChatMessage> messages = [];
         public List<ChatMessage> Messages => messages;
 
         IUserCollection<ChannelUser> users;

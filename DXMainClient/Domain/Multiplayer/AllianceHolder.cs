@@ -16,10 +16,10 @@ namespace DTAClient.Domain.Multiplayer
             List<TeamStartMapping> teamStartMappings,
             IniFile spawnIni)
         {
-            List<int> team1MultiMemberIds = new List<int>();
-            List<int> team2MultiMemberIds = new List<int>();
-            List<int> team3MultiMemberIds = new List<int>();
-            List<int> team4MultiMemberIds = new List<int>();
+            List<int> team1MultiMemberIds = [];
+            List<int> team2MultiMemberIds = [];
+            List<int> team3MultiMemberIds = [];
+            List<int> team4MultiMemberIds = [];
 
             for (int pId = 0; pId < players.Count; pId++)
             {
