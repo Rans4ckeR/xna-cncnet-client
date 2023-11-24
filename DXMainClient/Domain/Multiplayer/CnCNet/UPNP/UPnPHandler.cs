@@ -384,7 +384,7 @@ internal static class UPnPHandler
         (IPAddress LocalIpAddress, IEnumerable<string> Responses)[] localAddressesDeviceResponses = await ClientCore.Extensions.TaskExtensions.WhenAllSafe(
             multicastAddresses.SelectMany(q => unicastAddresses.Where(r => r.AddressFamily == q.AddressFamily).Select(r => SearchDevicesAsync(r, q, cancellationToken)))).ConfigureAwait(false);
 
-        return localAddressesDeviceResponses.Where(q => q.Responses.Any(r => r.Any())).Select(q => (q.LocalIpAddress, q.Responses)).Distinct();
+        return localAddressesDeviceResponses.Where(q => q.Responses.Any(r => r.Length is not 0)).Select(q => (q.LocalIpAddress, q.Responses)).Distinct();
     }
 
     private static async Task<InternetGatewayDevice> ParseDeviceAsync(

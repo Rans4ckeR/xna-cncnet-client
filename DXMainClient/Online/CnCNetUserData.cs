@@ -182,7 +182,7 @@ namespace DTAClient.Online
 
         public void AddRecentPlayers(IEnumerable<string> recentPlayerNames, string gameName)
         {
-            recentPlayerNames = recentPlayerNames.Where(name => name != ProgramConstants.PLAYERNAME);
+            recentPlayerNames = recentPlayerNames.Where(name => !string.Equals(name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
             var now = DateTime.UtcNow;
             RecentList.AddRange(recentPlayerNames.Select(rp => new RecentPlayer()
             {

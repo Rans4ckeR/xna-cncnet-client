@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     public class StatisticsWindow : XNAWindow
     {
         public StatisticsWindow(WindowManager windowManager, MapLoader mapLoader)
@@ -534,10 +536,10 @@ namespace DTAClient.DXGUI.Generic
                     else
                     {
                         // The game was completed and the player was actually playing
-                        items.Add(new XNAListBoxItem(ps.Kills.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Losses.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Economy.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Score.ToString(), textColor));
+                        items.Add(new XNAListBoxItem(ps.Kills.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Losses.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Economy.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Score.ToString(CultureInfo.CurrentCulture), textColor));
                         items.Add(new XNAListBoxItem(
                             Conversions.BooleanToString(ps.Won, BooleanStringStyle.YESNO), textColor));
                     }
@@ -651,7 +653,7 @@ namespace DTAClient.DXGUI.Generic
                         ? mapLoader.TranslatedMapNames[ms.MapName]
                         : ms.MapName,
                     ms.GameMode.L10N($"INI:GameModes:{ms.GameMode}:UIName"),
-                    ms.AverageFPS == 0 ? "-" : ms.AverageFPS.ToString(),
+                    ms.AverageFPS == 0 ? "-" : ms.AverageFPS.ToString(CultureInfo.CurrentCulture),
                     Renderer.GetSafeString(TimeSpan.FromSeconds(ms.LengthInSeconds).ToString(), lbGameList.FontIndex),
                     Conversions.BooleanToString(ms.SawCompletion, BooleanStringStyle.YESNO),
                 ];
@@ -809,7 +811,7 @@ namespace DTAClient.DXGUI.Generic
                 // "All" doesn't have a tag but that doesn't matter since 0 is not checked
                 var gameMode = (string)cmbGameModeFilter.Items[cmbGameModeFilter.SelectedIndex].Tag;
 
-                if (ms.GameMode != gameMode)
+                if (!string.Equals(ms.GameMode, gameMode, StringComparison.OrdinalIgnoreCase))
                     return;
             }
 
@@ -904,14 +906,14 @@ namespace DTAClient.DXGUI.Generic
                 }
             }
 
-            lblGamesStartedValue.Text = gamesStarted.ToString();
-            lblGamesFinishedValue.Text = gamesFinished.ToString();
-            lblWinsValue.Text = wins.ToString();
-            lblLossesValue.Text = gameLosses.ToString();
+            lblGamesStartedValue.Text = gamesStarted.ToString(CultureInfo.CurrentCulture);
+            lblGamesFinishedValue.Text = gamesFinished.ToString(CultureInfo.CurrentCulture);
+            lblWinsValue.Text = wins.ToString(CultureInfo.CurrentCulture);
+            lblLossesValue.Text = gameLosses.ToString(CultureInfo.CurrentCulture);
 
             if (gameLosses > 0)
             {
-                lblWinLossRatioValue.Text = Math.Round(wins / (double)gameLosses, 2).ToString();
+                lblWinLossRatioValue.Text = Math.Round(wins / (double)gameLosses, 2).ToString(CultureInfo.CurrentCulture);
             }
             else
                 lblWinLossRatioValue.Text = "-";
@@ -925,11 +927,11 @@ namespace DTAClient.DXGUI.Generic
 
             if (gamesPlayed > 0)
             {
-                lblAverageEnemyCountValue.Text = Math.Round(numEnemies / (double)gamesPlayed, 2).ToString();
-                lblAverageAllyCountValue.Text = Math.Round(numAllies / (double)gamesPlayed, 2).ToString();
-                lblKillsPerGameValue.Text = (totalKills / gamesPlayed).ToString();
-                lblLossesPerGameValue.Text = (totalLosses / gamesPlayed).ToString();
-                lblAverageEconomyValue.Text = (totalEconomy / gamesPlayed).ToString();
+                lblAverageEnemyCountValue.Text = Math.Round(numEnemies / (double)gamesPlayed, 2).ToString(CultureInfo.CurrentCulture);
+                lblAverageAllyCountValue.Text = Math.Round(numAllies / (double)gamesPlayed, 2).ToString(CultureInfo.CurrentCulture);
+                lblKillsPerGameValue.Text = (totalKills / gamesPlayed).ToString(CultureInfo.CurrentCulture);
+                lblLossesPerGameValue.Text = (totalLosses / gamesPlayed).ToString(CultureInfo.CurrentCulture);
+                lblAverageEconomyValue.Text = (totalEconomy / gamesPlayed).ToString(CultureInfo.CurrentCulture);
             }
             else
             {
@@ -942,15 +944,15 @@ namespace DTAClient.DXGUI.Generic
 
             if (totalLosses > 0)
             {
-                lblKillLossRatioValue.Text = Math.Round(totalKills / (double)totalLosses, 2).ToString();
+                lblKillLossRatioValue.Text = Math.Round(totalKills / (double)totalLosses, 2).ToString(CultureInfo.CurrentCulture);
             }
             else
                 lblKillLossRatioValue.Text = "-";
 
             lblTotalTimePlayedValue.Text = TimeSpanToString(timePlayed);
-            lblTotalKillsValue.Text = totalKills.ToString();
-            lblTotalLossesValue.Text = totalLosses.ToString();
-            lblTotalScoreValue.Text = totalScore.ToString();
+            lblTotalKillsValue.Text = totalKills.ToString(CultureInfo.CurrentCulture);
+            lblTotalLossesValue.Text = totalLosses.ToString(CultureInfo.CurrentCulture);
+            lblTotalScoreValue.Text = totalScore.ToString(CultureInfo.CurrentCulture);
             lblFavouriteSideValue.Text = sides[GetHighestIndex(sideGameCounts)].UIName;
 
             if (numEasyAIs >= numMediumAIs && numEasyAIs >= numHardAIs)

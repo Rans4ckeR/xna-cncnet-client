@@ -133,7 +133,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void UpdatePlayerBasedButtons()
         {
             var ircUser = GetIrcUser();
-            var isOnline = ircUser != null && connectionManager.UserList.Any(u => u.Name == ircUser.Name);
+            var isOnline = ircUser != null && connectionManager.UserList.Any(u => string.Equals(u.Name, ircUser.Name, StringComparison.OrdinalIgnoreCase));
             var isAdmin = contextMenuData.ChannelUser?.IsAdmin ?? false;
 
             toggleFriendItem.Visible = ircUser != null;
@@ -216,10 +216,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return contextMenuData.ChannelUser.IRCUser;
 
             if (!string.IsNullOrEmpty(contextMenuData.PlayerName))
-                return connectionManager.UserList.Find(u => u.Name == contextMenuData.PlayerName);
+                return connectionManager.UserList.Find(u => string.Equals(u.Name, contextMenuData.PlayerName, StringComparison.OrdinalIgnoreCase));
 
             if (!string.IsNullOrEmpty(contextMenuData.ChatMessage?.SenderName))
-                return connectionManager.UserList.Find(u => u.Name == contextMenuData.ChatMessage.SenderName);
+                return connectionManager.UserList.Find(u => string.Equals(u.Name, contextMenuData.ChatMessage.SenderName, StringComparison.OrdinalIgnoreCase));
 
             return null;
         }

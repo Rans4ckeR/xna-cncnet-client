@@ -14,13 +14,13 @@ namespace ClientGUI
 
         protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
         {
-            if (key == "URL")
+            if (string.Equals(key, "URL", StringComparison.OrdinalIgnoreCase))
             {
                 URL = value;
                 return;
             }
 
-            if (key == "UnixURL")
+            if (string.Equals(key, "UnixURL", StringComparison.OrdinalIgnoreCase))
             {
                 UnixURL = value;
                 return;

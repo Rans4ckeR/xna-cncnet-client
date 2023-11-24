@@ -76,7 +76,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 tunnel.Country = parts[1];
                 tunnel.CountryCode = parts[2];
                 tunnel.Name = parts[3];
-                tunnel.RequiresPassword = parts[4] != "0";
+                tunnel.RequiresPassword = !string.Equals(parts[4], "0", StringComparison.OrdinalIgnoreCase);
                 tunnel.Clients = int.Parse(parts[5], CultureInfo.InvariantCulture);
                 tunnel.MaxClients = int.Parse(parts[6], CultureInfo.InvariantCulture);
 

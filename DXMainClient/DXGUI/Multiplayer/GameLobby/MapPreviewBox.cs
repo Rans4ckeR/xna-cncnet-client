@@ -15,6 +15,8 @@ using ClientGUI;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     struct ExtraMapPreviewTexture
     {
         public Texture2D Texture;
@@ -77,7 +79,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 indicator.AngularVelocity = angularVelocity;
                 indicator.HoverRemapColor = hoverRemapColor;
                 indicator.ReversedAngularVelocity = reservedAngularVelocity;
-                indicator.WaypointTexture = AssetLoader.LoadTexture(string.Format("slocindicator{0}.png", i + 1));
+                indicator.WaypointTexture = AssetLoader.LoadTexture(string.Format(CultureInfo.InvariantCulture, "slocindicator{0}.png", i + 1));
                 indicator.Tag = i;
                 indicator.LeftClick += Indicator_LeftClick;
                 indicator.RightClick += Indicator_RightClick;
@@ -353,7 +355,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (!EnableContextMenu)
             {
-                PlayerInfo pInfo = players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+                PlayerInfo pInfo = players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
                 if (pInfo.StartingLocation == (int)indicator.Tag + 1)
                 {

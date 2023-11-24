@@ -87,9 +87,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
             await TaskExtensions.WhenAllSafe(Tunnels.Select(q => PingListTunnelAsync(q, cancellationToken))).ConfigureAwait(false);
 
-            if (CurrentTunnel != null)
+            CnCNetTunnel currentTunnel = CurrentTunnel;
+
+            if (currentTunnel != null)
             {
-                CnCNetTunnel updatedTunnel = Tunnels.Find(t => t.Hash.Equals(CurrentTunnel.Hash, StringComparison.OrdinalIgnoreCase));
+                CnCNetTunnel updatedTunnel = Tunnels.Find(t => t.Hash.Equals(currentTunnel.Hash, StringComparison.OrdinalIgnoreCase));
 
                 if (updatedTunnel != null)
                 {
@@ -120,12 +122,15 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
         private async ValueTask PingCurrentTunnelAsync(bool checkTunnelList, CancellationToken cancellationToken)
         {
-            await CurrentTunnel.UpdatePingAsync(cancellationToken).ConfigureAwait(false);
+            CnCNetTunnel currentTunnel = CurrentTunnel;
+
+            await currentTunnel.UpdatePingAsync(cancellationToken).ConfigureAwait(false);
+
             DoCurrentTunnelPinged();
 
             if (checkTunnelList)
             {
-                int tunnelIndex = Tunnels.FindIndex(t => t.Hash.Equals(CurrentTunnel.Hash, StringComparison.OrdinalIgnoreCase));
+                int tunnelIndex = Tunnels.FindIndex(t => t.Hash.Equals(currentTunnel.Hash, StringComparison.OrdinalIgnoreCase));
 
                 if (tunnelIndex > -1)
                     DoTunnelPinged(tunnelIndex);

@@ -9,6 +9,8 @@ using ClientCore.Extensions;
 
 namespace DTAClient.Online
 {
+    using System.Globalization;
+
     internal sealed class Channel : IMessageView
     {
         const int MESSAGE_LIMIT = 1024;
@@ -85,7 +87,7 @@ namespace DTAClient.Online
                 _topic = value;
                 if (Persistent)
                     AddMessage(new ChatMessage(
-                        string.Format("Topic for {0} is: {1}".L10N("Client:Main:ChannelTopic"), UIName, _topic)));
+                        string.Format(CultureInfo.CurrentCulture, "Topic for {0} is: {1}".L10N("Client:Main:ChannelTopic"), UIName, _topic)));
             }
         }
 
@@ -116,18 +118,19 @@ namespace DTAClient.Online
 
         public async ValueTask OnUserJoinedAsync(ChannelUser user)
         {
-            await Task.CompletedTask.ConfigureAwait(false);
             AddUser(user);
 
             if (notifyOnUserListChange)
             {
                 AddMessage(new ChatMessage(
-                    string.Format("{0} has joined {1}.".L10N("Client:Main:PlayerJoinChannel"), user.IRCUser.Name, UIName)));
+                    string.Format(CultureInfo.CurrentCulture, "{0} has joined {1}.".L10N("Client:Main:PlayerJoinChannel"), user.IRCUser.Name, UIName)));
             }
 
 #if !YR
-            if (Persistent && IsChatChannel && user.IRCUser.Name == ProgramConstants.PLAYERNAME)
+            if (Persistent && IsChatChannel && string.Equals(user.IRCUser.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 await RequestUserInfoAsync().ConfigureAwait(false);
+#else
+            await Task.CompletedTask.ConfigureAwait(false);
 #endif
         }
 
@@ -159,13 +162,13 @@ namespace DTAClient.Online
         {
             if (users.Remove(userName))
             {
-                if (userName == ProgramConstants.PLAYERNAME)
+                if (string.Equals(userName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 {
                     users.Clear();
                 }
 
                 AddMessage(new ChatMessage(
-                    string.Format("{0} has been kicked from {1}.".L10N("Client:Main:PlayerKickedFromChannel"), userName, UIName)));
+                    string.Format(CultureInfo.CurrentCulture, "{0} has been kicked from {1}.".L10N("Client:Main:PlayerKickedFromChannel"), userName, UIName)));
 
                 UserKicked?.Invoke(this, new UserNameEventArgs(userName));
             }
@@ -178,7 +181,7 @@ namespace DTAClient.Online
                 if (notifyOnUserListChange)
                 {
                     AddMessage(new ChatMessage(
-                         string.Format("{0} has left from {1}.".L10N("Client:Main:PlayerLeftFromChannel"), userName, UIName)));
+                         string.Format(CultureInfo.CurrentCulture, "{0} has left from {1}.".L10N("Client:Main:PlayerLeftFromChannel"), userName, UIName)));
                 }
 
                 UserLeft?.Invoke(this, new UserNameEventArgs(userName));
@@ -192,7 +195,7 @@ namespace DTAClient.Online
                 if (notifyOnUserListChange)
                 {
                     AddMessage(new ChatMessage(
-                        string.Format("{0} has quit from CnCNet.".L10N("Client:Main:PlayerQuitCncNet"), userName)));
+                        string.Format(CultureInfo.CurrentCulture, "{0} has quit from CnCNet.".L10N("Client:Main:PlayerQuitCncNet"), userName)));
                 }
 
                 UserQuitIRC?.Invoke(this, new UserNameEventArgs(userName));
@@ -261,7 +264,7 @@ namespace DTAClient.Online
         {
             AddMessage(new ChatMessage(ProgramConstants.PLAYERNAME, color.XnaColor, DateTime.Now, message));
 
-            string colorString = (char)03 + color.IrcColorId.ToString("D2");
+            string colorString = (char)03 + color.IrcColorId.ToString("D2", CultureInfo.InvariantCulture);
 
             return connection.QueueMessageAsync(QueuedMessageType.CHAT_MESSAGE, 0,
                 IRCCommands.PRIVMSG + " " + ChannelName + " :" + colorString + message);

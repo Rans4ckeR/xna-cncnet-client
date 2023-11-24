@@ -48,7 +48,7 @@ namespace ClientGUI
 
         private XNAControl GetControl(string controlName)
         {
-            if (controlName == primaryControl.Name)
+            if (string.Equals(controlName, primaryControl.Name, StringComparison.OrdinalIgnoreCase))
                 return primaryControl;
 
             var control = Find(primaryControl.Children, controlName);
@@ -62,7 +62,7 @@ namespace ClientGUI
         {
             foreach (XNAControl child in list)
             {
-                if (child.Name == controlName)
+                if (string.Equals(child.Name, controlName, StringComparison.OrdinalIgnoreCase))
                     return child;
 
                 XNAControl childOfChild = Find(child.Children, controlName);
@@ -234,14 +234,14 @@ namespace ClientGUI
             SkipWhitespace();
             ConsumeChar(')');
 
-            if (paramName == "$ParentControl")
+            if (string.Equals(paramName, "$ParentControl", StringComparison.OrdinalIgnoreCase))
             {
                 if (parsingControl.Parent == null)
                     throw new INIConfigException("$ParentControl used for control that has no parent: " + parsingControl.Name);
 
                 paramName = parsingControl.Parent.Name;
             }
-            else if (paramName == "$Self")
+            else if (string.Equals(paramName, "$Self", StringComparison.OrdinalIgnoreCase))
             {
                 paramName = parsingControl.Name;
             }

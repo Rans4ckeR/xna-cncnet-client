@@ -18,6 +18,8 @@ using SixLabors.ImageSharp;
 
 namespace DTAClient.DXGUI
 {
+    using System.Globalization;
+
     /// <summary>
     /// Displays a dialog in the client when a game is in progress.
     /// Also enables power-saving (lowers FPS) while a game is in progress,
@@ -182,7 +184,7 @@ namespace DTAClient.DXGUI
             string snapshotDirectory = GetNewestDebugSnapshotDirectory();
             bool snapshotCreated = snapshotDirectory != null;
 
-            snapshotDirectory ??= SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "debug", FormattableString.Invariant($"snapshot-{dtn.ToString("yyyyMMdd-HHmmss")}"));
+            snapshotDirectory ??= SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "debug", FormattableString.Invariant($"snapshot-{dtn.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}"));
 
             bool debugLogModified = false;
             FileInfo debugLogFileInfo = SafePath.GetFile(ProgramConstants.GamePath, "debug", "debug.log");
@@ -239,7 +241,7 @@ namespace DTAClient.DXGUI
 
                     Logger.Log("The game crashed! Copying " + filename + " file.");
 
-                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
+                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture) : "";
 
                     string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
                         timeStamp + Path.GetExtension(filename);
@@ -282,7 +284,7 @@ namespace DTAClient.DXGUI
 
                         Logger.Log("There was a sync error! Copying file " + filename);
 
-                        string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
+                        string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture) : "";
 
                         string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
                             timeStamp + Path.GetExtension(filename);

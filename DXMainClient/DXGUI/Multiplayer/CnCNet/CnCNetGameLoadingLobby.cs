@@ -23,6 +23,8 @@ using System.Net.Sockets;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
+    using System.Globalization;
+
     /// <summary>
     /// A game lobby for loading saved CnCNet games.
     /// </summary>
@@ -222,8 +224,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     QueuedMessageType.SYSTEM_MESSAGE, 50)).ConfigureAwait(false);
 
                 await connectionManager.SendCustomMessageAsync(new QueuedMessage(
-                    string.Format(IRCCommands.TOPIC + " {0} :{1}", channel.ChannelName,
-                    tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLower()),
+                    string.Format(CultureInfo.InvariantCulture, IRCCommands.TOPIC + " {0} :{1}", channel.ChannelName,
+                    tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION + ";" + localGame.ToLowerInvariant()),
                     QueuedMessageType.SYSTEM_MESSAGE, 50)).ConfigureAwait(false);
 
                 gameFilesHash = await fhc.GetCompleteHashAsync().ConfigureAwait(false);
@@ -240,9 +242,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     CnCNetCommands.TUNNEL_PING + " " + tunnelHandler.CurrentTunnel.PingInMs, QueuedMessageType.SYSTEM_MESSAGE, 10).ConfigureAwait(false);
 
                 if (tunnelHandler.CurrentTunnel.PingInMs < 0)
-                    AddNotice(string.Format("{0} - unknown ping to tunnel server.".L10N("Client:Main:PlayerUnknownPing"), ProgramConstants.PLAYERNAME));
+                    AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - unknown ping to tunnel server.".L10N("Client:Main:PlayerUnknownPing"), ProgramConstants.PLAYERNAME));
                 else
-                    AddNotice(string.Format("{0} - ping to tunnel server: {1} ms".L10N("Client:Main:PlayerPing"), ProgramConstants.PLAYERNAME, tunnelHandler.CurrentTunnel.PingInMs));
+                    AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - ping to tunnel server: {1} ms".L10N("Client:Main:PlayerPing"), ProgramConstants.PLAYERNAME, tunnelHandler.CurrentTunnel.PingInMs));
             }
 
             topBar.AddPrimarySwitchable(this);
@@ -273,7 +275,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private ValueTask RemovePlayerAsync(string playerName)
         {
-            int index = Players.FindIndex(p => p.Name == playerName);
+            int index = Players.FindIndex(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
             if (index == -1)
                 return ValueTask.CompletedTask;
@@ -284,7 +286,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             CopyPlayerDataToUI();
 
-            if (!IsHost && playerName == hostName && !ProgramConstants.IsInGame)
+            if (!IsHost && string.Equals(playerName, hostName, StringComparison.OrdinalIgnoreCase) && !ProgramConstants.IsInGame)
             {
                 connectionManager.MainChannel.AddMessage(new ChatMessage(
                     Color.Yellow, "The game host left the game!".L10N("Client:Main:HostLeft")));
@@ -375,7 +377,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private ValueTask HandleGetReadyNotificationAsync(string sender)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return ValueTask.CompletedTask;
 
             return GetReadyNotificationAsync();
@@ -383,7 +385,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private ValueTask HandleNotAllPresentNotificationAsync(string sender)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return ValueTask.CompletedTask;
 
             return NotAllPresentNotificationAsync();
@@ -394,9 +396,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (!IsHost)
                 return ValueTask.CompletedTask;
 
-            if (fileHash != gameFilesHash)
+            if (!string.Equals(fileHash, gameFilesHash, StringComparison.OrdinalIgnoreCase))
             {
-                PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+                PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
                 if (pInfo == null)
                     return ValueTask.CompletedTask;
@@ -411,10 +413,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private ValueTask HandleCheaterNotificationAsync(string sender, string cheaterName)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return ValueTask.CompletedTask;
 
-            AddNotice(string.Format("{0} - modified files detected! They could be cheating!".L10N("Client:Main:PlayerCheating"), cheaterName), Color.Red);
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - modified files detected! They could be cheating!".L10N("Client:Main:PlayerCheating"), cheaterName), Color.Red);
 
             if (IsHost)
                 return channel.SendCTCPMessageAsync(CnCNetCommands.INVALID_FILE_HASH + " " + cheaterName, QueuedMessageType.SYSTEM_MESSAGE, 0);
@@ -425,9 +427,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void HandleTunnelPing(string sender, int pingInMs)
         {
             if (pingInMs < 0)
-                AddNotice(string.Format("{0} - unknown ping to tunnel server.".L10N("Client:Main:PlayerUnknownPing"), sender));
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - unknown ping to tunnel server.".L10N("Client:Main:PlayerUnknownPing"), sender));
             else
-                AddNotice(string.Format("{0} - ping to tunnel server: {1} ms".L10N("Client:Main:PlayerPing"), sender, pingInMs));
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - ping to tunnel server: {1} ms".L10N("Client:Main:PlayerPing"), sender, pingInMs));
         }
 
         /// <summary>
@@ -435,7 +437,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         /// </summary>
         private async ValueTask HandleOptionsMessageAsync(string sender, string data)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return;
 
             string[] parts = data.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
@@ -483,21 +485,21 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void HandleInvalidSaveIndexCommand(string sender)
         {
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return;
 
             pInfo.Ready = false;
 
-            AddNotice(string.Format("{0} does not have the selected saved game on their system! Try selecting an earlier saved game.".L10N("Client:Main:PlayerDontHaveSavedGame"), pInfo.Name));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} does not have the selected saved game on their system! Try selecting an earlier saved game.".L10N("Client:Main:PlayerDontHaveSavedGame"), pInfo.Name));
 
             CopyPlayerDataToUI();
         }
 
         private ValueTask HandleStartGameCommandAsync(string sender, string data)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return ValueTask.CompletedTask;
 
             string[] parts = data.Split(';');
@@ -516,12 +518,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 if (ipAndPortSplit.Length < 2)
                     return ValueTask.CompletedTask;
 
-                int port = 0;
-                bool success = int.TryParse(ipAndPortSplit[1], out port);
+                bool success = int.TryParse(ipAndPortSplit[1], out int port);
                 if (!success)
                     return ValueTask.CompletedTask;
 
-                PlayerInfo pInfo = Players.Find(p => p.Name == pName);
+                PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, pName, StringComparison.OrdinalIgnoreCase));
 
                 if (pInfo == null)
                     continue;
@@ -534,7 +535,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private ValueTask HandlePlayerReadyRequestAsync(string sender, int readyStatus)
         {
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return ValueTask.CompletedTask;
@@ -551,7 +552,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void HandleTunnelServerChangeMessage(string sender, string hash)
         {
-            if (sender != hostName)
+            if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return;
 
             CnCNetTunnel tunnel = tunnelHandler.Tunnels.Find(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase));
@@ -577,7 +578,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void HandleTunnelServerChange(CnCNetTunnel tunnel)
         {
             tunnelHandler.CurrentTunnel = tunnel;
-            AddNotice(string.Format("The game host has changed the tunnel server to: {0}".L10N("Client:Main:HostChangeTunnel"), tunnel.Name));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed the tunnel server to: {0}".L10N("Client:Main:HostChangeTunnel"), tunnel.Name));
         }
 
         #endregion
@@ -601,10 +602,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             {
                 Players[pId].Port = playerPorts[pId];
                 sb.Append(Players[pId].Name);
-                sb.Append(";");
-                sb.Append($"{IPAddress.Any}:");
+                sb.Append(';');
+                sb.Append(CultureInfo.InvariantCulture, $"{IPAddress.Any}:");
                 sb.Append(playerPorts[pId]);
-                sb.Append(";");
+                sb.Append(';');
             }
             sb.Remove(sb.Length - 1, 1);
             await channel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 9).ConfigureAwait(true);
@@ -647,38 +648,38 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ");
             sb.Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(ProgramConstants.GAME_VERSION);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(SGPlayers.Count);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(channel.ChannelName);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(channel.UIName);
-            sb.Append(";");
+            sb.Append(';');
             if (started || Players.Count == SGPlayers.Count)
-                sb.Append("1");
+                sb.Append('1');
             else
-                sb.Append("0");
-            sb.Append("0"); // IsCustomPassword
-            sb.Append("0"); // Closed
-            sb.Append("1"); // IsLoadedGame
-            sb.Append("0"); // IsLadder
-            sb.Append(";");
+                sb.Append('0');
+            sb.Append('0'); // IsCustomPassword
+            sb.Append('0'); // Closed
+            sb.Append('1'); // IsLoadedGame
+            sb.Append('0'); // IsLadder
+            sb.Append(';');
             foreach (SavedGamePlayer sgPlayer in SGPlayers)
             {
                 sb.Append(sgPlayer.Name);
-                sb.Append(",");
+                sb.Append(',');
             }
 
             sb.Remove(sb.Length - 1, 1);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append((string)lblMapNameValue.Tag);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append((string)lblGameModeValue.Tag);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? tunnelHandler.CurrentTunnel.IPAddresses.Single(q => q.AddressFamily is AddressFamily.InterNetwork) + ":" + tunnelHandler.CurrentTunnel.Port : tunnelHandler.CurrentTunnel?.Hash ?? ProgramConstants.CNCNET_DYNAMIC_TUNNELS);
-            sb.Append(";");
+            sb.Append(';');
             sb.Append(0); // LoadedGameId
 
             return broadcastChannel.SendCTCPMessageAsync(sb.ToString(), QueuedMessageType.SYSTEM_MESSAGE, 20);
@@ -691,7 +692,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (discordHandler == null)
                 return;
 
-            PlayerInfo player = Players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+            PlayerInfo player = Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
             if (player == null)
                 return;
             string currentState = ProgramConstants.IsInGame ? "In Game" : "In Lobby"; // not UI strings

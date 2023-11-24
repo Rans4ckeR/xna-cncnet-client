@@ -11,6 +11,8 @@ using ClientCore.Extensions;
 
 namespace ClientCore
 {
+    using System.Globalization;
+
     /// <summary>
     /// Contains various static variables and constants that the client uses for operation.
     /// </summary>
@@ -87,7 +89,7 @@ namespace ClientCore
             {
                 string oldPlayerName = PlayerName;
                 PlayerName = value;
-                if (oldPlayerName != PlayerName)
+                if (!string.Equals(oldPlayerName, PlayerName, StringComparison.OrdinalIgnoreCase))
                     PlayerNameChanged?.Invoke(null, EventArgs.Empty);
             }
         }
@@ -184,7 +186,7 @@ namespace ClientCore
         {
             LogExceptionRecursive(ex, "KABOOOOOOM!!! Info:");
 
-            string errorLogPath = SafePath.CombineFilePath(ClientUserFilesPath, "ClientCrashLogs", FormattableString.Invariant($"ClientCrashLog{DateTime.Now.ToString("_yyyy_MM_dd_HH_mm")}.txt"));
+            string errorLogPath = SafePath.CombineFilePath(ClientUserFilesPath, "ClientCrashLogs", FormattableString.Invariant($"ClientCrashLog{DateTime.Now.ToString("_yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture)}.txt"));
             bool crashLogCopied = false;
 
             try
@@ -201,7 +203,7 @@ namespace ClientCore
             {
             }
 
-            string error = string.Format("{0} has crashed. Error message:".L10N("Client:Main:FatalErrorText1") + Environment.NewLine + Environment.NewLine +
+            string error = string.Format(CultureInfo.CurrentCulture, "{0} has crashed. Error message:".L10N("Client:Main:FatalErrorText1") + Environment.NewLine + Environment.NewLine +
                 ex.Message + Environment.NewLine + Environment.NewLine + (crashLogCopied ?
                 "A crash log has been saved to the following file:".L10N("Client:Main:FatalErrorText2") + " " + Environment.NewLine + Environment.NewLine +
                 errorLogPath + Environment.NewLine + Environment.NewLine : string.Empty) +

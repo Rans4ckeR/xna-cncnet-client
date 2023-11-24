@@ -14,7 +14,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
 
         public override bool Handle(LANPlayerInfo pInfo, string message)
         {
-            if (message == CommandName)
+            if (string.Equals(message, CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 handler(pInfo);
                 return true;

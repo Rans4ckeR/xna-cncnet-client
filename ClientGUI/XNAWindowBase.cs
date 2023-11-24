@@ -6,6 +6,8 @@ using System.Linq;
 
 namespace ClientGUI
 {
+    using System;
+
     public class XNAWindowBase : XNAPanel
     {
         public XNAWindowBase(WindowManager windowManager) : base(windowManager)
@@ -31,7 +33,7 @@ namespace ClientGUI
                 if (parts.Length != 2)
                     throw new ClientConfigurationException("Invalid ExtraControl specified in " + Name + ": " + kvp.Value);
 
-                if (!Children.Any(child => child.Name == parts[0]))
+                if (Children.All(child => !string.Equals(child.Name, parts[0], StringComparison.OrdinalIgnoreCase)))
                 {
                     XNAControl control = ClientGUICreator.GetXnaControl(parts[1]);
                     control.Name = parts[0];

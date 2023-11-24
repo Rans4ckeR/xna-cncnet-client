@@ -9,6 +9,8 @@ using ClientUpdater;
 
 namespace DTAConfig.OptionPanels
 {
+    using System.Globalization;
+
     class UpdaterOptionsPanel : XNAOptionsPanel
     {
         public UpdaterOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
@@ -160,7 +162,7 @@ namespace DTAConfig.OptionPanels
 
             foreach (UpdateMirror um in Updater.UpdateMirrors)
             {
-                IniSettings.SettingsIni.SetStringValue("DownloadMirrors", id.ToString(), um.Name);
+                IniSettings.SettingsIni.SetStringValue("DownloadMirrors", id.ToString(CultureInfo.InvariantCulture), um.Name);
                 id++;
             }
 

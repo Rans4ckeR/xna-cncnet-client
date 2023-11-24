@@ -7,6 +7,8 @@ using System.Collections.Generic;
 
 namespace DTAClient.Domain.Multiplayer
 {
+    using System.Globalization;
+
     /// <summary>
     /// A color for the multiplayer game lobby.
     /// </summary>
@@ -29,10 +31,10 @@ namespace DTAClient.Domain.Multiplayer
             return new MultiplayerColor()
             {
                 Name = name,
-                XnaColor = new Color(Math.Min(255, Int32.Parse(data[0])),
-                Math.Min(255, Int32.Parse(data[1])),
-                Math.Min(255, Int32.Parse(data[2])), 255),
-                GameColorIndex = Int32.Parse(data[3])
+                XnaColor = new Color(Math.Min(255, Int32.Parse(data[0], CultureInfo.InvariantCulture)),
+                Math.Min(255, Int32.Parse(data[1], CultureInfo.InvariantCulture)),
+                Math.Min(255, Int32.Parse(data[2], CultureInfo.InvariantCulture)), 255),
+                GameColorIndex = Int32.Parse(data[3], CultureInfo.InvariantCulture)
             };
         }
 

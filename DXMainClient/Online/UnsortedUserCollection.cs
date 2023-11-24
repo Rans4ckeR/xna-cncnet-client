@@ -16,7 +16,7 @@ namespace DTAClient.Online
 
         public void Add(string username, T item)
         {
-            dictionary.Add(username.ToLower(), item);
+            dictionary.Add(username.ToUpperInvariant(), item);
         }
 
         public void Clear()
@@ -36,7 +36,7 @@ namespace DTAClient.Online
 
         public T Find(string username)
         {
-            if (dictionary.TryGetValue(username.ToLower(), out T value))
+            if (dictionary.TryGetValue(username.ToUpperInvariant(), out T value))
                 return value;
 
             return default(T);
@@ -54,7 +54,7 @@ namespace DTAClient.Online
 
         public bool Remove(string username)
         {
-            return dictionary.Remove(username.ToLower());
+            return dictionary.Remove(username.ToUpperInvariant());
         }
     }
 }

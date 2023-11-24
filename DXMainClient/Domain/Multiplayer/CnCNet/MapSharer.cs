@@ -56,7 +56,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 MapUploadQueue.Add(map);
 
                 if (MapUploadQueue.Count == 1)
-                    UploadAsync(map, myGame.ToLower()).HandleTask();
+                    UploadAsync(map, myGame).HandleTask();
             }
         }
 
@@ -113,11 +113,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     };
                 var values = new NameValueCollection
                     {
-                        { "game", gameName.ToLower() }
+                        { "game", gameName }
                     };
                 string response = await UploadFilesAsync(files, values).ConfigureAwait(false);
 
-                if (!response.Contains("Upload succeeded!"))
+                if (!response.Contains("Upload succeeded!", StringComparison.OrdinalIgnoreCase))
                     return (response, false);
 
                 Logger.Log("MapSharer: Upload response: " + response);
@@ -176,7 +176,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         {
             lock (locker)
             {
-                if (MapDownloadQueue.Contains(sha1))
+                if (MapDownloadQueue.Contains(sha1, StringComparer.OrdinalIgnoreCase))
                 {
                     Logger.Log("MapSharer: Map " + sha1 + " already exists in the download queue.");
                     return;
@@ -185,7 +185,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 MapDownloadQueue.Add(sha1);
 
                 if (MapDownloadQueue.Count == 1)
-                    DownloadAsync(sha1, myGame.ToLower(), mapName).HandleTask();
+                    DownloadAsync(sha1, myGame, mapName).HandleTask();
             }
         }
 

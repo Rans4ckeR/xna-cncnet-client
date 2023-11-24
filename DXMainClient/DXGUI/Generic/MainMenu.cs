@@ -26,6 +26,8 @@ using DTAClient.Domain.Multiplayer;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// The main menu of the client.
     /// </summary>
@@ -472,7 +474,7 @@ namespace DTAClient.DXGUI.Generic
 
                 firstRunMessageBox = XNAMessageBox.ShowYesNoDialog(WindowManager,
                     "Initial Installation".L10N("Client:Main:InitialInstallationTitle"),
-                    string.Format(("You have just installed {0}.\n" +
+                    string.Format(CultureInfo.CurrentCulture, ("You have just installed {0}.\n" +
                         "It's highly recommended that you configure your settings before playing.\n" +
                         "Do you want to configure them now?").L10N("Client:Main:InitialInstallationText"),
                     ClientConfiguration.Instance.LocalGame));
@@ -517,26 +519,32 @@ namespace DTAClient.DXGUI.Generic
                 if (e.PlayerCount == -1)
                     lblCnCNetPlayerCount.Text = "N/A".L10N("Client:Main:N/A");
                 else
-                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString();
+                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString(CultureInfo.CurrentCulture);
             }
         }
 
         /// <summary>
         /// Attempts to "clean" the client session in a nice way if the user closes the game.
         /// </summary>
-        private ValueTask CleanAsync()
+        private async ValueTask CleanAsync()
         {
             Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
 
-            if (cncnetPlayerCountCancellationSource != null) cncnetPlayerCountCancellationSource.Cancel();
-            topBar.Clean();
+#if NET8_0_OR_GREATER
+            if (cncnetPlayerCountCancellationSource is not null)
+                await cncnetPlayerCountCancellationSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+
+            await topBar.CleanAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+            cncnetPlayerCountCancellationSource?.Cancel();
+            await topBar.CleanAsync().ConfigureAwait(false);
+#endif
+
             if (UpdateInProgress)
                 Updater.StopUpdate();
 
             if (connectionManager.IsConnected)
-                return connectionManager.DisconnectAsync();
-
-            return ValueTask.CompletedTask;
+                await connectionManager.DisconnectAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -635,7 +643,7 @@ namespace DTAClient.DXGUI.Generic
 
             innerPanel.Show(null); // Darkening
             XNAMessageBox msgBox = new XNAMessageBox(WindowManager, "Update failed".L10N("Client:Main:UpdateFailedTitle"),
-                string.Format(("An error occured while updating. Returned error was: {0}\n\nIf you are connected to the Internet and your firewall isn't blocking\n{1}, and the issue is reproducible, contact us at\n{2} for support.").L10N("Client:Main:UpdateFailedText"),
+                string.Format(CultureInfo.CurrentCulture, "An error occured while updating. Returned error was: {0}\n\nIf you are connected to the Internet and your firewall isn't blocking\n{1}, and the issue is reproducible, contact us at\n{2} for support.".L10N("Client:Main:UpdateFailedText"),
                 e.Reason, Path.GetFileName(ProgramConstants.StartupExecutable), ProgramConstants.SUPPORT_URL_SHORT), XNAMessageBoxButtons.OK);
             msgBox.OKClickedAction = MsgBox_OKClicked;
             msgBox.Show();
@@ -658,7 +666,7 @@ namespace DTAClient.DXGUI.Generic
         private void UpdateWindow_UpdateCompleted(object sender, EventArgs e)
         {
             innerPanel.Hide();
-            lblUpdateStatus.Text = string.Format("{0} was succesfully updated to v.{1}".L10N("Client:Main:UpdateSuccess"),
+            lblUpdateStatus.Text = string.Format(CultureInfo.CurrentCulture, "{0} was succesfully updated to v.{1}".L10N("Client:Main:UpdateSuccess"),
                 ProgramConstants.GAME_NAME_SHORT, Updater.GameVersion);
             lblVersion.Text = Updater.GameVersion;
             UpdateInProgress = false;
@@ -723,7 +731,7 @@ namespace DTAClient.DXGUI.Generic
 
             if (Updater.VersionState == VersionState.UPTODATE)
             {
-                lblUpdateStatus.Text = string.Format("{0} is up to date.".L10N("Client:Main:GameUpToDate"), ProgramConstants.GAME_NAME_SHORT);
+                lblUpdateStatus.Text = string.Format(CultureInfo.CurrentCulture, "{0} is up to date.".L10N("Client:Main:GameUpToDate"), ProgramConstants.GAME_NAME_SHORT);
                 lblUpdateStatus.Enabled = true;
                 lblUpdateStatus.DrawUnderline = false;
             }

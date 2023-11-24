@@ -6,6 +6,8 @@ using System.Collections.Generic;
 
 namespace DTAClient.Domain.Multiplayer
 {
+    using System.Globalization;
+
     /// <summary>
     /// A multiplayer game mode.
     /// </summary>
@@ -98,7 +100,7 @@ namespace DTAClient.Domain.Multiplayer
                 .Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (string sideIndex in disallowedSides)
-                DisallowedPlayerSides.Add(int.Parse(sideIndex));
+                DisallowedPlayerSides.Add(int.Parse(sideIndex, CultureInfo.InvariantCulture));
 
             ParseForcedOptions(forcedOptionsIni);
 
@@ -119,8 +121,7 @@ namespace DTAClient.Domain.Multiplayer
             {
                 string value = forcedOptionsIni.GetStringValue(forcedOptionsSection, key, string.Empty);
 
-                int intValue = 0;
-                if (int.TryParse(value, out intValue))
+                if (int.TryParse(value, out int intValue))
                 {
                     ForcedDropDownValues.Add(new KeyValuePair<string, int>(key, intValue));
                 }

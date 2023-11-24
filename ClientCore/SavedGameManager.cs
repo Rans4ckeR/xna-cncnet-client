@@ -6,6 +6,8 @@ using Rampastring.Tools;
 
 namespace ClientCore
 {
+    using System.Globalization;
+
     /// <summary>
     /// A class for handling saved multiplayer games.
     /// </summary>
@@ -22,7 +24,7 @@ namespace ClientCore
 
             for (int i = 0; i < 1000; i++)
             {
-                if (!SafePath.GetFile(saveGameDirectory, string.Format("SVGM_{0}.NET", i.ToString("D3"))).Exists)
+                if (!SafePath.GetFile(saveGameDirectory, string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", i.ToString("D3", CultureInfo.InvariantCulture))).Exists)
                 {
                     return i;
                 }
@@ -41,11 +43,11 @@ namespace ClientCore
 
             for (int i = 0; i < saveGameCount; i++)
             {
-                FileInfo sgFile = SafePath.GetFile(saveGameDirectory, string.Format("SVGM_{0}.NET", i.ToString("D3")));
+                FileInfo sgFile = SafePath.GetFile(saveGameDirectory, string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", i.ToString("D3", CultureInfo.InvariantCulture)));
 
                 DateTime dt = sgFile.LastWriteTime;
 
-                timestamps.Add(dt.ToString());
+                timestamps.Add(dt.ToString(CultureInfo.InvariantCulture));
             }
 
             return timestamps;
@@ -113,7 +115,7 @@ namespace ClientCore
 
             for (int i = 0; i < 1000; i++)
             {
-                if (!SafePath.GetFile(saveGameDirectory, string.Format("SVGM_{0}.NET", i.ToString("D3"))).Exists)
+                if (!SafePath.GetFile(saveGameDirectory, string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", i.ToString("D3", CultureInfo.InvariantCulture))).Exists)
                 {
                     saveGameId = i;
                     break;
@@ -126,7 +128,7 @@ namespace ClientCore
                     Logger.Log("1000 saved games exceeded! Overwriting previous MP save.");
             }
 
-            string sgPath = SafePath.CombineFilePath(saveGameDirectory, string.Format("SVGM_{0}.NET", saveGameId.ToString("D3")));
+            string sgPath = SafePath.CombineFilePath(saveGameDirectory, string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", saveGameId.ToString("D3", CultureInfo.InvariantCulture)));
 
             int tryCount = 0;
 
@@ -166,7 +168,7 @@ namespace ClientCore
             {
                 for (int i = 0; i < 1000; i++)
                 {
-                    SafePath.DeleteFileIfExists(GetSaveGameDirectoryPath(), string.Format("SVGM_{0}.NET", i.ToString("D3")));
+                    SafePath.DeleteFileIfExists(GetSaveGameDirectoryPath(), string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", i.ToString("D3", CultureInfo.InvariantCulture)));
                 }
             }
             catch (Exception ex)

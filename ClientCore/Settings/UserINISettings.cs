@@ -8,6 +8,8 @@ using ClientCore.Extensions;
 
 namespace ClientCore
 {
+    using System.Globalization;
+
     public class UserINISettings
     {
         private static UserINISettings _instance;
@@ -360,7 +362,7 @@ namespace ClientCore
             var favoriteMapsSection = SettingsIni.GetOrAddSection(FAVORITE_MAPS);
             favoriteMapsSection.RemoveAllKeys();
             for (int i = 0; i < FavoriteMaps.Count; i++)
-                favoriteMapsSection.AddKey(i.ToString(), FavoriteMaps[i]);
+                favoriteMapsSection.AddKey(i.ToString(CultureInfo.InvariantCulture), FavoriteMaps[i]);
 
             SaveSettings();
         }
@@ -425,7 +427,7 @@ namespace ClientCore
         private bool LoadLegacyFavoriteMaps(IniFile iniFile)
         {
             var legacyFavoriteMaps = new StringListSetting(iniFile, OPTIONS, FAVORITE_MAPS, []);
-            if (!legacyFavoriteMaps.Value?.Any() ?? true)
+            if (legacyFavoriteMaps.Value?.Count is 0 or null)
                 return false;
 
             foreach (string favoriteMapKey in legacyFavoriteMaps.Value)

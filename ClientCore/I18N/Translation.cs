@@ -56,7 +56,7 @@ public class Translation : ICloneable
     // public bool IsRightToLeft { get; set; } // TODO
 
     /// <summary>Contains all keys within <see cref="Values"/> with missing translations.</summary>
-    private readonly HashSet<string> MissingKeys = [];
+    private readonly HashSet<string> MissingKeys = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Used to write missing translation table entries to a file.</summary>
     public const string MISSING_KEY_PREFIX = "; ";  // a hack but hey it works
@@ -287,8 +287,8 @@ public class Translation : ICloneable
     /// <returns>The translated value or a default value.</returns>
     public string LookUp(string key, string defaultValue, bool notify = true)
     {
-        if (Values.ContainsKey(key))
-            return Values[key];
+        if (Values.TryGetValue(key, out string value))
+            return value;
 
         if (notify)
             _ = HandleMissing(key, defaultValue);
@@ -309,22 +309,16 @@ public class Translation : ICloneable
         string key = $"{INI_PREFIX}:{CONTROLS_PREFIX}:{control.Parent?.Name ?? GLOBAL_PREFIX}:{control.Name}:{attributeName}";
         string globalKey = $"{INI_PREFIX}:{CONTROLS_PREFIX}:{GLOBAL_PREFIX}:{control.Name}:{attributeName}";
 
-        string result;
-        if (Values.ContainsKey(key))
-        {
-            result = Values[key];
-        }
-        else if (key != globalKey && Values.ContainsKey(globalKey))
-        {
-            result = Values[globalKey];
-        }
-        else
-        {
-            result = defaultValue;
+        if (Values.TryGetValue(key, out string result))
+            return result;
 
-            if (notify)
-                _ = HandleMissing(key, defaultValue);
-        }
+        if (!string.Equals(key, globalKey, StringComparison.OrdinalIgnoreCase) && Values.TryGetValue(globalKey, out result))
+            return result;
+
+        result = defaultValue;
+
+        if (notify)
+            _ = HandleMissing(key, defaultValue);
 
         return result;
     }

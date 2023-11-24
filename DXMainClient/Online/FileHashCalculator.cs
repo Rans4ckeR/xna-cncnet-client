@@ -217,7 +217,7 @@ namespace DTAClient.Online
             foreach (string key in keys)
             {
                 string value = config.GetStringValue("FilenameList", key, string.Empty);
-                filenames.Add(value == string.Empty ? key : value);
+                filenames.Add(string.IsNullOrWhiteSpace(value) ? key : value);
             }
 
             fileNamesToCheck = filenames.ToArray();

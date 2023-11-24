@@ -30,12 +30,12 @@ namespace DTAClient.Domain.LAN
                 return false;
             }
 
-            if (parameters[0] != ProgramConstants.LAN_PROTOCOL_REVISION)
+            if (!string.Equals(parameters[0], ProgramConstants.LAN_PROTOCOL_REVISION, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             GameVersion = parameters[1];
-            Incompatible = GameVersion != ProgramConstants.GAME_VERSION;
-            Game = gc.GameList.Find(g => g.InternalName.ToUpperInvariant() == parameters[2]);
+            Incompatible = !string.Equals(GameVersion, ProgramConstants.GAME_VERSION, StringComparison.OrdinalIgnoreCase);
+            Game = gc.GameList.Find(g => g.InternalName.Equals(parameters[2], StringComparison.OrdinalIgnoreCase));
             Map = parameters[3];
             GameMode = parameters[4];
             LoadedGameID = parameters[5];

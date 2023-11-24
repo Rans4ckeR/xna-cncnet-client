@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// A window for loading saved singleplayer games.
     /// </summary>
@@ -153,12 +155,12 @@ namespace DTAClient.DXGUI.Generic
         {
             SavedGame sg = savedGames[lbSaveGameList.SelectedIndex];
             var msgBox = new XNAMessageBox(WindowManager, "Delete Confirmation".L10N("Client:Main:DeleteConfirmationTitle"),
-                string.Format(("The following saved game will be deleted permanently:\n\n" +
+                string.Format(CultureInfo.CurrentCulture, ("The following saved game will be deleted permanently:\n\n" +
                     "Filename: {0}\n" +
                     "Saved game name: {1}\n" +
                     "Date and time: {2}\n\n" +
                     "Are you sure you want to proceed?").L10N("Client:Main:DeleteConfirmationText"),
-                    sg.FileName, Renderer.GetSafeString(sg.GUIName, lbSaveGameList.FontIndex), sg.LastModified.ToString()),
+                    sg.FileName, Renderer.GetSafeString(sg.GUIName, lbSaveGameList.FontIndex), sg.LastModified.ToString(CultureInfo.CurrentCulture)),
                 XNAMessageBoxButtons.YesNo);
             msgBox.Show();
             msgBox.YesClickedAction = DeleteMsgBox_YesClicked;
@@ -212,7 +214,7 @@ namespace DTAClient.DXGUI.Generic
             {
                 string[] item = new string[] {
                     Renderer.GetSafeString(sg.GUIName, lbSaveGameList.FontIndex),
-                    sg.LastModified.ToString() };
+                    sg.LastModified.ToString(CultureInfo.CurrentCulture) };
                 lbSaveGameList.AddItem(item, true);
             }
         }

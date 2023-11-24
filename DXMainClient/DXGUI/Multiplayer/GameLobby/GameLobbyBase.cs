@@ -22,6 +22,8 @@ using TextCopy;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     /// <summary>
     /// A generic base for all game lobbies (Skirmish, LAN and CnCNet).
     /// Contains the common logic for parsing game options and handling player info.
@@ -242,7 +244,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 selectAction: () => ClipboardService.SetText(Map?.Name));
             mapContextMenu.AddItem("Copy Original Name".L10N("Client:Main:CopyOriginalMapName"),
                 selectAction: () => ClipboardService.SetText(Map?.UntranslatedName),
-                visibilityChecker: () => Map?.UntranslatedName != Map?.Name);
+                visibilityChecker: () => !string.Equals(Map?.UntranslatedName, Map?.Name, StringComparison.OrdinalIgnoreCase));
             mapContextMenu.AddItem("Delete Map".L10N("Client:Main:DeleteMap"),
                 selectAction: DeleteMapConfirmation,
                 visibilityChecker: CanDeleteMap);
@@ -368,7 +370,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             };
         }
 
-        protected bool IsFavoriteMapsSelected() => ddGameModeMapFilter.SelectedItem?.Text == FavoriteMapsLabel;
+        protected bool IsFavoriteMapsSelected() => string.Equals(ddGameModeMapFilter.SelectedItem?.Text, FavoriteMapsLabel, StringComparison.OrdinalIgnoreCase);
 
         private List<GameModeMap> GetFavoriteGameModeMaps() =>
             GameModeMaps.Where(gmm => gmm.IsFavorite).ToList();
@@ -404,7 +406,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (await LoadGameOptionPresetAsync(presetName).ConfigureAwait(false))
                 AddNotice("Game option preset loaded succesfully.".L10N("Client:Main:PresetLoaded"));
             else
-                AddNotice(string.Format("Preset {0} not found!".L10N("Client:Main:PresetNotFound"), presetName));
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "Preset {0} not found!".L10N("Client:Main:PresetNotFound"), presetName));
         }
 
         protected void AddNotice(string message) => AddNotice(message, Color.White);
@@ -492,8 +494,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private void AddPlayerExtraOptionForcedNotice(bool disabled, string type)
             => AddNotice(disabled ?
-                string.Format("The game host has disabled {0}".L10N("Client:Main:HostDisableSection"), type) :
-                string.Format("The game host has enabled {0}".L10N("Client:Main:HostEnableSection"), type));
+                string.Format(CultureInfo.CurrentCulture, "The game host has disabled {0}".L10N("Client:Main:HostDisableSection"), type) :
+                string.Format(CultureInfo.CurrentCulture, "The game host has enabled {0}".L10N("Client:Main:HostEnableSection"), type));
 
         private List<GameModeMap> GetSortedGameModeMaps()
         {
@@ -534,11 +536,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             for (int i = 0; i < maps.Count; i++)
             {
                 var gameModeMap = maps[i];
-                if (tbMapSearch.Text != tbMapSearch.Suggestion)
+                if (!string.Equals(tbMapSearch.Text, tbMapSearch.Suggestion, StringComparison.OrdinalIgnoreCase))
                 {
-                    string promptUpper = tbMapSearch.Text.ToUpperInvariant();
-                    bool mapMatches = gameModeMap.Map.Name.ToUpperInvariant().Contains(promptUpper)
-                        || gameModeMap.Map.UntranslatedName.ToUpperInvariant().Contains(promptUpper);
+                    bool mapMatches = gameModeMap.Map.Name.Contains(tbMapSearch.Text, StringComparison.OrdinalIgnoreCase)
+                        || gameModeMap.Map.UntranslatedName.Contains(tbMapSearch.Text, StringComparison.OrdinalIgnoreCase);
 
                     if (!mapMatches)
                     {
@@ -618,7 +619,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
 
             var messageBox = XNAMessageBox.ShowYesNoDialog(WindowManager, "Delete Confirmation".L10N("Client:Main:DeleteMapConfirmTitle"),
-                string.Format("Are you sure you wish to delete the custom map {0}?".L10N("Client:Main:DeleteMapConfirmText"), Map.Name));
+                string.Format(CultureInfo.CurrentCulture, "Are you sure you wish to delete the custom map {0}?".L10N("Client:Main:DeleteMapConfirmText"), Map.Name));
             messageBox.YesClickedAction = _ => DeleteSelectedMapAsync().HandleTask();
         }
 
@@ -698,7 +699,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             var gmm = (GameModeMap)lbGameModeMapList.GetItem(1, lbGameModeMapList.HoveredIndex).Tag;
 
-            if (gmm.Map.UntranslatedName != gmm.Map.Name)
+            if (!string.Equals(gmm.Map.UntranslatedName, gmm.Map.Name, StringComparison.OrdinalIgnoreCase))
                 mapListTooltip.Text = "Original name:".L10N("Client:Main:OriginalMapName") + " " + gmm.Map.UntranslatedName;
             else
                 mapListTooltip.Text = string.Empty;
@@ -741,7 +742,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (GameMode == null)
                 return;
 
-            int gameModeMapFilterIndex = ddGameModeMapFilter.Items.FindIndex(i => i.Text == GameMode.UIName);
+            int gameModeMapFilterIndex = ddGameModeMapFilter.Items.FindIndex(i => string.Equals(i.Text, GameMode.UIName, StringComparison.OrdinalIgnoreCase));
 
             if (gameModeMapFilterIndex == -1)
                 return;
@@ -855,7 +856,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     ddPlayerTeam.Right + playerOptionHorizontalMargin,
                     ddPlayerName.Y, startWidth, DROP_DOWN_HEIGHT);
                 for (int j = 1; j < 9; j++)
-                    ddPlayerStart.AddItem(j.ToString());
+                    ddPlayerStart.AddItem(j.ToString(CultureInfo.CurrentCulture));
                 ddPlayerStart.AllowDropDown = false;
                 ddPlayerStart.SelectedIndexChanged += (sender, _) => CopyPlayerDataFromUIAsync(sender).HandleTask();
                 ddPlayerStart.Visible = false;
@@ -947,7 +948,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             var pInfo = GetPlayerInfoForIndex(playerIndex);
             var allowOtherPlayerOptionsChange = AllowPlayerOptionsChange() && pInfo != null;
 
-            clientDropDown.AllowDropDown = enable && (allowOtherPlayerOptionsChange || pInfo?.Name == ProgramConstants.PLAYERNAME);
+            clientDropDown.AllowDropDown = enable && (allowOtherPlayerOptionsChange || string.Equals(pInfo?.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
             if (!clientDropDown.AllowDropDown)
                 clientDropDown.SelectedIndex = clientDropDown.SelectedIndex > 0 ? 0 : clientDropDown.SelectedIndex;
@@ -1331,7 +1332,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             settings.SetIntValue("Side", houseInfos[myIndex].InternalSideIndex);
             settings.SetBooleanValue("IsSpectator", houseInfos[myIndex].IsSpectator);
             settings.SetIntValue("Color", houseInfos[myIndex].ColorIndex);
-            settings.SetStringValue("CustomLoadScreen", LoadingScreenController.GetLoadScreenName(houseInfos[myIndex].InternalSideIndex.ToString()));
+            settings.SetStringValue("CustomLoadScreen", LoadingScreenController.GetLoadScreenName(houseInfos[myIndex].InternalSideIndex.ToString(CultureInfo.InvariantCulture)));
             settings.SetIntValue("AIPlayers", AIPlayers.Count);
             settings.SetIntValue("Seed", RandomSeed);
 
@@ -1624,10 +1625,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     Logger.Log(errorMessage);
                     Logger.Log(e.Message);
                     XNAMessageBox.Show(WindowManager, "Error".L10N("Client:Main:Error"), errorMessage);
-                    
+
                 }
             }
-            
+
             // Write the supplemental map files to the INI (eventual spawnmap.ini)
             mapIni.SetStringValue("Basic", "SupplementalFiles", string.Join(',', supplementalFileNames));
         }
@@ -1689,7 +1690,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 // of IniSection
                 for (int i = 0; i <= 7; i++)
                 {
-                    int index = waypointSection.Keys.FindIndex(k => !string.IsNullOrEmpty(k.Key) && k.Key == i.ToString());
+                    int index = waypointSection.Keys.FindIndex(k => !string.IsNullOrEmpty(k.Key) && string.Equals(k.Key, i.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase));
                     if (index > -1)
                         waypointSection.Keys.RemoveAt(index);
                 }
@@ -1767,8 +1768,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     }
 
                     houseInfo.StartingWaypoint = unusedLocation;
-                    mapIni.SetIntValue("Waypoints", unusedLocation.ToString(),
-                        mapIni.GetIntValue("Waypoints", houseInfo.RealStartingWaypoint.ToString(), 0));
+                    mapIni.SetIntValue("Waypoints", unusedLocation.ToString(CultureInfo.InvariantCulture),
+                        mapIni.GetIntValue("Waypoints", houseInfo.RealStartingWaypoint.ToString(CultureInfo.InvariantCulture), 0));
                     spawnIni.SetIntValue("SpawnLocations", $"Multi{pId + 1}", unusedLocation);
                 }
             }
@@ -1908,7 +1909,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private bool CanRightClickMultiplayer(XNADropDownItem selectedPlayer)
         {
             return selectedPlayer != null &&
-                   selectedPlayer.Text != ProgramConstants.PLAYERNAME &&
+                   !string.Equals(selectedPlayer.Text, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase) &&
                    !ProgramConstants.AI_PLAYER_NAMES.Contains(selectedPlayer.Text);
         }
 
@@ -1919,7 +1920,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
 
             if (selectedPlayer == null ||
-                selectedPlayer.Text == ProgramConstants.PLAYERNAME)
+                string.Equals(selectedPlayer.Text, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -2144,7 +2145,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 ddStart.AddItem("???");
 
                 for (int i = 1; i <= Map.MaxPlayers; i++)
-                    ddStart.AddItem(i.ToString());
+                    ddStart.AddItem(i.ToString(CultureInfo.CurrentCulture));
             }
 
 
@@ -2214,7 +2215,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             foreach (KeyValuePair<string, bool> option in forcedOptions)
             {
-                GameLobbyCheckBox checkBox = CheckBoxes.Find(chk => chk.Name == option.Key);
+                GameLobbyCheckBox checkBox = CheckBoxes.Find(chk => string.Equals(chk.Name, option.Key, StringComparison.OrdinalIgnoreCase));
                 if (checkBox != null)
                 {
                     checkBox.Checked = option.Value;
@@ -2229,7 +2230,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             foreach (KeyValuePair<string, int> option in forcedOptions)
             {
-                GameLobbyDropDown dropDown = DropDowns.Find(dd => dd.Name == option.Key);
+                GameLobbyDropDown dropDown = DropDowns.Find(dd => string.Equals(dd.Name, option.Key, StringComparison.OrdinalIgnoreCase));
                 if (dropDown != null)
                 {
                     dropDown.SelectedIndex = option.Value;
@@ -2454,7 +2455,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             var checkBoxValues = preset.GetCheckBoxValues();
             foreach (var kvp in checkBoxValues)
             {
-                GameLobbyCheckBox checkBox = CheckBoxes.Find(c => c.Name == kvp.Key);
+                GameLobbyCheckBox checkBox = CheckBoxes.Find(c => string.Equals(c.Name, kvp.Key, StringComparison.OrdinalIgnoreCase));
                 if (checkBox != null && checkBox.AllowChanges && checkBox.AllowChecking)
                     checkBox.Checked = kvp.Value;
             }
@@ -2462,7 +2463,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             var dropDownValues = preset.GetDropDownValues();
             foreach (var kvp in dropDownValues)
             {
-                GameLobbyDropDown dropDown = DropDowns.Find(d => d.Name == kvp.Key);
+                GameLobbyDropDown dropDown = DropDowns.Find(d => string.Equals(d.Name, kvp.Key, StringComparison.OrdinalIgnoreCase));
                 if (dropDown != null && dropDown.AllowDropDown)
                     dropDown.SelectedIndex = kvp.Value;
             }

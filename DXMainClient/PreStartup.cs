@@ -215,7 +215,7 @@ namespace DTAClient
             if (UserHasDirectoryAccessRights(ProgramConstants.GamePath, FileSystemRights.Modify))
                 return;
 
-            string error = string.Format(("You seem to be running {0} from a write-protected directory.\n\n" + 
+            string error = string.Format(CultureInfo.CurrentCulture, ("You seem to be running {0} from a write-protected directory.\n\n" +
                 "For {1} to function properly when run from a write-protected directory, it needs administrative privileges.\n\n" +
                 "Would you like to restart the client with administrative rights?\n\n" +
                 "Please also make sure that your security software isn't blocking {1}.").L10N("Client:Main:AdminRequiredText"), ProgramConstants.GAME_NAME_LONG, ProgramConstants.GAME_NAME_SHORT);
@@ -262,8 +262,7 @@ namespace DTAClient
 
                 foreach (AuthorizationRule rule in rules)
                 {
-                    var fsAccessRule = rule as FileSystemAccessRule;
-                    if (fsAccessRule == null)
+                    if (rule is not FileSystemAccessRule fsAccessRule)
                         continue;
 
                     if ((fsAccessRule.FileSystemRights & accessRights) > 0)

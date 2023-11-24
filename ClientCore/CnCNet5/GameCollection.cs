@@ -226,13 +226,13 @@ namespace ClientCore.CnCNet5
             if (section == null)
                 return customGames;
 
-            HashSet<string> customGameIDs = [];
+            HashSet<string> customGameIDs = new(StringComparer.OrdinalIgnoreCase);
             foreach (var kvp in section.Keys)
             {
                 if (!iniFile.SectionExists(kvp.Value))
                     continue;
 
-                string ID = iniFile.GetStringValue(kvp.Value, "InternalName", string.Empty).ToLowerInvariant();
+                string ID = iniFile.GetStringValue(kvp.Value, "InternalName", string.Empty);
 
                 if (string.IsNullOrEmpty(ID))
                     throw new GameCollectionConfigurationException("InternalName for game " + kvp.Value + " is not defined or set to an empty value.");
@@ -243,7 +243,7 @@ namespace ClientCore.CnCNet5
                         ProgramConstants.GAME_ID_MAX_LENGTH + " characters.");
                 }
 
-                if (existingGames.Find(g => g.InternalName == ID) != null || customGameIDs.Contains(ID))
+                if (existingGames.Find(g => string.Equals(g.InternalName, ID, StringComparison.OrdinalIgnoreCase)) != null || customGameIDs.Contains(ID))
                     throw new GameCollectionConfigurationException("Game with InternalName " + ID.ToUpperInvariant() + " already exists in the game collection.");
 
                 string iconFilename = iniFile.GetStringValue(kvp.Value, "IconFilename", ID + "icon.png");
@@ -274,10 +274,10 @@ namespace ClientCore.CnCNet5
             if (string.IsNullOrEmpty(channel))
                 throw new GameCollectionConfigurationException(key + " for game " + section + " is not defined or set to an empty value.");
 
-            if (channel.Contains(' ') || channel.Contains(',') || channel.Contains((char)7))
+            if (channel.Contains(' ', StringComparison.OrdinalIgnoreCase) || channel.Contains(',', StringComparison.OrdinalIgnoreCase) || channel.Contains((char)7, StringComparison.OrdinalIgnoreCase))
                 throw new GameCollectionConfigurationException(key + " for game " + section + " contains characters not allowed on IRC channel names.");
 
-            if (!channel.StartsWith("#"))
+            if (!channel.StartsWith('#'))
                 return "#" + channel;
 
             return channel;
@@ -294,7 +294,7 @@ namespace ClientCore.CnCNet5
             {
                 CnCNetGame game = GameList[gId];
 
-                if (gameName.ToLowerInvariant() == game.InternalName)
+                if (string.Equals(gameName, game.InternalName, StringComparison.OrdinalIgnoreCase))
                     return gId;
             }
 
@@ -310,7 +310,7 @@ namespace ClientCore.CnCNet5
         /// Returns the given parameter if the name isn't found in the supported game list.</returns>
         public string GetGameNameFromInternalName(string gameName)
         {
-            CnCNetGame game = GameList.Find(g => g.InternalName == gameName.ToLowerInvariant());
+            CnCNetGame game = GameList.Find(g => g.InternalName.Equals(gameName, StringComparison.OrdinalIgnoreCase));
 
             if (game == null)
                 return gameName;
@@ -340,7 +340,7 @@ namespace ClientCore.CnCNet5
 
         public string GetGameBroadcastingChannelNameFromIdentifier(string gameIdentifier)
         {
-            CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
+            CnCNetGame game = GameList.Find(g => g.InternalName.Equals(gameIdentifier, StringComparison.OrdinalIgnoreCase));
             if (game == null)
                 return null;
             return game.GameBroadcastChannel;
@@ -348,7 +348,7 @@ namespace ClientCore.CnCNet5
 
         public string GetGameChatChannelNameFromIdentifier(string gameIdentifier)
         {
-            CnCNetGame game = GameList.Find(g => g.InternalName == gameIdentifier.ToLowerInvariant());
+            CnCNetGame game = GameList.Find(g => g.InternalName.Equals(gameIdentifier, StringComparison.OrdinalIgnoreCase));
             if (game == null)
                 return null;
             return game.ChatChannel;

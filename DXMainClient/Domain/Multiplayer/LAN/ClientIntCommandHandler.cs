@@ -13,14 +13,13 @@ namespace DTAClient.Domain.Multiplayer.LAN
 
         public override bool Handle(string message)
         {
-            if (!message.StartsWith(CommandName))
+            if (!message.StartsWith(CommandName, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             if (message.Length < CommandName.Length + 2)
                 return false;
 
-            int value;
-            bool success = int.TryParse(message[(CommandName.Length + 1)..], out value);
+            bool success = int.TryParse(message[(CommandName.Length + 1)..], out int value);
 
             if (!success)
                 return false;

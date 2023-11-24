@@ -19,6 +19,8 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     /// <summary>
     /// A generic base class for multiplayer game lobbies (CnCNet and LAN).
     /// </summary>
@@ -242,7 +244,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             Logger.Log("FSW Event: " + e.FullPath);
 
-            if (Path.GetFileName(e.FullPath) == "SAVEGAME.NET")
+            if (string.Equals(Path.GetFileName(e.FullPath), "SAVEGAME.NET", StringComparison.OrdinalIgnoreCase))
             {
                 if (!gameSaved)
                 {
@@ -278,7 +280,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (fsw != null)
                 fsw.EnableRaisingEvents = false;
 
-            PlayerInfo pInfo = Players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
             pInfo.IsInGame = false;
 
@@ -301,12 +303,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             while (i < 20)
             {
-                string s = DateTime.Now.Day.ToString() +
-                    DateTime.Now.Month.ToString() +
-                    DateTime.Now.Hour.ToString() +
-                    DateTime.Now.Minute.ToString();
+                string s = DateTime.Now.Day +
+                    DateTime.Now.Month +
+                    DateTime.Now.Hour +
+                    DateTime.Now.Minute.ToString(CultureInfo.InvariantCulture);
 
-                UniqueGameID = int.Parse(i.ToString() + s);
+                UniqueGameID = int.Parse(i + s, CultureInfo.InvariantCulture);
 
                 if (StatisticsManager.Instance.GetMatchWithGameID(UniqueGameID) == null)
                     break;
@@ -332,22 +334,22 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (string.IsNullOrEmpty(tbChatInput.Text))
                 return;
 
-            if (tbChatInput.Text.StartsWith("/"))
+            if (tbChatInput.Text.StartsWith('/'))
             {
                 string text = tbChatInput.Text;
                 string command;
                 string parameters;
 
-                int spaceIndex = text.IndexOf(' ');
+                int spaceIndex = text.IndexOf(' ', StringComparison.OrdinalIgnoreCase);
 
                 if (spaceIndex == -1)
                 {
-                    command = text[1..].ToUpper();
+                    command = text[1..];
                     parameters = string.Empty;
                 }
                 else
                 {
-                    command = text.Substring(1, spaceIndex - 1);
+                    command = text[1..spaceIndex];
                     parameters = text[(spaceIndex + 1)..];
                 }
 
@@ -355,11 +357,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 foreach (var chatBoxCommand in chatBoxCommands)
                 {
-                    if (command.ToUpper() == chatBoxCommand.Command)
+                    if (string.Equals(command, chatBoxCommand.Command, StringComparison.OrdinalIgnoreCase))
                     {
                         if (!IsHost && chatBoxCommand.HostOnly)
                         {
-                            AddNotice(string.Format("/{0} is for game hosts only.".L10N("Client:Main:ChatboxCommandHostOnly"), chatBoxCommand.Command));
+                            AddNotice(string.Format(CultureInfo.CurrentCulture, "/{0} is for game hosts only.".L10N("Client:Main:ChatboxCommandHostOnly"), chatBoxCommand.Command));
                             return;
                         }
 
@@ -373,7 +375,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 {
                     sb.Append(Environment.NewLine);
                     sb.Append(Environment.NewLine);
-                    sb.Append($"{chatBoxCommand.Command}: {chatBoxCommand.Description}");
+                    sb.Append(CultureInfo.CurrentCulture, $"{chatBoxCommand.Command}: {chatBoxCommand.Description}");
                 }
                 XNAMessageBox.Show(WindowManager, "Chat Box Command Help".L10N("Client:Main:ChatboxCommandTipTitle"), sb.ToString());
                 return;
@@ -408,7 +410,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
 
             FrameSendRate = intValue;
-            AddNotice(string.Format("FrameSendRate has been changed to {0}".L10N("Client:Main:FrameSendRateChanged"), intValue));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "FrameSendRate has been changed to {0}".L10N("Client:Main:FrameSendRateChanged"), intValue));
 
             await OnGameOptionChangedAsync().ConfigureAwait(false);
             ClearReadyStatuses();
@@ -426,7 +428,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
 
             MaxAhead = intValue;
-            AddNotice(string.Format("MaxAhead has been changed to {0}".L10N("Client:Main:MaxAheadChanged"), intValue));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "MaxAhead has been changed to {0}".L10N("Client:Main:MaxAheadChanged"), intValue));
 
             await OnGameOptionChangedAsync().ConfigureAwait(false);
             ClearReadyStatuses();
@@ -449,7 +451,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
 
             ProtocolVersion = intValue;
-            AddNotice(string.Format("ProtocolVersion has been changed to {0}".L10N("Client:Main:ProtocolVersionChanged"), intValue));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "ProtocolVersion has been changed to {0}".L10N("Client:Main:ProtocolVersionChanged"), intValue));
 
             await OnGameOptionChangedAsync().ConfigureAwait(false);
             ClearReadyStatuses();
@@ -594,7 +596,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// <param name="results">The results of the roll.</param>
         protected void PrintDiceRollResult(string senderName, int dieSides, int[] results)
         {
-            AddNotice(String.Format("{0} rolled {1}d{2} and got {3}".L10N("Client:Main:PrintDiceRollResult"),
+            AddNotice(String.Format(CultureInfo.CurrentCulture, "{0} rolled {1}d{2} and got {3}".L10N("Client:Main:PrintDiceRollResult"),
                 senderName, results.Length, dieSides, string.Join(", ", results)
             ));
         }
@@ -729,7 +731,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private void MapPreviewBox_LocalStartingLocationSelected(object sender, LocalStartingLocationEventArgs e)
         {
-            int mTopIndex = Players.FindIndex(p => p.Name == ProgramConstants.PLAYERNAME);
+            int mTopIndex = Players.FindIndex(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
             if (mTopIndex == -1 || Players[mTopIndex].SideId == ddPlayerSides[0].Items.Count - 1)
                 return;
@@ -798,7 +800,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                     if (Players.Concat(AIPlayers).ToList().Find(
                         p => p.StartingLocation == pInfo.StartingLocation &&
-                        p.Name != pInfo.Name) != null)
+                        !string.Equals(p.Name, pInfo.Name, StringComparison.OrdinalIgnoreCase)) != null)
                     {
                         await SharedStartingLocationNotificationAsync().ConfigureAwait(false);
                         return;
@@ -843,7 +845,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             {
                 iId++;
 
-                if (player.Name == ProgramConstants.PLAYERNAME)
+                if (string.Equals(player.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 if (!player.Verified)
@@ -899,7 +901,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask NotVerifiedNotificationAsync(int playerIndex)
         {
             if (playerIndex > -1 && playerIndex < Players.Count)
-                AddNotice(string.Format("Unable to launch game. Player {0} hasn't been verified.".L10N("Client:Main:NotVerifiedNotification"), Players[playerIndex].Name));
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "Unable to launch game. Player {0} hasn't been verified.".L10N("Client:Main:NotVerifiedNotification"), Players[playerIndex].Name));
 
             return ValueTask.CompletedTask;
         }
@@ -908,7 +910,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             if (playerIndex > -1 && playerIndex < Players.Count)
             {
-                AddNotice(string.Format("Unable to launch game. Player {0} is still playing the game you started previously.".L10N("Client:Main:StillInGameNotification"),
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "Unable to launch game. Player {0} is still playing the game you started previously.".L10N("Client:Main:StillInGameNotification"),
                     Players[playerIndex].Name));
             }
 
@@ -918,7 +920,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask GetReadyNotificationAsync()
         {
             AddNotice("The host wants to start the game but cannot because not all players are ready!".L10N("Client:Main:GetReadyNotification"));
-            if (!IsHost && !Players.Find(p => p.Name == ProgramConstants.PLAYERNAME).Ready)
+            if (!IsHost && !Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase)).Ready)
                 sndGetReadySound.Play();
 
             return ValueTask.CompletedTask;
@@ -927,10 +929,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask InsufficientPlayersNotificationAsync()
         {
             if (GameMode != null && GameMode.MinPlayersOverride > -1)
-                AddNotice(String.Format("Unable to launch game: {0} cannot be played with fewer than {1} players".L10N("Client:Main:InsufficientPlayersNotification1"),
+                AddNotice(String.Format(CultureInfo.CurrentCulture, "Unable to launch game: {0} cannot be played with fewer than {1} players".L10N("Client:Main:InsufficientPlayersNotification1"),
                     GameMode.UIName, GameMode.MinPlayersOverride));
             else if (Map != null)
-                AddNotice(String.Format("Unable to launch game: this map cannot be played with fewer than {0} players.".L10N("Client:Main:InsufficientPlayersNotification2"),
+                AddNotice(String.Format(CultureInfo.CurrentCulture, "Unable to launch game: this map cannot be played with fewer than {0} players.".L10N("Client:Main:InsufficientPlayersNotification2"),
                     Map.MinPlayers));
 
             return ValueTask.CompletedTask;
@@ -939,7 +941,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask TooManyPlayersNotificationAsync()
         {
             if (Map != null)
-                AddNotice(String.Format("Unable to launch game: this map cannot be played with more than {0} players.".L10N("Client:Main:TooManyPlayersNotification"),
+                AddNotice(String.Format(CultureInfo.CurrentCulture, "Unable to launch game: this map cannot be played with more than {0} players.".L10N("Client:Main:TooManyPlayersNotification"),
                     Map.MaxPlayers));
 
             return ValueTask.CompletedTask;
@@ -977,7 +979,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return;
             }
 
-            int mTopIndex = Players.FindIndex(p => p.Name == ProgramConstants.PLAYERNAME);
+            int mTopIndex = Players.FindIndex(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
             if (mTopIndex == -1)
                 return;

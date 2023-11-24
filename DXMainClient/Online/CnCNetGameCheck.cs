@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 
 namespace DTAClient.Online
 {
+    using System.Globalization;
+
     internal static class CnCNetGameCheck
     {
         private const int REFRESH_INTERVAL = 15000; // 15 seconds
@@ -35,9 +37,9 @@ namespace DTAClient.Online
             {
                 try
                 {
-                    if (process.ProcessName.Contains("cheatengine") ||
-                        process.MainWindowTitle.ToLower().Contains("cheat engine") ||
-                        process.MainWindowHandle.ToString().ToLower().Contains("cheat engine"))
+                    if (process.ProcessName.Contains("cheatengine", StringComparison.OrdinalIgnoreCase) ||
+                        process.MainWindowTitle.Contains("cheat engine", StringComparison.OrdinalIgnoreCase) ||
+                        process.MainWindowHandle.ToString(CultureInfo.InvariantCulture).Contains("cheat engine", StringComparison.OrdinalIgnoreCase))
                     {
                         KillGameInstance();
                     }

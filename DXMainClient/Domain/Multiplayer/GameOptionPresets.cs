@@ -6,6 +6,8 @@ using System.Linq;
 
 namespace DTAClient.Domain.Multiplayer
 {
+    using System.Globalization;
+
     /// <summary>
     /// A single game option preset.
     /// </summary>
@@ -73,7 +75,7 @@ namespace DTAClient.Domain.Multiplayer
             // CheckBoxValues=chkCrates:1,chkShortGame:1,chkFastResourceGrowth:0,.... (0 = unchecked, 1 = checked)
             // DropDownValues=ddTechLevel:7,ddStartingCredits:5,... (the number is the selected option index)
 
-            AddValues(section, "CheckBoxValues", checkBoxValues, s => s == "1");
+            AddValues(section, "CheckBoxValues", checkBoxValues, s => string.Equals(s, "1", StringComparison.OrdinalIgnoreCase));
             AddValues(section, "DropDownValues", dropDownValues, s => Conversions.IntFromString(s, 0));
         }
 
@@ -82,7 +84,7 @@ namespace DTAClient.Domain.Multiplayer
             section.SetStringValue("CheckBoxValues", string.Join(",",
                 checkBoxValues.Select(s => $"{s.Key}:{(s.Value ? "1" : "0")}")));
             section.SetStringValue("DropDownValues", string.Join(",",
-                dropDownValues.Select(s => $"{s.Key}:{s.Value.ToString()}")));
+                dropDownValues.Select(s => $"{s.Key}:{s.Value.ToString(CultureInfo.InvariantCulture)}")));
         }
     }
 
@@ -184,7 +186,7 @@ namespace DTAClient.Domain.Multiplayer
             gameOptionPresetsIni.AddSection(definitionsSection);
             foreach (var kvp in presets)
             {
-                definitionsSection.SetStringValue(i.ToString(), kvp.Value.ProfileName);
+                definitionsSection.SetStringValue(i.ToString(CultureInfo.InvariantCulture), kvp.Value.ProfileName);
                 var presetSection = new IniSection(kvp.Value.ProfileName);
                 kvp.Value.Write(presetSection);
                 gameOptionPresetsIni.AddSection(presetSection);

@@ -14,6 +14,8 @@ using Windows.Win32.UI.Shell;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// The update window, displaying the update progress to the user.
     /// </summary>
@@ -216,8 +218,8 @@ namespace DTAClient.DXGUI.Generic
             else
                 prgTotal.Value = totalPercentage;
 
-            lblCurrentFileProgressPercentageValue.Text = prgCurrentFile.Value.ToString() + "%";
-            lblTotalProgressPercentageValue.Text = prgTotal.Value.ToString() + "%";
+            lblCurrentFileProgressPercentageValue.Text = prgCurrentFile.Value + "%";
+            lblTotalProgressPercentageValue.Text = prgTotal.Value + "%";
             lblCurrentFile.Text = "Current file:".L10N("Client:Main:CurrentFile") + " " + currFileName;
             lblUpdaterStatus.Text = "Downloading files".L10N("Client:Main:DownloadingFiles");
 
@@ -301,14 +303,14 @@ namespace DTAClient.DXGUI.Generic
 
         public void SetData(string newGameVersion)
         {
-            lblDescription.Text = string.Format(("Please wait while {0} is updated to version {1}.\nThis window will automatically close once the update is complete.\n\nThe client may also restart after the update has been downloaded.").L10N("Client:Main:UpdateVersionPleaseWait"), ProgramConstants.GAME_NAME_SHORT, newGameVersion);
+            lblDescription.Text = string.Format(CultureInfo.CurrentCulture, "Please wait while {0} is updated to version {1}.\nThis window will automatically close once the update is complete.\n\nThe client may also restart after the update has been downloaded.".L10N("Client:Main:UpdateVersionPleaseWait"), ProgramConstants.GAME_NAME_SHORT, newGameVersion);
             lblUpdaterStatus.Text = "Preparing".L10N("Client:Main:StatusPreparing");
         }
 
         public void ForceUpdate()
         {
             isStartingForceUpdate = true;
-            lblDescription.Text = string.Format("Force updating {0} to latest version...".L10N("Client:Main:ForceUpdateToLatest"), ProgramConstants.GAME_NAME_SHORT);
+            lblDescription.Text = string.Format(CultureInfo.CurrentCulture, "Force updating {0} to latest version...".L10N("Client:Main:ForceUpdateToLatest"), ProgramConstants.GAME_NAME_SHORT);
             lblUpdaterStatus.Text = "Connecting".L10N("Client:Main:UpdateStatusConnecting");
             Updater.CheckForUpdates();
         }

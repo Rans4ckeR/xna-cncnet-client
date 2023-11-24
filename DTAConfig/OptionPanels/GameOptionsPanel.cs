@@ -10,6 +10,8 @@ using System;
 
 namespace DTAConfig.OptionPanels
 {
+    using System.Globalization;
+
     class GameOptionsPanel : XNAOptionsPanel
     {
 
@@ -199,7 +201,7 @@ namespace DTAConfig.OptionPanels
 
         private void TrbScrollRate_ValueChanged(object sender, EventArgs e)
         {
-            lblScrollRateValue.Text = trbScrollRate.Value.ToString();
+            lblScrollRateValue.Text = trbScrollRate.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         public override void Load()
@@ -211,7 +213,7 @@ namespace DTAConfig.OptionPanels
             if (scrollRate >= trbScrollRate.MinValue && scrollRate <= trbScrollRate.MaxValue)
             {
                 trbScrollRate.Value = scrollRate;
-                lblScrollRateValue.Text = scrollRate.ToString();
+                lblScrollRateValue.Text = scrollRate.ToString(CultureInfo.InvariantCulture);
             }
 
             tbPlayerName.Text = UserINISettings.Instance.PlayerName;

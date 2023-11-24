@@ -16,7 +16,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers
 
         public override bool Handle(string sender, string message)
         {
-            if (message == CommandName)
+            if (string.Equals(message, CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 commandHandler(sender);
                 return true;

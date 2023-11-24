@@ -2,6 +2,8 @@
 
 namespace ClientCore.Settings
 {
+    using System.Globalization;
+
     public class DoubleSetting : INISetting<double>
     {
         public DoubleSetting(IniFile iniFile, string iniSection, string iniKey, double defaultValue)
@@ -26,7 +28,7 @@ namespace ClientCore.Settings
 
         public override string ToString()
         {
-            return Get().ToString();
+            return Get().ToString(CultureInfo.InvariantCulture);
         }
     }
 }

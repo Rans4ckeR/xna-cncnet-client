@@ -31,6 +31,8 @@ using System.IO;
 
 namespace DTAClient.DXGUI
 {
+    using System.Globalization;
+
     /// <summary>
     /// The main class for the game. Sets up asset search paths
     /// and initializes components.
@@ -56,7 +58,7 @@ namespace DTAClient.DXGUI
 
             string windowTitle = ClientConfiguration.Instance.WindowTitle;
             Window.Title = string.IsNullOrEmpty(windowTitle) ?
-                string.Format("{0} Client", ProgramConstants.GAME_NAME_SHORT) : windowTitle;
+                string.Format(CultureInfo.CurrentCulture, "{0} Client", ProgramConstants.GAME_NAME_SHORT) : windowTitle;
 
             base.Initialize();
 
@@ -83,7 +85,7 @@ namespace DTAClient.DXGUI
 
                 _ = AssetLoader.LoadTextureUncached("checkBoxClear.png");
             }
-            catch (Exception ex) when (ex.Message.Contains("DeviceRemoved"))
+            catch (Exception ex) when (ex.Message.Contains("DeviceRemoved", StringComparison.OrdinalIgnoreCase))
             {
                 ProgramConstants.LogException(ex, $"Creating texture on startup failed! Creating {startupFailureFile} file and re-launching client launcher.");
 
@@ -162,7 +164,7 @@ namespace DTAClient.DXGUI
 
             if (UserINISettings.Instance.AutoRemoveUnderscoresFromName)
             {
-                while (playerName.EndsWith("_"))
+                while (playerName.EndsWith('_'))
                     playerName = playerName[..^1];
             }
 
@@ -170,7 +172,7 @@ namespace DTAClient.DXGUI
             {
                 playerName = Environment.UserName;
 
-                playerName = playerName[(playerName.IndexOf("\\") + 1)..];
+                playerName = playerName[(playerName.IndexOf('\\', StringComparison.OrdinalIgnoreCase) + 1)..];
             }
 
             playerName = Renderer.GetSafeString(NameValidator.GetValidOfflineName(playerName), 0);

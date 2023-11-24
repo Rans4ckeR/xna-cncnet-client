@@ -16,6 +16,8 @@ using Rampastring.Tools;
 
 namespace DTAClient.Online
 {
+    using System.Globalization;
+
     /// <summary>
     /// The CnCNet connection handler.
     /// </summary>
@@ -274,7 +276,11 @@ namespace DTAClient.Online
 
             if (connectionCut)
             {
+#if NET8_0_OR_GREATER
+                await sendQueueCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
                 sendQueueCancellationTokenSource.Cancel();
+#endif
 
                 while (!sendQueueExited)
                 {
@@ -329,7 +335,7 @@ namespace DTAClient.Online
             (IPAddress IpAddress, string Name, int[] Ports, int[] SecurePorts)[] serverInfos = serverInfosGroupedByIPAddress.Select(serverInfoGroup =>
             {
                 IPAddress ipAddress = serverInfoGroup.Key;
-                string serverNames = string.Join(", ", serverInfoGroup.Where(serverInfo => !"GameSurge".Equals(serverInfo.Name))
+                string serverNames = string.Join(", ", serverInfoGroup.Where(serverInfo => !string.Equals("GameSurge", serverInfo.Name, StringComparison.OrdinalIgnoreCase))
                     .Select(serverInfo => serverInfo.Name));
                 int[] serverPorts = serverInfoGroup.SelectMany(serverInfo => serverInfo.Ports).Distinct().ToArray();
                 int[] serverSecurePorts = serverInfoGroup.SelectMany(serverInfo => serverInfo.SecurePorts).Distinct().ToArray();
@@ -345,8 +351,8 @@ namespace DTAClient.Online
             {
                 string serverIPAddress = ipAddress.ToString();
                 string serverNames = string.Join(", ", name);
-                string serverPorts = string.Join(", ", ports.Select(port => port.ToString()));
-                string serverSecurePorts = string.Join(", ", securePorts.Select(port => port.ToString()));
+                string serverPorts = string.Join(", ", ports.Select(port => port.ToString(CultureInfo.InvariantCulture)));
+                string serverSecurePorts = string.Join(", ", securePorts.Select(port => port.ToString(CultureInfo.InvariantCulture)));
 
                 Logger.Log($"Got a Lobby server. IP: {serverIPAddress}; Name: {serverNames}; Ports: {serverPorts}; SecurePorts: {serverSecurePorts}.");
             }
@@ -384,7 +390,7 @@ namespace DTAClient.Online
             // Do logging.
             foreach ((Server _, IPAddress ipAddress, long serverLatencyValue) in sortedServerAndLatencyResults)
             {
-                string serverLatencyString = serverLatencyValue <= MAXIMUM_LATENCY ? serverLatencyValue.ToString() : "DNF";
+                string serverLatencyString = serverLatencyValue <= MAXIMUM_LATENCY ? serverLatencyValue.ToString(CultureInfo.InvariantCulture) : "DNF";
 
                 Logger.Log($"Lobby server IP: {ipAddress}, latency: {serverLatencyString}.");
             }
@@ -458,7 +464,11 @@ namespace DTAClient.Online
         public async ValueTask DisconnectAsync()
         {
             await SendMessageAsync(IRCCommands.QUIT).ConfigureAwait(false);
+#if NET8_0_OR_GREATER
+            await connectionCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
             connectionCancellationTokenSource.Cancel();
+#endif
             socket.Shutdown(SocketShutdown.Both);
             socket.Close();
         }
@@ -476,7 +486,7 @@ namespace DTAClient.Online
             overMessage = "";
             while (true)
             {
-                int commandEndIndex = msg.IndexOf("\n");
+                int commandEndIndex = msg.IndexOf('\n', StringComparison.OrdinalIgnoreCase);
 
                 if (commandEndIndex == -1)
                 {
@@ -504,7 +514,7 @@ namespace DTAClient.Online
         /// </summary>
         private async ValueTask PerformCommandAsync(string message)
         {
-            message = message.Replace("\r", string.Empty);
+            message = message.Replace("\r", string.Empty, StringComparison.OrdinalIgnoreCase);
             ParseIrcMessage(message, out string prefix, out string command, out List<string> parameters);
             string paramString = string.Empty;
             foreach (string param in parameters) { paramString = paramString + param + ","; }
@@ -560,7 +570,7 @@ namespace DTAClient.Online
                             break;
                         case 301: // AWAY message
                             string awayTarget = parameters[0];
-                            if (awayTarget != ProgramConstants.PLAYERNAME)
+                            if (!string.Equals(awayTarget, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                                 break;
                             string awayPlayer = parameters[1];
                             string awayReason = parameters[2];
@@ -568,13 +578,13 @@ namespace DTAClient.Online
                             break;
                         case 332: // Channel topic message
                             string _target = parameters[0];
-                            if (_target != ProgramConstants.PLAYERNAME)
+                            if (!string.Equals(_target, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                                 break;
                             connectionManager.OnChannelTopicReceived(parameters[1], parameters[2]);
                             break;
                         case 353: // User list (reply to NAMES)
                             string target = parameters[0];
-                            if (target != ProgramConstants.PLAYERNAME)
+                            if (!string.Equals(target, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                                 break;
                             string channelName = parameters[2];
                             string[] users = parameters[3].Split(new char[1] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -619,7 +629,7 @@ namespace DTAClient.Online
                 switch (command)
                 {
                     case IRCCommands.NOTICE:
-                        int noticeExclamIndex = prefix.IndexOf('!');
+                        int noticeExclamIndex = prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase);
                         if (noticeExclamIndex > -1)
                         {
                             if (parameters.Count > 1 && parameters[1][0] == 1)
@@ -646,20 +656,20 @@ namespace DTAClient.Online
                         break;
                     case IRCCommands.JOIN:
                         string channel = parameters[0];
-                        int atIndex = prefix.IndexOf('@');
-                        int exclamIndex = prefix.IndexOf('!');
+                        int atIndex = prefix.IndexOf('@', StringComparison.OrdinalIgnoreCase);
+                        int exclamIndex = prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase);
                         string userName = prefix[..exclamIndex];
-                        string ident = prefix.Substring(exclamIndex + 1, atIndex - (exclamIndex + 1));
+                        string ident = prefix[(exclamIndex + 1)..atIndex];
                         string host = prefix[(atIndex + 1)..];
                         connectionManager.OnUserJoinedChannel(channel, host, userName, ident);
                         break;
                     case IRCCommands.PART:
                         string pChannel = parameters[0];
-                        string pUserName = prefix[..prefix.IndexOf('!')];
+                        string pUserName = prefix[..prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase)];
                         connectionManager.OnUserLeftChannel(pChannel, pUserName);
                         break;
                     case IRCCommands.QUIT:
-                        string qUserName = prefix[..prefix.IndexOf('!')];
+                        string qUserName = prefix[..prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase)];
                         connectionManager.OnUserQuitIRC(qUserName);
                         break;
                     case IRCCommands.PRIVMSG:
@@ -667,24 +677,24 @@ namespace DTAClient.Online
                         {
                             goto case IRCCommands.NOTICE;
                         }
-                        string pmsgUserName = prefix[..prefix.IndexOf('!')];
+                        string pmsgUserName = prefix[..prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase)];
                         string pmsgIdent = GetIdentFromPrefix(prefix);
                         string[] recipients = new string[parameters.Count - 1];
                         for (int pid = 0; pid < parameters.Count - 1; pid++)
                             recipients[pid] = parameters[pid];
                         string privmsg = parameters[^1];
-                        if (parameters[1].StartsWith('\u0001' + IRCCommands.PRIVMSG_ACTION))
+                        if (parameters[1].StartsWith('\u0001' + IRCCommands.PRIVMSG_ACTION, StringComparison.OrdinalIgnoreCase))
                             privmsg = privmsg[1..].Remove(privmsg.Length - 2);
                         foreach (string recipient in recipients)
                         {
-                            if (recipient.StartsWith("#"))
+                            if (recipient.StartsWith('#'))
                                 connectionManager.OnChatMessageReceived(recipient, pmsgUserName, pmsgIdent, privmsg);
-                            else if (recipient == ProgramConstants.PLAYERNAME)
+                            else if (string.Equals(recipient, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                                 connectionManager.OnPrivateMessageReceived(pmsgUserName, privmsg);
                         }
                         break;
                     case IRCCommands.MODE:
-                        string modeUserName = prefix.Contains('!') ? prefix[..prefix.IndexOf('!')] : prefix;
+                        string modeUserName = prefix.Contains('!', StringComparison.OrdinalIgnoreCase) ? prefix[..prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase)] : prefix;
                         string modeChannelName = parameters[0];
                         string modeString = parameters[1];
                         List<string> modeParameters =
@@ -715,11 +725,11 @@ namespace DTAClient.Online
                         if (parameters.Count < 2)
                             break;
 
-                        connectionManager.OnChannelTopicChanged(prefix[..prefix.IndexOf('!')],
+                        connectionManager.OnChannelTopicChanged(prefix[..prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase)],
                             parameters[0], parameters[1]);
                         break;
                     case IRCCommands.NICK:
-                        int nickExclamIndex = prefix.IndexOf('!');
+                        int nickExclamIndex = prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase);
                         if (nickExclamIndex > -1 || parameters.Count < 1)
                         {
                             string oldNick = prefix[..nickExclamIndex];
@@ -738,13 +748,13 @@ namespace DTAClient.Online
 
         private string GetIdentFromPrefix(string prefix)
         {
-            int atIndex = prefix.IndexOf('@');
-            int exclamIndex = prefix.IndexOf('!');
+            int atIndex = prefix.IndexOf('@', StringComparison.OrdinalIgnoreCase);
+            int exclamIndex = prefix.IndexOf('!', StringComparison.OrdinalIgnoreCase);
 
             if (exclamIndex == -1 || atIndex == -1)
                 return string.Empty;
 
-            return prefix.Substring(exclamIndex + 1, atIndex - (exclamIndex + 1));
+            return prefix[(exclamIndex + 1)..atIndex];
         }
 
         /// <summary>
@@ -763,16 +773,16 @@ namespace DTAClient.Online
             // Grab the prefix if it is present. If a message begins
             // with a colon, the characters following the colon until
             // the first space are the prefix.
-            if (message.StartsWith(":"))
+            if (message.StartsWith(':'))
             {
-                prefixEnd = message.IndexOf(" ");
-                prefix = message.Substring(1, prefixEnd - 1);
+                prefixEnd = message.IndexOf(' ', StringComparison.OrdinalIgnoreCase);
+                prefix = message[1..prefixEnd];
             }
 
             // Grab the trailing if it is present. If a message contains
             // a space immediately following a colon, all characters after
             // the colon are the trailing part.
-            int trailingStart = message.IndexOf(" :");
+            int trailingStart = message.IndexOf(" :", StringComparison.OrdinalIgnoreCase);
             string trailing = null;
             if (trailingStart >= 0)
                 trailing = message[(trailingStart + 2)..];

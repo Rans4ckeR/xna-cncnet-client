@@ -8,6 +8,8 @@ using ClientCore.Extensions;
 
 namespace ClientCore
 {
+    using System.Globalization;
+
     public class ClientConfiguration
     {
         private const string GENERAL = "General";
@@ -227,7 +229,7 @@ namespace ClientCore
 
         public string StatisticsLogFileName => clientDefinitionsIni.GetStringValue(SETTINGS, "StatisticsLogFileName", "DTA.LOG");
 
-        public (string Name, string Path) GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(), ",").Split(',').AsTuple2();
+        public (string Name, string Path) GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(CultureInfo.InvariantCulture), ",").Split(',').AsTuple2();
 
         /// <summary>
         /// Returns the directory path for a theme, or null if the specified
@@ -241,7 +243,7 @@ namespace ClientCore
             foreach (var key in themeSection.Keys)
             {
                 var (name, path) = key.Value.Split(',');
-                if (name == themeName)
+                if (string.Equals(name, themeName, StringComparison.OrdinalIgnoreCase))
                     return path;
             }
 
@@ -277,13 +279,13 @@ namespace ClientCore
 
                 // fail explicitly if the syntax is wrong
                 if (parts.Length is < 2 or > 3
-                    || (parts.Length == 3 && parts[2].ToUpperInvariant() != "CHECKED"))
+                    || (parts.Length == 3 && !string.Equals(parts[2], "CHECKED", StringComparison.OrdinalIgnoreCase)))
                 {
                     throw new IniParseException($"Invalid syntax for value of GameFile{i}! " +
                         $"Expected path/to/source.file,path/to/destination.file[,checked], read {value}.");
                 }
 
-                bool isChecked = parts.Length == 3 && parts[2].ToUpperInvariant() == "CHECKED";
+                bool isChecked = parts.Length == 3 && parts[2].Equals("CHECKED", StringComparison.OrdinalIgnoreCase);
 
                 gameFiles.Add(new(Source: parts[0], Target: parts[1], isChecked));
             }

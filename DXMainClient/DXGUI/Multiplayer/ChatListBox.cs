@@ -8,6 +8,8 @@ using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
+    using System.Globalization;
+
     /// <summary>
     /// A list box for CnCNet chat. Supports opening links with a double-click,
     /// and easy adding of IRC messages to the list box.
@@ -52,13 +54,13 @@ namespace DTAClient.DXGUI.Multiplayer
             
             if (message.SenderName == null)
             {
-                listBoxItem.Text = Renderer.GetSafeString(string.Format("[{0}] {1}",
+                listBoxItem.Text = Renderer.GetSafeString(string.Format(CultureInfo.CurrentCulture, "[{0}] {1}",
                     message.DateTime.ToShortTimeString(),
                     message.Message), FontIndex);
             }
             else
             {
-                listBoxItem.Text = Renderer.GetSafeString(string.Format("[{0}] {1}: {2}",
+                listBoxItem.Text = Renderer.GetSafeString(string.Format(CultureInfo.CurrentCulture, "[{0}] {1}: {2}",
                     message.DateTime.ToShortTimeString(), message.SenderName, message.Message), FontIndex);
             }
             

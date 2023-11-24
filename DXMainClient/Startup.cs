@@ -213,7 +213,7 @@ namespace DTAClient
 
                     if (ts.Length >= 6)
                     {
-                        timestamp = string.Format("_{0}_{1}_{2}_{3}_{4}",
+                        timestamp = string.Format(CultureInfo.InvariantCulture, "_{0}_{1}_{2}_{3}_{4}",
                             ts[3], ts[2].PadLeft(2, '0'), ts[1].PadLeft(2, '0'), ts[4].PadLeft(2, '0'), ts[5].PadLeft(2, '0'));
                     }
 
@@ -287,7 +287,7 @@ namespace DTAClient
 
                 foreach (ManagementObject ram in searcher.Get().Cast<ManagementObject>())
                 {
-                    total += Convert.ToUInt64(ram.GetPropertyValue("Capacity"));
+                    total += Convert.ToUInt64(ram.GetPropertyValue("Capacity"), CultureInfo.InvariantCulture);
                 }
 
                 if (total != 0)
@@ -300,7 +300,7 @@ namespace DTAClient
                 cpu = "Memory info not found";
             }
 
-            Logger.Log(string.Format("Hardware info: {0} | {1} | {2}", cpu.Trim(), videoController.Trim(), memory));
+            Logger.Log(string.Format(CultureInfo.InvariantCulture, "Hardware info: {0} | {1} | {2}", cpu.Trim(), videoController.Trim(), memory));
         }
 
         /// <summary>

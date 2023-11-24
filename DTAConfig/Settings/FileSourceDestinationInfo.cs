@@ -88,7 +88,7 @@ namespace DTAConfig.Settings
                     string sourceHash = Utilities.CalculateSHA1ForFile(SourcePath);
                     string destinationHash = Utilities.CalculateSHA1ForFile(DestinationPath);
 
-                    if (sourceHash != destinationHash)
+                    if (!string.Equals(sourceHash, destinationHash, StringComparison.OrdinalIgnoreCase))
                         File.Copy(SourcePath, DestinationPath, true);
 
                     break;

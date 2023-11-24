@@ -22,6 +22,8 @@ using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
+    using System.Globalization;
+
     internal sealed class PrivateMessagingWindow : XNAWindow, ISwitchable
     {
         private const int MESSAGES_INDEX = 0;
@@ -235,8 +237,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return;
 
             lbMessages.SelectedIndex = lbMessages.HoveredIndex;
-            var chatMessage = lbMessages.SelectedItem.Tag as ChatMessage;
-            if (chatMessage == null)
+            if (lbMessages.SelectedItem.Tag is not ChatMessage chatMessage)
                 return;
 
             globalContextMenu.Show(chatMessage, GetCursorPoint());
@@ -261,13 +262,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void ConnectionManager_UserRemoved(object sender, UserNameIndexEventArgs e)
         {
-            var pmUser = privateMessageUsers.Find(pmsgUser => pmsgUser.IrcUser.Name == e.UserName);
+            var pmUser = privateMessageUsers.Find(pmsgUser => string.Equals(pmsgUser.IrcUser.Name, e.UserName, StringComparison.OrdinalIgnoreCase));
             ChatMessage leaveMessage = null;
 
             if (pmUser != null)
             {
                 leaveMessage = new ChatMessage(Color.White,
-                    string.Format("{0} is now offline.".L10N("Client:Main:PlayerOffline"), e.UserName));
+                    string.Format(CultureInfo.CurrentCulture, "{0} is now offline.".L10N("Client:Main:PlayerOffline"), e.UserName));
                 pmUser.Messages.Add(leaveMessage);
             }
 
@@ -310,13 +311,13 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void ConnectionManager_UserAdded(object sender, UserEventArgs e)
         {
-            var pmUser = privateMessageUsers.Find(pmsgUser => pmsgUser.IrcUser.Name == e.User.Name);
+            var pmUser = privateMessageUsers.Find(pmsgUser => string.Equals(pmsgUser.IrcUser.Name, e.User.Name, StringComparison.OrdinalIgnoreCase));
 
             ChatMessage joinMessage = null;
 
             if (pmUser != null)
             {
-                joinMessage = new ChatMessage(string.Format("{0} is now offline.".L10N("Client:Main:PlayerOffline"), e.User.Name));
+                joinMessage = new ChatMessage(string.Format(CultureInfo.CurrentCulture, "{0} is now offline.".L10N("Client:Main:PlayerOffline"), e.User.Name));
                 pmUser.Messages.Add(joinMessage);
             }
 
@@ -427,14 +428,14 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
         }
 
-        private bool IsPlayerOnline(string playerName) => !string.IsNullOrEmpty(playerName) && connectionManager.UserList.Find(u => u.Name == playerName) != null;
+        private bool IsPlayerOnline(string playerName) => !string.IsNullOrEmpty(playerName) && connectionManager.UserList.Find(u => string.Equals(u.Name, playerName, StringComparison.OrdinalIgnoreCase)) != null;
 
         private void PrivateMessageHandler_PrivateMessageReceived(object sender, PrivateMessageEventArgs e)
         {
             if (UserINISettings.Instance.AllowPrivateMessagesFromState == (int)AllowPrivateMessagesFromEnum.None)
                 return;
 
-            PrivateMessageUser pmUser = privateMessageUsers.Find(u => u.IrcUser.Name == e.Sender);
+            PrivateMessageUser pmUser = privateMessageUsers.Find(u => string.Equals(u.IrcUser.Name, e.Sender, StringComparison.OrdinalIgnoreCase));
 
             if (pmUser == null)
             {
@@ -470,10 +471,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             {
                 HandleNotification(pmUser.IrcUser, e.Message);
 
-                if (lbUserList.SelectedItem == null || lbUserList.SelectedItem.Text != e.Sender)
+                if (lbUserList.SelectedItem == null || !string.Equals(lbUserList.SelectedItem.Text, e.Sender, StringComparison.OrdinalIgnoreCase))
                     return;
             }
-            else if (lbUserList.SelectedItem == null || lbUserList.SelectedItem.Text != e.Sender)
+            else if (lbUserList.SelectedItem == null || !string.Equals(lbUserList.SelectedItem.Text, e.Sender, StringComparison.OrdinalIgnoreCase))
             {
                 HandleNotification(pmUser.IrcUser, e.Message);
                 return;
@@ -511,7 +512,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 sndPrivateMessageSound.Play();
         }
 
-        private Predicate<XNAListBoxItem> MatchItemForName(string userName) => item => ((IRCUser)item.Tag)?.Name == userName;
+        private Predicate<XNAListBoxItem> MatchItemForName(string userName) => item => string.Equals(((IRCUser)item.Tag)?.Name, userName, StringComparison.OrdinalIgnoreCase);
 
         private XNAListBoxItem FindItemForName(string userName) => lbUserList.Items.Find(MatchItemForName(userName));
 
@@ -530,10 +531,10 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             await connectionManager.SendCustomMessageAsync(new QueuedMessage(IRCCommands.PRIVMSG + " " + userName + " :" + tbMessageInput.Text,
                 QueuedMessageType.CHAT_MESSAGE, 0)).ConfigureAwait(false);
 
-            PrivateMessageUser pmUser = privateMessageUsers.Find(u => u.IrcUser.Name == userName);
+            PrivateMessageUser pmUser = privateMessageUsers.Find(u => string.Equals(u.IrcUser.Name, userName, StringComparison.OrdinalIgnoreCase));
             if (pmUser == null)
             {
-                IRCUser iu = connectionManager.UserList.Find(u => u.Name == userName);
+                IRCUser iu = connectionManager.UserList.Find(u => string.Equals(u.Name, userName, StringComparison.OrdinalIgnoreCase));
 
                 if (iu == null)
                 {
@@ -605,7 +606,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 {
                     ircUser = pMsgUser.IrcUser,
                     isFriend = cncnetUserData.FriendList.Contains(pMsgUser.IrcUser.Name),
-                    isOnline = connectionManager.UserList.Any(u => u.Name == pMsgUser.IrcUser.Name)
+                    isOnline = connectionManager.UserList.Any(u => string.Equals(u.Name, pMsgUser.IrcUser.Name, StringComparison.OrdinalIgnoreCase))
                 });
 
             var sortedPrivateMessageUsers = _privateMessageUsers
@@ -622,7 +623,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             ShowRecentPlayers(false);
             var friends = cncnetUserData.FriendList.Select(friendName =>
             {
-                var ircUser = connectionManager.UserList.Find(u => u.Name == friendName);
+                var ircUser = connectionManager.UserList.Find(u => string.Equals(u.Name, friendName, StringComparison.OrdinalIgnoreCase));
 
                 return new
                 {
@@ -738,7 +739,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             // Check if we've already talked with the user during this session
             // and if so, open the old conversation
             int pmUserIndex = privateMessageUsers.FindIndex(
-                pmUser => pmUser.IrcUser.Name == name);
+                pmUser => string.Equals(pmUser.IrcUser.Name, name, StringComparison.OrdinalIgnoreCase));
 
             if (pmUserIndex > -1)
             {

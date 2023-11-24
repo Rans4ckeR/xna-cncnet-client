@@ -80,7 +80,13 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     {
         if (ipV6P2PPorts.Count is 0 && ipV4P2PPorts.Count is 0)
         {
-            StunCancellationTokenSource?.Cancel();
+            if (StunCancellationTokenSource is not null)
+#if NET8_0_OR_GREATER
+                await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+                StunCancellationTokenSource.Cancel();
+#endif
+
             StunCancellationTokenSource?.Dispose();
 
             StunCancellationTokenSource = new();
@@ -360,7 +366,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
             await replayHandler.DisposeAsync().ConfigureAwait(false);
 
         foreach (V3GameTunnelHandler v3GameTunnelHandler in V3GameTunnelHandlers.Select(q => q.Tunnel))
-            v3GameTunnelHandler.Dispose();
+            await v3GameTunnelHandler.DisposeAsync().ConfigureAwait(false);
 
         V3GameTunnelHandlers.Clear();
     }
@@ -368,7 +374,14 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         PinnedTunnelPingsMessage = null;
-        StunCancellationTokenSource?.Cancel();
+
+        if (StunCancellationTokenSource is not null)
+#if NET8_0_OR_GREATER
+            await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+            StunCancellationTokenSource.Cancel();
+#endif
+
         await ClearConnectionsAsync().ConfigureAwait(false);
         playerTunnels.Clear();
         P2PPlayers.Clear();

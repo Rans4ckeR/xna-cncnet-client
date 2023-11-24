@@ -5,6 +5,8 @@ using ClientCore;
 
 namespace DTAClient.Domain.Multiplayer
 {
+    using System;
+
     public class TeamStartMapping
     {
         private const char LIST_SEPARATOR = ',';
@@ -34,7 +36,7 @@ namespace DTAClient.Domain.Multiplayer
         public int StartingWaypoint => Start - 1;
 
         [JsonIgnore]
-        public bool IsBlock => Team == NO_TEAM;
+        public bool IsBlock => string.Equals(Team, NO_TEAM, StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
         /// Write these out in a delimited list.

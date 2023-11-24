@@ -14,6 +14,8 @@ using ClientUpdater;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     public class CampaignSelector : XNAWindow
     {
         private const int DEFAULT_WIDTH = 650;
@@ -286,7 +288,7 @@ namespace DTAClient.DXGUI.Generic
                 await spawnStreamWriter.WriteLineAsync("Firestorm=" + mission.RequiredAddon).ConfigureAwait(true);
 #endif
                 await spawnStreamWriter.WriteLineAsync("Firestorm=" + mission.RequiredAddon).ConfigureAwait(true);
-                await spawnStreamWriter.WriteLineAsync("CustomLoadScreen=" + LoadingScreenController.GetLoadScreenName(mission.Side.ToString())).ConfigureAwait(true);
+                await spawnStreamWriter.WriteLineAsync("CustomLoadScreen=" + LoadingScreenController.GetLoadScreenName(mission.Side.ToString(CultureInfo.InvariantCulture))).ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync("IsSinglePlayer=Yes").ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync("SidebarHack=" + ClientConfiguration.Instance.SidebarHack).ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync("Side=" + mission.Side).ConfigureAwait(true);
@@ -294,7 +296,7 @@ namespace DTAClient.DXGUI.Generic
 
                 UserINISettings.Instance.Difficulty.Value = trbDifficultySelector.Value;
 
-                await spawnStreamWriter.WriteLineAsync("DifficultyModeHuman=" + (mission.PlayerAlwaysOnNormalDifficulty ? "1" : trbDifficultySelector.Value.ToString())).ConfigureAwait(true);
+                await spawnStreamWriter.WriteLineAsync("DifficultyModeHuman=" + (mission.PlayerAlwaysOnNormalDifficulty ? "1" : trbDifficultySelector.Value.ToString(CultureInfo.InvariantCulture))).ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync("DifficultyModeComputer=" + GetComputerDifficulty()).ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync().ConfigureAwait(true);
                 await spawnStreamWriter.WriteLineAsync().ConfigureAwait(true);

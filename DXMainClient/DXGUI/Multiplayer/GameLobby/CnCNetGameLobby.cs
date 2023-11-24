@@ -373,7 +373,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
                 50)).ConfigureAwait(false);
 
             await connectionManager.SendCustomMessageAsync(new(
-                FormattableString.Invariant($"{IRCCommands.TOPIC} {channel.ChannelName} :{(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION)}:{localGame.ToLower()}"),
+                FormattableString.Invariant($"{IRCCommands.TOPIC} {channel.ChannelName} :{(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION)}:{localGame.ToLowerInvariant()}"),
                 QueuedMessageType.SYSTEM_MESSAGE,
                 50)).ConfigureAwait(false);
 
@@ -506,8 +506,14 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         tunnelHandler.CurrentTunnelPinged -= tunnelHandler_CurrentTunnelFunc;
         tunnelHandler.CurrentTunnel = null;
 
+#if NET8_0_OR_GREATER
+        if (gameStartCancellationTokenSource is not null)
+            await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
         gameStartCancellationTokenSource?.Cancel();
-        v3ConnectionState.DisposeAsync().HandleTask();
+#endif
+
+        await v3ConnectionState.DisposeAsync().ConfigureAwait(false);
         gamePlayerIds.Clear();
 
         if (!exiting)
@@ -664,7 +670,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return;
         }
 
-        if (e.User.IRCUser.Name != ProgramConstants.PLAYERNAME)
+        if (!string.Equals(e.User.IRCUser.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
         {
             // Changing the map applies forced settings (co-op sides etc.) to the
             // new player, and it also sends an options broadcast message
@@ -705,7 +711,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
     private void Channel_ChannelModesChanged(object sender, ChannelModeEventArgs e)
     {
-        if (e.ModeString == "+i")
+        if (string.Equals(e.ModeString, "+i", StringComparison.Ordinal))
         {
             if (Players.Count >= playerLimit)
                 AddNotice("Player limit reached. The game room has been locked.".L10N("Client:Main:GameRoomNumberLimitReached"));
@@ -713,7 +719,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
                 AddNotice("The game host has locked the game room.".L10N("Client:Main:RoomLockedByHost"));
             Locked = true;
         }
-        else if (e.ModeString == "-i")
+        else if (string.Equals(e.ModeString, "-i", StringComparison.Ordinal))
         {
             AddNotice("The game room has been unlocked.".L10N("Client:Main:GameRoomUnlocked"));
             Locked = false;
@@ -821,7 +827,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             sb.Append(';')
                 .Append(Players[pId].Name)
                 .Append(';')
-                .Append($"{IPAddress.Any}:")
+                .Append(CultureInfo.InvariantCulture, $"{IPAddress.Any}:")
                 .Append(playerPorts[pId]);
         }
 
@@ -971,7 +977,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             await LaunchGameV3Async().ConfigureAwait(false);
     }
 
-    private ValueTask LaunchGameV3Async()
+    private async ValueTask LaunchGameV3Async()
     {
         Logger.Log("All players are connected, starting game!");
         AddNotice("All players have connected...".L10N("Client:Main:PlayersConnected"));
@@ -982,18 +988,30 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         FindLocalPlayer().Port = gamePort;
 
         gameStartTimer.Pause();
+
+#if NET8_0_OR_GREATER
+        if (v3ConnectionState.StunCancellationTokenSource is not null)
+            await v3ConnectionState.StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
         v3ConnectionState.StunCancellationTokenSource?.Cancel();
+#endif
 
         btnLaunchGame.InputEnabled = true;
 
-        return StartGameAsync();
+        await StartGameAsync().ConfigureAwait(false);
     }
 
     private async ValueTask AbortGameStartAsync()
     {
         btnLaunchGame.InputEnabled = true;
 
-        gameStartCancellationTokenSource?.Cancel();
+#if NET8_0_OR_GREATER
+        if (gameStartCancellationTokenSource is not null)
+            await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+        gameStartCancellationTokenSource.Cancel();
+#endif
+
         await v3ConnectionState.ClearConnectionsAsync().ConfigureAwait(false);
 
         gameStartTimer.Pause();
@@ -1065,7 +1083,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (ProgramConstants.IsInGame)
             return ValueTask.CompletedTask;
 
-        PlayerInfo pInfo = Players.Find(p => p.Name == playerName);
+        PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo == null)
             return ValueTask.CompletedTask;
@@ -1132,7 +1150,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (!IsHost)
             return ValueTask.CompletedTask;
 
-        PlayerInfo pInfo = Players.Find(p => p.Name == playerName);
+        PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo == null)
             return ValueTask.CompletedTask;
@@ -1488,7 +1506,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         lastMapHash = mapHash;
         lastMapName = mapName;
 
-        GameModeMap = GameModeMaps.Find(gmm => gmm.GameMode.Name == gameMode && gmm.Map.SHA1 == mapHash);
+        GameModeMap = GameModeMaps.Find(gmm => string.Equals(gmm.GameMode.Name, gameMode, StringComparison.OrdinalIgnoreCase) && string.Equals(gmm.Map.SHA1, mapHash, StringComparison.OrdinalIgnoreCase));
 
         if (GameModeMap == null)
         {
@@ -1674,7 +1692,14 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         await base.GameProcessExitedAsync().ConfigureAwait(false);
         await channel.SendCTCPMessageAsync(CnCNetCommands.RETURN, QueuedMessageType.SYSTEM_MESSAGE, 20).ConfigureAwait(false);
-        gameStartCancellationTokenSource?.Cancel();
+
+#if NET8_0_OR_GREATER
+        if (gameStartCancellationTokenSource is not null)
+            await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+        gameStartCancellationTokenSource.Cancel();
+#endif
+
         await v3ConnectionState.SaveReplayAsync().ConfigureAwait(false);
         await v3ConnectionState.ClearConnectionsAsync().ConfigureAwait(false);
         ReturnNotification(ProgramConstants.PLAYERNAME);
@@ -1731,7 +1756,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             if (!success)
                 return ValueTask.CompletedTask;
 
-            PlayerInfo pInfo = Players.Find(p => p.Name == pName);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, pName, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return ValueTask.CompletedTask;
@@ -1754,7 +1779,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         fhc.CalculateHashes();
 
-        if (gameFilesHash != await fhc.GetCompleteHashAsync().ConfigureAwait(true))
+        if (!string.Equals(gameFilesHash, await fhc.GetCompleteHashAsync().ConfigureAwait(true), StringComparison.OrdinalIgnoreCase))
         {
             Logger.Log("Game files modified during client session!");
             await channel.SendCTCPMessageAsync(CnCNetCommands.CHEAT_DETECTED, QueuedMessageType.INSTANT_MESSAGE, 0).ConfigureAwait(true);
@@ -1883,7 +1908,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} has returned from the game.".L10N("Client:Main:PlayerReturned"), sender));
 
-        PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+        PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo != null)
             pInfo.IsInGame = false;
@@ -1909,14 +1934,14 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (!IsHost)
             return;
 
-        PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+        PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo != null)
             pInfo.Verified = true;
 
         CopyPlayerDataToUI();
 
-        if (filesHash != gameFilesHash)
+        if (!string.Equals(filesHash, gameFilesHash, StringComparison.OrdinalIgnoreCase))
         {
             await channel.SendCTCPMessageAsync(CnCNetCommands.CHEATER + " " + sender, QueuedMessageType.GAME_CHEATER_MESSAGE, 10).ConfigureAwait(false);
             CheaterNotification(ProgramConstants.PLAYERNAME, sender);
@@ -2003,7 +2028,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return;
 
         PlayerInfo pInfo = Players[playerIndex];
-        IRCUser user = connectionManager.UserList.Find(u => u.Name == pInfo.Name);
+        IRCUser user = connectionManager.UserList.Find(u => string.Equals(u.Name, pInfo.Name, StringComparison.OrdinalIgnoreCase));
 
         if (user != null)
         {
@@ -2153,9 +2178,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         {
             AddNotice(returnMessage);
 
-            if (lastMapHash == e.SHA1)
+            if (string.Equals(lastMapHash, e.SHA1, StringComparison.OrdinalIgnoreCase))
             {
-                GameModeMap = GameModeMaps.Find(gmm => gmm.Map.SHA1 == lastMapHash);
+                GameModeMap = GameModeMaps.Find(gmm => string.Equals(gmm.Map.SHA1, lastMapHash, StringComparison.OrdinalIgnoreCase));
 
                 return ChangeMapAsync(GameModeMap);
             }
@@ -2226,7 +2251,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         foreach (GameMode gm in GameModeMaps.GameModes)
         {
-            map = gm.Maps.Find(m => m.SHA1 == mapHash);
+            map = gm.Maps.Find(m => string.Equals(m.SHA1, mapHash, StringComparison.OrdinalIgnoreCase));
 
             if (map != null)
                 break;
@@ -2271,13 +2296,13 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             AddNotice("The game host failed to upload the map to the CnCNet map database.".L10N("Client:Main:HostUpdateMapToDBFailed"));
             hostUploadedMaps.Add(sha1);
 
-            if (lastMapHash == sha1 && Map == null)
+            if (string.Equals(lastMapHash, sha1, StringComparison.OrdinalIgnoreCase) && Map == null)
                 AddNotice("The game host needs to change the map or you won't be able to participate in this match.".L10N("Client:Main:HostMustChangeMap"));
 
             return;
         }
 
-        if (lastMapHash == sha1)
+        if (string.Equals(lastMapHash, sha1, StringComparison.OrdinalIgnoreCase))
         {
             if (!IsHost)
             {
@@ -2303,7 +2328,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         hostUploadedMaps.Add(sha1);
 
-        if (lastMapHash == sha1 && Map == null)
+        if (string.Equals(lastMapHash, sha1, StringComparison.OrdinalIgnoreCase) && Map == null)
         {
             Logger.Log("The game host has uploaded the map into the database. Re-attempting download...");
             MapSharer.DownloadMap(sha1, localGame, lastMapName);
@@ -2365,7 +2390,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         sha1 = sha1.Replace("?", string.Empty, StringComparison.OrdinalIgnoreCase);
 
         // See if the user already has this map, with any filename, before attempting to download it.
-        GameModeMap loadedMap = GameModeMaps.Find(gmm => gmm.Map.SHA1 == sha1);
+        GameModeMap loadedMap = GameModeMaps.Find(gmm => string.Equals(gmm.Map.SHA1, sha1, StringComparison.OrdinalIgnoreCase));
 
         if (loadedMap != null)
         {

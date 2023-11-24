@@ -251,7 +251,12 @@ namespace DTAClient.DXGUI.Multiplayer
                     await SendMessageAsync(LANCommands.PLAYER_QUIT_COMMAND, cancellationToken).ConfigureAwait(false);
             }
 
+#if NET8_0_OR_GREATER
+            if (cancellationTokenSource is not null)
+                await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
             cancellationTokenSource?.Cancel();
+#endif
 
             foreach ((Socket socket, _) in sockets)
                 socket.Close();
@@ -597,7 +602,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 }
             }
 
-            if (hg.GameVersion != ProgramConstants.GAME_VERSION)
+            if (!string.Equals(hg.GameVersion, ProgramConstants.GAME_VERSION, StringComparison.OrdinalIgnoreCase))
             {
                 // TODO Show warning
             }
@@ -664,7 +669,11 @@ namespace DTAClient.DXGUI.Multiplayer
             Visible = false;
             Enabled = false;
             await SendMessageAsync(LANCommands.PLAYER_QUIT_COMMAND, CancellationToken.None).ConfigureAwait(false);
+#if NET8_0_OR_GREATER
+            await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
             cancellationTokenSource.Cancel();
+#endif
 
             foreach ((Socket socket, _) in sockets)
                 socket.Close();

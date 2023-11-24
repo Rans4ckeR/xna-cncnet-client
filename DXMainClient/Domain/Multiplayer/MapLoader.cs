@@ -278,7 +278,7 @@ namespace DTAClient.Domain.Multiplayer
             {
                 foreach (GameMode gm in GameModes)
                 {
-                    if (gm.Maps.Find(m => m.SHA1 == map.SHA1) != null)
+                    if (gm.Maps.Find(m => string.Equals(m.SHA1, map.SHA1, StringComparison.OrdinalIgnoreCase)) != null)
                     {
                         Logger.Log("LoadCustomMap: Custom map " + customMapFile.FullName + " is already loaded!");
                         resultMessage = $"Map {map.Name} is already loaded.";
@@ -333,7 +333,7 @@ namespace DTAClient.Domain.Multiplayer
                     if (!map.Official && !(AllowedGameModes.Contains(gameMode) || AllowedGameModes.Contains(gameModeAlias)))
                         continue;
 
-                    GameMode gm = GameModes.Find(g => g.Name == gameModeAlias);
+                    GameMode gm = GameModes.Find(g => string.Equals(g.Name, gameModeAlias, StringComparison.OrdinalIgnoreCase));
                     if (gm == null)
                     {
                         gm = new GameMode(gameModeAlias);

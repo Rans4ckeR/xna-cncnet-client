@@ -16,11 +16,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers
 
         public override bool Handle(string sender, string message)
         {
-            if (message.StartsWith(CommandName))
+            if (message.StartsWith(CommandName, StringComparison.OrdinalIgnoreCase))
             {
                 string intPart = message[(CommandName.Length + 1)..];
-                int value;
-                bool success = int.TryParse(intPart, out value);
+                bool success = int.TryParse(intPart, out int value);
 
                 action(sender, value, innerAction);
                 return true;

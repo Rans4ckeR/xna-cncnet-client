@@ -8,6 +8,8 @@ using Rampastring.Tools;
 
 namespace ClientCore.Statistics
 {
+    using System.Globalization;
+
     public class StatisticsManager : GenericStatisticsManager
     {
         private const string VERSION = "1.06";
@@ -125,7 +127,7 @@ namespace ClientCore.Statistics
                 {
                     fs.Position = 4; // Skip version
                     byte[] readBuffer = new byte[128];
-                    await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false); // First 4 bytes following the version mean the amount of games
+                    await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false); // First 4 bytes following the version mean the amount of games
                     int gameCount = BitConverter.ToInt32(readBuffer, 0);
 
                     for (int i = 0; i < gameCount; i++)
@@ -133,26 +135,26 @@ namespace ClientCore.Statistics
                         MatchStatistics ms = new MatchStatistics();
 
                         // First 4 bytes of game info is the length in seconds
-                        await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                         int lengthInSeconds = BitConverter.ToInt32(readBuffer, 0);
                         ms.LengthInSeconds = lengthInSeconds;
                         // Next 8 are the game version
-                        await fs.ReadAsync(readBuffer, 0, 8).ConfigureAwait(false);
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 8)).ConfigureAwait(false);
                         ms.GameVersion = System.Text.Encoding.ASCII.GetString(readBuffer, 0, 8);
                         // Then comes the date and time, also 8 bytes
-                        await fs.ReadAsync(readBuffer, 0, 8).ConfigureAwait(false);
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 8)).ConfigureAwait(false);
                         long dateData = BitConverter.ToInt64(readBuffer, 0);
                         ms.DateAndTime = DateTime.FromBinary(dateData);
                         // Then one byte for SawCompletion
-                        await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                         ms.SawCompletion = Convert.ToBoolean(readBuffer[0]);
                         // Then 1 byte for the amount of players
-                        await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                         int playerCount = readBuffer[0];
                         if (version > 0)
                         {
                             // 4 bytes for average FPS
-                            await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                             ms.AverageFPS = BitConverter.ToInt32(readBuffer, 0);
                         }
 
@@ -164,23 +166,23 @@ namespace ClientCore.Statistics
                         }
 
                         // Map name, 64 or 128 bytes of Unicode depending on version
-                        await fs.ReadAsync(readBuffer, 0, mapNameLength).ConfigureAwait(false);
-                        ms.MapName = Encoding.Unicode.GetString(readBuffer).Replace("\0", "");
+                        await fs.ReadAsync(readBuffer.AsMemory(0, mapNameLength)).ConfigureAwait(false);
+                        ms.MapName = Encoding.Unicode.GetString(readBuffer).Replace("\0", "", StringComparison.OrdinalIgnoreCase);
 
                         // Game mode, 64 bytes
-                        await fs.ReadAsync(readBuffer, 0, 64).ConfigureAwait(false);
-                        ms.GameMode = Encoding.Unicode.GetString(readBuffer, 0, 64).Replace("\0", "");
+                        await fs.ReadAsync(readBuffer.AsMemory(0, 64)).ConfigureAwait(false);
+                        ms.GameMode = Encoding.Unicode.GetString(readBuffer, 0, 64).Replace("\0", "", StringComparison.OrdinalIgnoreCase);
 
                         if (version > 2)
                         {
                             // Unique game ID, 32 bytes (int32)
-                            await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                             ms.GameID = BitConverter.ToInt32(readBuffer, 0);
                         }
 
                         if (version > 5)
                         {
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ms.IsValidForStar = Convert.ToBoolean(readBuffer[0]);
                         }
 
@@ -192,58 +194,58 @@ namespace ClientCore.Statistics
                             if (version > 4)
                             {
                                 // Economy is shared for the Built stat in YR
-                                await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                                await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                                 ps.Economy = BitConverter.ToInt32(readBuffer, 0);
                             }
                             else
                             {
                                 // Economy is between 0 and 100 in old versions, so it takes only one byte
-                                await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                                await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                                 ps.Economy = readBuffer[0];
                             }
 
                             // IsAI is a bool, so obviously one byte
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.IsAI = Convert.ToBoolean(readBuffer[0]);
                             // IsLocalPlayer is also a bool
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.IsLocalPlayer = Convert.ToBoolean(readBuffer[0]);
                             // Kills take 4 bytes
-                            await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                             ps.Kills = BitConverter.ToInt32(readBuffer, 0);
                             // Losses also take 4 bytes
-                            await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                             ps.Losses = BitConverter.ToInt32(readBuffer, 0);
                             // 32 bytes for the name
-                            await fs.ReadAsync(readBuffer, 0, 32).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 32)).ConfigureAwait(false);
                             ps.Name = System.Text.Encoding.Unicode.GetString(readBuffer, 0, 32);
-                            ps.Name = ps.Name.Replace("\0", String.Empty);
+                            ps.Name = ps.Name.Replace("\0", String.Empty, StringComparison.OrdinalIgnoreCase);
                             // 1 byte for SawEnd
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.SawEnd = Convert.ToBoolean(readBuffer[0]);
                             // 4 bytes for Score
-                            await fs.ReadAsync(readBuffer, 0, 4).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 4)).ConfigureAwait(false);
                             ps.Score = BitConverter.ToInt32(readBuffer, 0);
                             // 1 byte for Side
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.Side = readBuffer[0];
                             // 1 byte for Team
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.Team = readBuffer[0];
                             if (version > 2)
                             {
                                 // 1 byte for Color
-                                await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                                await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                                 ps.Color = readBuffer[0];
                             }
                             // 1 byte for WasSpectator
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.WasSpectator = Convert.ToBoolean(readBuffer[0]);
                             // 1 byte for Won
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.Won = Convert.ToBoolean(readBuffer[0]);
                             // 1 byte for AI level
-                            await fs.ReadAsync(readBuffer, 0, 1).ConfigureAwait(false);
+                            await fs.ReadAsync(readBuffer.AsMemory(0, 1)).ConfigureAwait(false);
                             ps.AILevel = readBuffer[0];
 
                             ms.AddPlayer(ps);
@@ -371,8 +373,8 @@ namespace ClientCore.Statistics
             foreach (MatchStatistics ms in Statistics)
             {
                 if (ms.SawCompletion &&
-                    ms.MapName == mapName &&
-                    ms.GameMode == gameMode)
+                    string.Equals(ms.MapName, mapName, StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(ms.GameMode, gameMode, StringComparison.OrdinalIgnoreCase))
                 {
                     if (ms.Players[0].Won)
                         return true;
@@ -395,7 +397,7 @@ namespace ClientCore.Statistics
                 if (!ms.IsValidForStar)
                     continue;
 
-                if (ms.MapName != mapName)
+                if (!string.Equals(ms.MapName, mapName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 if (ms.Players.Count != requiredPlayerCount)
@@ -497,10 +499,10 @@ namespace ClientCore.Statistics
                 if (!ms.IsValidForStar)
                     continue;
 
-                if (ms.MapName != mapName)
+                if (!string.Equals(ms.MapName, mapName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (ms.GameMode != gameMode)
+                if (!string.Equals(ms.GameMode, gameMode, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 if (ms.Players.Count(ps => !ps.WasSpectator) != requiredPlayerCount)

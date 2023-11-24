@@ -1,9 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ClientCore;
 
 namespace DTAClient.Domain.Multiplayer
 {
+    using System.Globalization;
+
     internal sealed class PlayerHouseInfo
     {
         public int SideIndex { get; set; }
@@ -17,10 +19,10 @@ namespace DTAClient.Domain.Multiplayer
             get
             {
                 if (IsSpectator && !string.IsNullOrEmpty(ClientConfiguration.Instance.SpectatorInternalSideIndex))
-                    return int.Parse(ClientConfiguration.Instance.SpectatorInternalSideIndex);
+                    return int.Parse(ClientConfiguration.Instance.SpectatorInternalSideIndex, CultureInfo.InvariantCulture);
 
                 if (!string.IsNullOrEmpty(ClientConfiguration.Instance.InternalSideIndices))
-                    return Array.ConvertAll(ClientConfiguration.Instance.InternalSideIndices.Split(','), int.Parse)[SideIndex];
+                    return Array.ConvertAll(ClientConfiguration.Instance.InternalSideIndices.Split(','), q => int.Parse(q, CultureInfo.InvariantCulture))[SideIndex];
 
                 return SideIndex;
             }

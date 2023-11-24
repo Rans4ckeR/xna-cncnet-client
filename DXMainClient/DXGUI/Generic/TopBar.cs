@@ -17,6 +17,8 @@ using DTAConfig;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// A top bar that allows switching between various client windows.
     /// </summary>
@@ -119,11 +121,16 @@ namespace DTAClient.DXGUI.Generic
                 optionsWindow.ToggleMainMenuOnlyOptions(primarySwitches.Count == 1 && !lanMode);
         }
 
-        public void Clean()
+        public Task CleanAsync()
+#if NET8_0_OR_GREATER
+            => cncnetPlayerCountCancellationSource is not null ? cncnetPlayerCountCancellationSource.CancelAsync() : Task.CompletedTask;
+#else
         {
-            if (cncnetPlayerCountCancellationSource != null)
-                cncnetPlayerCountCancellationSource.Cancel();
+            cncnetPlayerCountCancellationSource?.Cancel();
+
+            return Task.CompletedTask;
         }
+#endif
 
         public override void Initialize()
         {
@@ -200,7 +207,7 @@ namespace DTAClient.DXGUI.Generic
                 lblCnCNetStatus = new XNALabel(WindowManager);
                 lblCnCNetStatus.Name = "lblCnCNetStatus";
                 lblCnCNetStatus.FontIndex = 1;
-                lblCnCNetStatus.Text = ClientConfiguration.Instance.LocalGame.ToUpper() + " " + "PLAYERS ONLINE:".L10N("Client:Main:OnlinePlayersNumber");
+                lblCnCNetStatus.Text = ClientConfiguration.Instance.LocalGame.ToUpperInvariant() + " " + "PLAYERS ONLINE:".L10N("Client:Main:OnlinePlayersNumber");
                 lblCnCNetPlayerCount = new XNALabel(WindowManager);
                 lblCnCNetPlayerCount.Name = "lblCnCNetPlayerCount";
                 lblCnCNetPlayerCount.FontIndex = 1;
@@ -249,7 +256,7 @@ namespace DTAClient.DXGUI.Generic
                 if (e.PlayerCount == -1)
                     lblCnCNetPlayerCount.Text = "N/A".L10N("Client:Main:N/A");
                 else
-                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString();
+                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString(CultureInfo.CurrentCulture);
             }
         }
 
@@ -444,7 +451,7 @@ namespace DTAClient.DXGUI.Generic
 
             lblTime.Text = Renderer.GetSafeString(dtn.ToLongTimeString(), lblTime.FontIndex);
             string dateText = Renderer.GetSafeString(dtn.ToShortDateString(), lblDate.FontIndex);
-            if (lblDate.Text != dateText)
+            if (!string.Equals(lblDate.Text, dateText, StringComparison.OrdinalIgnoreCase))
                 lblDate.Text = dateText;
 
             base.Update(gameTime);

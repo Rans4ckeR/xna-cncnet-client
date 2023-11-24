@@ -78,7 +78,7 @@ namespace ClientGUI
         /// <exception cref="Exception">If another control was registered with the same name.</exception>
         private static void ValidateNonDuplicateControlType(Type controlType)
         {
-            if (controlTypes.Any(c => c.Name == controlType.Name))
+            if (controlTypes.Any(c => string.Equals(c.Name, controlType.Name, StringComparison.OrdinalIgnoreCase)))
                 throw new Exception($"A control type with name {controlType.Name} has already been registered.");
         }
 
@@ -94,7 +94,7 @@ namespace ClientGUI
         private static XNAControl GetXnaControl(IServiceProvider provider, string controlTypeName)
         {
             serviceProvider ??= provider;
-            Type controlType = controlTypes.SingleOrDefault(control => control.Name == controlTypeName);
+            Type controlType = controlTypes.SingleOrDefault(control => string.Equals(control.Name, controlTypeName, StringComparison.OrdinalIgnoreCase));
             if (controlType == null)
                 throw new Exception($"Control type {controlTypeName} was not registered with ServiceCollection in GameClass");
 

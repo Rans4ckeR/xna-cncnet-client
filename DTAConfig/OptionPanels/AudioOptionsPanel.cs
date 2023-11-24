@@ -8,6 +8,8 @@ using System;
 
 namespace DTAConfig.OptionPanels
 {
+    using System.Globalization;
+
     class AudioOptionsPanel : XNAOptionsPanel
     {
         public AudioOptionsPanel(WindowManager windowManager, UserINISettings iniSettings)
@@ -191,22 +193,22 @@ namespace DTAConfig.OptionPanels
 
         private void TrbScoreVolume_ValueChanged(object sender, EventArgs e)
         {
-            lblScoreVolumeValue.Text = trbScoreVolume.Value.ToString();
+            lblScoreVolumeValue.Text = trbScoreVolume.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         private void TrbSoundVolume_ValueChanged(object sender, EventArgs e)
         {
-            lblSoundVolumeValue.Text = trbSoundVolume.Value.ToString();
+            lblSoundVolumeValue.Text = trbSoundVolume.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         private void TrbVoiceVolume_ValueChanged(object sender, EventArgs e)
         {
-            lblVoiceVolumeValue.Text = trbVoiceVolume.Value.ToString();
+            lblVoiceVolumeValue.Text = trbVoiceVolume.Value.ToString(CultureInfo.InvariantCulture);
         }
 
         private void TrbClientVolume_ValueChanged(object sender, EventArgs e)
         {
-            lblClientVolumeValue.Text = trbClientVolume.Value.ToString();
+            lblClientVolumeValue.Text = trbClientVolume.Value.ToString(CultureInfo.InvariantCulture);
             WindowManager.SoundPlayer.SetVolume(trbClientVolume.Value / 10.0f);
         }
 

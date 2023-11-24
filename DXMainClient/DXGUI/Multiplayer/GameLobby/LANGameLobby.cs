@@ -22,6 +22,8 @@ using System.Threading.Tasks;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     internal sealed class LANGameLobby : MultiplayerGameLobby
     {
         private const int GAME_OPTION_SPECIAL_FLAG_COUNT = 5;
@@ -75,15 +77,20 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (client is { Connected: true })
                 await ClearAsync(true).ConfigureAwait(false);
 
-            cancellationTokenSource?.Cancel();
+#if NET8_0_OR_GREATER
+            if (cancellationTokenSource is not null)
+                await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+            cancellationTokenSource.Cancel();
+#endif
         }
 
         private void HandleFileHashCommand(string sender, string fileHash)
         {
-            if (fileHash != localFileHash)
-                AddNotice(string.Format("{0} has modified game files! They could be cheating!".L10N("Client:Main:PlayerModifiedFiles"), sender));
+            if (!string.Equals(fileHash, localFileHash, StringComparison.OrdinalIgnoreCase))
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} has modified game files! They could be cheating!".L10N("Client:Main:PlayerModifiedFiles"), sender));
 
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             pInfo.Verified = true;
             CopyPlayerDataToUI();
@@ -284,7 +291,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 string name = parts[1].Trim();
 
-                if (parts[0] == LANCommands.PLAYER_JOIN && !string.IsNullOrEmpty(name))
+                if (string.Equals(parts[0], LANCommands.PLAYER_JOIN, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(name))
                 {
                     lpInfo.Name = name;
 
@@ -301,7 +308,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask AddPlayerAsync(LANPlayerInfo lpInfo, CancellationToken cancellationToken)
         {
-            if (Players.Find(p => p.Name == lpInfo.Name) != null ||
+            if (Players.Find(p => string.Equals(p.Name, lpInfo.Name, StringComparison.OrdinalIgnoreCase)) != null ||
                 Players.Count >= MAX_PLAYER_COUNT || Locked)
                 return;
 
@@ -313,7 +320,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             lpInfo.MessageReceived += LpInfo_MessageReceived;
             lpInfo.ConnectionLost += lpInfo_ConnectionLostFunc;
 
-            AddNotice(string.Format("{0} connected from {1}".L10N("Client:Main:PlayerFromIP"), lpInfo.Name, lpInfo.IPAddress));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} connected from {1}".L10N("Client:Main:PlayerFromIP"), lpInfo.Name, lpInfo.IPAddress));
             lpInfo.StartReceiveLoopAsync(cancellationToken).HandleTask();
 
             CopyPlayerDataToUI();
@@ -329,12 +336,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             CleanUpPlayer(lpInfo);
             Players.Remove(lpInfo);
 
-            AddNotice(string.Format("{0} has left the game.".L10N("Client:Main:PlayerLeftGame"), lpInfo.Name));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} has left the game.".L10N("Client:Main:PlayerLeftGame"), lpInfo.Name));
 
             CopyPlayerDataToUI();
             await BroadcastPlayerOptionsAsync().ConfigureAwait(false);
 
-            if (lpInfo.Name == ProgramConstants.PLAYERNAME)
+            if (string.Equals(lpInfo.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 ResetDiscordPresence();
             else
                 UpdateDiscordPresence();
@@ -491,7 +498,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 await SendMessageToHostAsync(LANCommands.PLAYER_QUIT_COMMAND, cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             }
 
+#if NET8_0_OR_GREATER
+            await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
             cancellationTokenSource.Cancel();
+#endif
 
             if (client.Connected)
                 client.Shutdown(SocketShutdown.Both);
@@ -638,7 +649,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!IsHost)
                 return;
 
-            foreach (PlayerInfo pInfo in Players.Where(p => !otherPlayersOnly || p.Name != ProgramConstants.PLAYERNAME))
+            foreach (PlayerInfo pInfo in Players.Where(p => !otherPlayersOnly || !string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase)))
             {
                 var lpInfo = (LANPlayerInfo)pInfo;
                 await lpInfo.SendMessageAsync(message, cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
@@ -724,9 +735,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private void ReturnNotification(string sender)
         {
-            AddNotice(string.Format("{0} has returned from the game.".L10N("Client:Main:PlayerReturned"), sender));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} has returned from the game.".L10N("Client:Main:PlayerReturned"), sender));
 
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo != null)
                 pInfo.IsInGame = false;
@@ -746,7 +757,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     {
                         CleanUpPlayer(lpInfo);
                         Players.RemoveAt(i);
-                        AddNotice(string.Format("{0} - connection timed out".L10N("Client:Main:PlayerTimeout"), lpInfo.Name));
+                        AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - connection timed out".L10N("Client:Main:PlayerTimeout"), lpInfo.Name));
                         CopyPlayerDataToUI();
                         Task.Run(() => BroadcastPlayerOptionsAsync().HandleTask()).Wait();
                         Task.Run(() => BroadcastPlayerExtraOptionsAsync().HandleTask()).Wait();
@@ -853,7 +864,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!IsHost)
                 return ValueTask.CompletedTask;
 
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return ValueTask.CompletedTask;
@@ -991,12 +1002,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask HandlePlayerQuitAsync(string sender)
         {
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return;
 
-            AddNotice(string.Format("{0} has left the game.".L10N("Client:Main:PlayerLeftGame"), pInfo.Name));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} has left the game.".L10N("Client:Main:PlayerLeftGame"), pInfo.Name));
             Players.Remove(pInfo);
             ClearReadyStatuses();
             CopyPlayerDataToUI();
@@ -1028,7 +1039,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             string mapSHA1 = parts[^(GAME_OPTION_SPECIAL_FLAG_COUNT - 1)];
             string gameMode = parts[^(GAME_OPTION_SPECIAL_FLAG_COUNT - 2)];
 
-            GameModeMap gameModeMap = GameModeMaps.Find(gmm => gmm.GameMode.Name == gameMode && gmm.Map.SHA1 == mapSHA1);
+            GameModeMap gameModeMap = GameModeMaps.Find(gmm => string.Equals(gmm.GameMode.Name, gameMode, StringComparison.OrdinalIgnoreCase) && string.Equals(gmm.Map.SHA1, mapSHA1, StringComparison.OrdinalIgnoreCase));
 
             if (gameModeMap == null)
             {
@@ -1045,7 +1056,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (frameSendRate != FrameSendRate)
             {
                 FrameSendRate = frameSendRate;
-                AddNotice(string.Format("The game host has changed FrameSendRate (order lag) to {0}".L10N("Client:Main:HostChangeFrameSendRate"), frameSendRate));
+                AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed FrameSendRate (order lag) to {0}".L10N("Client:Main:HostChangeFrameSendRate"), frameSendRate));
             }
 
             bool removeStartingLocations = Convert.ToBoolean(Conversions.IntFromString(
@@ -1062,9 +1073,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 if (chkBox.Checked != oldValue)
                 {
                     if (chkBox.Checked)
-                        AddNotice(string.Format("The game host has enabled {0}".L10N("Client:Main:HostEnableOption"), chkBox.Text));
+                        AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has enabled {0}".L10N("Client:Main:HostEnableOption"), chkBox.Text));
                     else
-                        AddNotice(string.Format("The game host has disabled {0}".L10N("Client:Main:HostDisableOption"), chkBox.Text));
+                        AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has disabled {0}".L10N("Client:Main:HostDisableOption"), chkBox.Text));
                 }
             }
 
@@ -1086,14 +1097,14 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     if (dd.OptionName == null)
                         ddName = dd.Name;
 
-                    AddNotice(string.Format("The game host has set {0} to {1}".L10N("Client:Main:HostSetOption"), ddName, dd.SelectedItem.Text));
+                    AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has set {0} to {1}".L10N("Client:Main:HostSetOption"), ddName, dd.SelectedItem.Text));
                 }
             }
         }
 
         private ValueTask GameHost_HandleReadyRequestAsync(string sender, string autoReady)
         {
-            PlayerInfo pInfo = Players.Find(p => p.Name == sender);
+            PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
                 return ValueTask.CompletedTask;

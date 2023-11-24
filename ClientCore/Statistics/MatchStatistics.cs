@@ -74,7 +74,7 @@ namespace ClientCore.Statistics
         {
             foreach (PlayerStatistics ps in Players)
             {
-                if (ps.Name == playerName && ps.Losses == 0 && ps.Score == 0)
+                if (string.Equals(ps.Name, playerName, StringComparison.OrdinalIgnoreCase) && ps.Losses == 0 && ps.Score == 0)
                     return ps;
             }
 

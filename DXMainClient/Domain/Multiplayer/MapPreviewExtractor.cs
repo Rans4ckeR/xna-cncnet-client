@@ -37,8 +37,8 @@ namespace DTAClient.Domain.Multiplayer
                 return null;
             }
 
-            if (mapIni.GetStringValue("PreviewPack", "1", string.Empty) ==
-                "yAsAIAXQ5PDQ5PDQ6JQATAEE6PDQ4PDI4JgBTAFEAkgAJyAATAG0AydEAEABpAJIA0wBVA")
+            if (string.Equals(mapIni.GetStringValue("PreviewPack", "1", string.Empty),
+                "yAsAIAXQ5PDQ5PDQ6JQATAEE6PDQ4PDI4JgBTAFEAkgAJyAATAG0AydEAEABpAJIA0wBVA", StringComparison.Ordinal))
             {
                 Logger.Log("MapPreviewExtractor: " + baseFilename + " - Hidden preview detected, not extracting preview.");
                 return null;
@@ -129,7 +129,7 @@ namespace DTAClient.Domain.Multiplayer
 
                     await using (stream.ConfigureAwait(false))
                     {
-                        await stream.ReadAsync(dataDest, writtenBytes, sizeUncompressed).ConfigureAwait(false);
+                        await stream.ReadAsync(dataDest.AsMemory(writtenBytes, sizeUncompressed)).ConfigureAwait(false);
                     }
 
                     readBytes += sizeCompressed;

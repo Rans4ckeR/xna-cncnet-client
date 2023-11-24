@@ -9,6 +9,8 @@ using ClientCore.I18N;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     /// <summary>
     /// A game option drop-down for the game lobby.
     /// </summary>
@@ -75,11 +77,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     }
                     return;
                 case "DataWriteMode":
-                    if (value.ToUpper() == "INDEX")
+                    if (string.Equals(value, "INDEX", StringComparison.OrdinalIgnoreCase))
                         dataWriteMode = DropDownDataWriteMode.INDEX;
-                    else if (value.ToUpper() == "BOOLEAN")
+                    else if (string.Equals(value, "BOOLEAN", StringComparison.OrdinalIgnoreCase))
                         dataWriteMode = DropDownDataWriteMode.BOOLEAN;
-                    else if (value.ToUpper() == "MAPCODE")
+                    else if (string.Equals(value, "MAPCODE", StringComparison.OrdinalIgnoreCase))
                         dataWriteMode = DropDownDataWriteMode.MAPCODE;
                     else
                         dataWriteMode = DropDownDataWriteMode.STRING;
@@ -88,7 +90,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     spawnIniOption = value;
                     return;
                 case "DefaultIndex":
-                    SelectedIndex = int.Parse(value);
+                    SelectedIndex = int.Parse(value, CultureInfo.InvariantCulture);
                     defaultIndex = SelectedIndex;
                     HostSelectedIndex = SelectedIndex;
                     UserSelectedIndex = SelectedIndex;

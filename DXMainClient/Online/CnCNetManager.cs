@@ -14,6 +14,8 @@ using DTAClient.Domain.Multiplayer.CnCNet;
 
 namespace DTAClient.Online
 {
+    using System.Globalization;
+
     /// <summary>
     /// Acts as an interface between the CnCNet connection class
     /// and the user-interface's classes.
@@ -174,7 +176,7 @@ namespace DTAClient.Online
         private void DoAttemptedServerChanged(string serverName)
         {
             MainChannel.AddMessage(new ChatMessage(
-                string.Format("Attempting connection to {0}".L10N("Client:Main:AttemptConnectToServer"), serverName)));
+                string.Format(CultureInfo.CurrentCulture, "Attempting connection to {0}".L10N("Client:Main:AttemptConnectToServer"), serverName)));
             AttemptedServerChanged?.Invoke(this, new AttemptedServerEventArgs(serverName));
         }
 
@@ -325,7 +327,7 @@ namespace DTAClient.Online
             else
             {
                 // Color parsing
-                if (message.Contains(Convert.ToString((char)03)))
+                if (message.Contains((char)03, StringComparison.OrdinalIgnoreCase))
                 {
                     if (message.Length < 3)
                     {
@@ -369,7 +371,7 @@ namespace DTAClient.Online
             // expect our username instead of a channel as the first parameter
             if (channel == null)
             {
-                if (channelName == ProgramConstants.PLAYERNAME)
+                if (string.Equals(channelName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 {
                     PrivateCTCPEventArgs e = new PrivateCTCPEventArgs(userName, message);
 
@@ -556,7 +558,7 @@ namespace DTAClient.Online
             bool isAdmin = false;
             string name = userName;
 
-            if (userName.StartsWith("@"))
+            if (userName.StartsWith('@'))
             {
                 isAdmin = true;
                 name = userName.Remove(0, 1);
@@ -568,7 +570,7 @@ namespace DTAClient.Online
             // Avoid LINQ here for performance reasons
             foreach (var user in UserList)
             {
-                if (user.Name == name)
+                if (string.Equals(user.Name, name, StringComparison.OrdinalIgnoreCase))
                 {
                     ircUser = (IRCUser)user.Clone();
                     break;
@@ -584,7 +586,7 @@ namespace DTAClient.Online
 
                 if (parts.Length > 1)
                 {
-                    ircUser.GameID = gameCollection.GameList.FindIndex(g => g.InternalName.ToUpper() == parts[0].Replace("~", string.Empty));
+                    ircUser.GameID = gameCollection.GameList.FindIndex(g => string.Equals(g.InternalName, parts[0].Replace("~", string.Empty, StringComparison.OrdinalIgnoreCase), StringComparison.OrdinalIgnoreCase));
                 }
 
                 AddUserToGlobalUserList(ircUser);
@@ -619,7 +621,7 @@ namespace DTAClient.Online
 
             channel.OnUserKicked(userName);
 
-            if (userName == ProgramConstants.PLAYERNAME)
+            if (string.Equals(userName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
             {
                 channel.Users.DoForAllUsers(user =>
                 {
@@ -650,7 +652,7 @@ namespace DTAClient.Online
 
             channel.OnUserLeft(userName);
 
-            if (userName == ProgramConstants.PLAYERNAME)
+            if (string.Equals(userName, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
             {
                 channel.Users.DoForAllUsers(user =>
                 {
@@ -677,7 +679,7 @@ namespace DTAClient.Online
         /// <param name="channelName">The name of the channel.</param>
         public void RemoveChannelFromUser(string userName, string channelName)
         {
-            var userIndex = UserList.FindIndex(user => user.Name.ToLower() == userName.ToLower());
+            var userIndex = UserList.FindIndex(user => string.Equals(user.Name, userName, StringComparison.OrdinalIgnoreCase));
             if (userIndex > -1)
             {
                 var ircUser = UserList[userIndex];
@@ -710,16 +712,16 @@ namespace DTAClient.Online
                 string name = userName;
                 bool isAdmin = false;
 
-                if (userName.StartsWith("@"))
+                if (userName.StartsWith('@'))
                 {
                     isAdmin = true;
                     name = userName[1..];
                 }
-                else if (userName.StartsWith("+"))
+                else if (userName.StartsWith('+'))
                     name = userName[1..];
 
                 // Check if we already know the IRC user from another channel
-                IRCUser ircUser = UserList.Find(u => u.Name == name);
+                IRCUser ircUser = UserList.Find(u => string.Equals(u.Name, name, StringComparison.OrdinalIgnoreCase));
 
                 // If the user isn't familiar to us already,
                 // create a new user instance and add it to the global user list
@@ -751,7 +753,7 @@ namespace DTAClient.Online
         {
             new List<Channel>(channels).ForEach(ch => ch.OnUserQuitIRC(userName));
 
-            int userIndex = UserList.FindIndex(user => user.Name == userName);
+            int userIndex = UserList.FindIndex(user => string.Equals(user.Name, userName, StringComparison.OrdinalIgnoreCase));
 
             if (userIndex > -1)
             {
@@ -772,11 +774,9 @@ namespace DTAClient.Online
         /// <returns>A channel if one matching the name is found, otherwise null.</returns>
         public Channel FindChannel(string channelName)
         {
-            channelName = channelName.ToLower();
-
             foreach (var channel in channels)
             {
-                if (channel.ChannelName.ToLower() == channelName)
+                if (string.Equals(channel.ChannelName, channelName, StringComparison.OrdinalIgnoreCase))
                     return channel;
             }
 
@@ -812,7 +812,7 @@ namespace DTAClient.Online
                     return;
             }
 
-            var user = UserList.Find(u => u.Name == userName);
+            var user = UserList.Find(u => string.Equals(u.Name, userName, StringComparison.OrdinalIgnoreCase));
             if (user != null)
             {
                 user.GameID = gameIndex;
@@ -865,7 +865,7 @@ namespace DTAClient.Online
                 sb.Append(c);
 
             MainChannel.AddMessage(new ChatMessage(Color.White,
-                string.Format("Your name is already in use. Retrying with {0}...".L10N("Client:Main:NameInUseRetry"), sb)));
+                string.Format(CultureInfo.CurrentCulture, "Your name is already in use. Retrying with {0}...".L10N("Client:Main:NameInUseRetry"), sb)));
 
             ProgramConstants.PLAYERNAME = sb.ToString();
             await connection.ChangeNicknameAsync().ConfigureAwait(false);
@@ -886,7 +886,7 @@ namespace DTAClient.Online
 
         private void DoUserNicknameChange(string oldNickname, string newNickname)
         {
-            IRCUser user = UserList.Find(u => u.Name.ToUpper() == oldNickname.ToUpper());
+            IRCUser user = UserList.Find(u => string.Equals(u.Name, oldNickname, StringComparison.OrdinalIgnoreCase));
             if (user == null)
             {
                 Logger.Log("DoUserNicknameChange: Failed to find user with nickname " + oldNickname);
@@ -906,7 +906,7 @@ namespace DTAClient.Online
         private void DoServerLatencyTested(int candidateCount, int closerCount)
         {
             MainChannel.AddMessage(new ChatMessage(
-                string.Format(
+                string.Format(CultureInfo.CurrentCulture,
                     "Lobby servers: {0} available, {1} fast.".L10N("Client:Main:LobbyServerLatencyTestResult"),
                     candidateCount, closerCount)));
         }

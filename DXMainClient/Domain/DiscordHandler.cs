@@ -144,7 +144,7 @@ namespace DTAClient.Domain
             bool isHost = false, bool isPassworded = false,
             bool isLocked = false, bool resetTimer = false)
         {
-            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
             string stateString = $"{state} [{players}/{maxPlayers}] • {roomName}";
             if (isHost)
                 stateString += "👑";
@@ -196,7 +196,7 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string map, string mode, string state, string side, bool resetTimer = false)
         {
-            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
             CurrentPresence = new RichPresence()
             {
                 State = $"{state}",
@@ -217,7 +217,7 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string mission, string difficulty, string side, bool resetTimer = false)
         {
-            string sideKey = SideKeyRegex().Replace(side.ToLower(), "");
+            string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
             CurrentPresence = new RichPresence()
             {
                 State = "Playing Mission",

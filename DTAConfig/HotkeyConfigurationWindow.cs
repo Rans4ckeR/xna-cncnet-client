@@ -11,6 +11,8 @@ using System.Collections.Generic;
 
 namespace DTAConfig
 {
+    using System.Globalization;
+
     /// <summary>
     /// A window for configuring in-game hotkeys.
     /// </summary>
@@ -75,12 +77,11 @@ namespace DTAConfig
             ddCategory.ClientRectangle = new Rectangle(lblCategory.Right + 12,
                 lblCategory.Y - 1, 250, ddCategory.Height);
 
-            HashSet<string> categories = [];
+            HashSet<string> categories = new(StringComparer.OrdinalIgnoreCase);
 
             foreach (var command in gameCommands)
             {
-                if (!categories.Contains(command.Category))
-                    categories.Add(command.Category);
+                categories.Add(command.Category);
             }
 
             foreach (string category in categories)
@@ -344,7 +345,7 @@ namespace DTAConfig
             string category = ddCategory.SelectedItem.Text;
             foreach (var command in gameCommands)
             {
-                if (command.Category == category)
+                if (string.Equals(command.Category, category, StringComparison.OrdinalIgnoreCase))
                 {
                     lbHotkeys.AddItem(new XNAListBoxItem[] {
                         new XNAListBoxItem() { Text = command.UIName, Tag = command },
@@ -445,7 +446,7 @@ namespace DTAConfig
             }
 
             string displayString = pendingHotkey.ToString();
-            if (displayString != string.Empty)
+            if (!string.IsNullOrWhiteSpace(displayString))
                 lblNewHotkeyValue.Text = pendingHotkey.ToString();
             else
                 lblNewHotkeyValue.Text = HOTKEY_TIP_TEXT;
@@ -486,7 +487,7 @@ namespace DTAConfig
             var keyboardIni = new IniFile();
             foreach (var command in gameCommands)
             {
-                keyboardIni.SetStringValue("Hotkey", command.ININame, command.Hotkey.GetTSEncoded().ToString());
+                keyboardIni.SetStringValue("Hotkey", command.ININame, command.Hotkey.GetTSEncoded().ToString(CultureInfo.InvariantCulture));
             }
 
             keyboardIni.WriteIniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ClientConfiguration.Instance.KeyboardINI));

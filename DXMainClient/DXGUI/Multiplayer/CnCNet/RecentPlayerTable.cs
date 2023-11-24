@@ -7,6 +7,8 @@ using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
+    using System.Globalization;
+
     internal sealed class RecentPlayerTable : XNAMultiColumnListBox
     {
         private readonly CnCNetManager connectionManager;
@@ -31,7 +33,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         public void AddRecentPlayer(RecentPlayer recentPlayer)
         {
-            IRCUser iu = connectionManager.UserList.Find(u => u.Name == recentPlayer.PlayerName);
+            IRCUser iu = connectionManager.UserList.Find(u => string.Equals(u.Name, recentPlayer.PlayerName, StringComparison.OrdinalIgnoreCase));
             bool isOnline = true;
 
             if (iu == null)
@@ -48,7 +50,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     Tag = iu
                 },
                 new XNAListBoxItem(recentPlayer.GameName, textColor),
-                new XNAListBoxItem(recentPlayer.GameTime.ToLocalTime().ToString("ddd, MMM d, yyyy @ h:mm tt"), textColor)
+                new XNAListBoxItem(recentPlayer.GameTime.ToLocalTime().ToString("ddd, MMM d, yyyy @ h:mm tt", CultureInfo.CurrentCulture), textColor)
             });
         }
 

@@ -5,6 +5,8 @@ using Rampastring.XNAUI;
 
 namespace ClientGUI
 {
+    using System;
+
     /// <summary>
     /// An "extra panel" for modders that automatically
     /// changes its size to match the texture size.
@@ -19,7 +21,7 @@ namespace ClientGUI
 
         protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
         {
-            if (key == "BackgroundTexture")
+            if (string.Equals(key, "BackgroundTexture", StringComparison.OrdinalIgnoreCase))
             {
                 BackgroundTexture = AssetLoader.LoadTexture(value);
 

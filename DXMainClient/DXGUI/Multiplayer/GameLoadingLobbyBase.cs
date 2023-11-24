@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
+    using System.Globalization;
+
     /// <summary>
     /// An abstract base class for a multiplayer game loading lobby.
     /// </summary>
@@ -102,7 +104,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 else
                     lblPlayerName.ClientRectangle = new Rectangle(190, 9 + 30 * (i - 4), 0, 0);
 
-                lblPlayerName.Text = string.Format("Player {0}".L10N("Client:Main:PlayerX"), i) + " ";
+                lblPlayerName.Text = string.Format(CultureInfo.CurrentCulture, "Player {0}".L10N("Client:Main:PlayerX"), i) + " ";
                 panelPlayers.AddChild(lblPlayerName);
                 lblPlayerNames[i] = lblPlayerName;
             }
@@ -233,7 +235,7 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             Logger.Log("FSW Event: " + e.FullPath);
 
-            if (Path.GetFileName(e.FullPath) == "SAVEGAME.NET")
+            if (string.Equals(Path.GetFileName(e.FullPath), "SAVEGAME.NET", StringComparison.OrdinalIgnoreCase))
                 return SavedGameManager.RenameSavedGameAsync();
 
             return ValueTask.CompletedTask;
@@ -268,7 +270,7 @@ namespace DTAClient.DXGUI.Multiplayer
         {
             AddNotice("The game host wants to load the game but cannot because not all players are ready!".L10N("Client:Main:GetReadyPlease"));
 
-            if (!IsHost && !Players.Find(p => p.Name == ProgramConstants.PLAYERNAME).Ready)
+            if (!IsHost && !Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase)).Ready)
                 sndGetReadySound.Play();
 #if WINFORMS
 
@@ -298,10 +300,10 @@ namespace DTAClient.DXGUI.Multiplayer
             int sgIndex = (ddSavedGame.Items.Count - 1) - ddSavedGame.SelectedIndex;
 
             spawnIni.SetStringValue("Settings", "SaveGameName",
-                string.Format("SVGM_{0}.NET", sgIndex.ToString("D3")));
+                string.Format(CultureInfo.InvariantCulture, "SVGM_{0}.NET", sgIndex.ToString("D3", CultureInfo.InvariantCulture)));
             spawnIni.SetBooleanValue("Settings", "LoadSaveGame", true);
 
-            PlayerInfo localPlayer = Players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+            PlayerInfo localPlayer = Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
             if (localPlayer == null)
                 return;
@@ -315,7 +317,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 if (string.IsNullOrEmpty(otherName))
                     continue;
 
-                PlayerInfo otherPlayer = Players.Find(p => p.Name == otherName);
+                PlayerInfo otherPlayer = Players.Find(p => string.Equals(p.Name, otherName, StringComparison.OrdinalIgnoreCase));
 
                 if (otherPlayer == null)
                     continue;
@@ -462,7 +464,7 @@ namespace DTAClient.DXGUI.Multiplayer
             {
                 SavedGamePlayer sgPlayer = SGPlayers[i];
 
-                PlayerInfo pInfo = Players.Find(p => p.Name == SGPlayers[i].Name);
+                PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, SGPlayers[i].Name, StringComparison.OrdinalIgnoreCase));
 
                 XNALabel playerLabel = lblPlayerNames[i];
 
