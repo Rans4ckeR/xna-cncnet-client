@@ -48,7 +48,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         {
             try
             {
+#if NETFRAMEWORK
+                string info = await Constants.CnCNetHttpClient.GetStringAsync($"{Uri.UriSchemeHttps}://api.cncnet.org/status").ConfigureAwait(false);
+#else
                 string info = await Constants.CnCNetHttpClient.GetStringAsync($"{Uri.UriSchemeHttps}://api.cncnet.org/status", cancellationToken).ConfigureAwait(false);
+#endif
 
                 info = info.Replace("{", string.Empty);
                 info = info.Replace("}", string.Empty);

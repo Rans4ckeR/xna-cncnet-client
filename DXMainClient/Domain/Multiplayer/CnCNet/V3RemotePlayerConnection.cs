@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ClientCore;
 using Rampastring.Tools;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
@@ -45,11 +48,27 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
     /// <param name="receiverId">The id of the player that receives the data.</param>
     public ValueTask SendDataToRemotePlayerAsync(Memory<byte> data, uint receiverId)
     {
+#if NETFRAMEWORK
+        byte[] bytes = BitConverter.GetBytes(PlayerId);
+
+        for (int i = 0; i < PlayerIdSize; i++)
+        {
+            data.Span[i] = bytes[i];
+        }
+
+        bytes = BitConverter.GetBytes(receiverId);
+
+        for (int i = PlayerIdSize; i < PlayerIdSize * 2; i++)
+        {
+            data.Span[i] = bytes[i];
+        }
+#else
         if (!BitConverter.TryWriteBytes(data.Span[..PlayerIdSize], PlayerId))
             throw new GameDataException();
 
         if (!BitConverter.TryWriteBytes(data.Span[PlayerIdSize..(PlayerIdSize * 2)], receiverId))
             throw new GameDataException();
+#endif
 
         return SendDataAsync(data);
     }
@@ -71,15 +90,31 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
         buffer.Span.Clear();
 
+#if NETFRAMEWORK
+        byte[] bytes = BitConverter.GetBytes(PlayerId);
+
+        for (int i = 0; i < PlayerIdSize; i++)
+        {
+            buffer.Span[i] = bytes[i];
+        }
+#else
         if (!BitConverter.TryWriteBytes(buffer.Span[..PlayerIdSize], PlayerId))
             throw new GameDataException();
 
         using var timeoutCancellationTokenSource = new CancellationTokenSource(SendTimeout);
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, CancellationToken);
+#endif
 
         try
         {
+#if NETFRAMEWORK
+            if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+                throw new();
+
+            await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).ConfigureAwait(false);
+#else
             await Socket.SendToAsync(buffer, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
         }
         catch (SocketException ex)
         {
@@ -96,6 +131,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         {
             return;
         }
+#if !NETFRAMEWORK
         catch (OperationCanceledException)
         {
 #if DEBUG
@@ -107,6 +143,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
             return;
         }
+#endif
 
 #if DEBUG
         Logger.Log($"{GetType().Name}: Connection from {Socket.LocalEndPoint} to {RemoteEndPoint} established.");
@@ -117,7 +154,16 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
     }
 
     protected override ValueTask<SocketReceiveFromResult> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
+#if NETFRAMEWORK
+    {
+        if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+            throw new();
+
+        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint));
+    }
+#else
         => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint, cancellation);
+#endif
 
     protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, SocketReceiveFromResult socketReceiveFromResult)
     {
@@ -132,8 +178,13 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         }
 
         Memory<byte> data = buffer[(PlayerIdSize * 2)..socketReceiveFromResult.ReceivedBytes];
+#if NETFRAMEWORK
+        uint senderId = BitConverter.ToUInt32(buffer[..PlayerIdSize].ToArray(), 0);
+        uint receiverId = BitConverter.ToUInt32(buffer[PlayerIdSize..(PlayerIdSize * 2)].ToArray(), 0);
+#else
         uint senderId = BitConverter.ToUInt32(buffer[..PlayerIdSize].Span);
         uint receiverId = BitConverter.ToUInt32(buffer[PlayerIdSize..(PlayerIdSize * 2)].Span);
+#endif
 
 #if DEBUG
         Logger.Log($"{GetType().Name}: Received {senderId} -> {receiverId} from {socketReceiveFromResult.RemoteEndPoint} on {Socket.LocalEndPoint}.");

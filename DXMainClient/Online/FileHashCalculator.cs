@@ -154,7 +154,11 @@ namespace DTAClient.Online
                         {
                             string sha1 = Utilities.CalculateSHA1ForFile(filePath);
                             fh.INIHashes += sha1;
+#if NETFRAMEWORK
+                            Logger.Log("Hash for " + filePath.Substring(ProgramConstants.GamePath.Length) + ": " + sha1);
+#else
                             Logger.Log("Hash for " + Path.GetRelativePath(ProgramConstants.GamePath, filePath) + ": " + sha1);
+#endif
                         }
                     }
                 }

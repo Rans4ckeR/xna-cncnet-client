@@ -144,9 +144,11 @@ namespace DTAClient.DXGUI.Generic
             Updater.UpdateProgressChanged += Updater_UpdateProgressChanged;
             Updater.LocalFileCheckProgressChanged += Updater_LocalFileCheckProgressChanged;
             Updater.OnFileDownloadCompleted += Updater_OnFileDownloadCompleted;
+#if !NETFRAMEWORK
 
             if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
                 return;
+#endif
 
             HRESULT coCreateInstanceResult = PInvoke.CoCreateInstance(CLSID_TaskbarList, null, CLSCTX.CLSCTX_INPROC_SERVER, out ITaskbarList4 ppv);
 
@@ -222,9 +224,11 @@ namespace DTAClient.DXGUI.Generic
             lblTotalProgressPercentageValue.Text = prgTotal.Value + "%";
             lblCurrentFile.Text = "Current file:".L10N("Client:Main:CurrentFile") + " " + currFileName;
             lblUpdaterStatus.Text = "Downloading files".L10N("Client:Main:DownloadingFiles");
+#if !NETFRAMEWORK
 
             if (!OperatingSystem.IsWindowsVersionAtLeast(6, 1))
                 return;
+#endif
 
             /*/ TODO Improve the updater
              * When the updater thread in DTAUpdater.dll has completed the update, it will
@@ -264,7 +268,9 @@ namespace DTAClient.DXGUI.Generic
 
         private void HandleUpdateCompleted()
         {
+#if !NETFRAMEWORK
             if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+#endif
                 tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
 
             UpdateCompleted?.Invoke(this, EventArgs.Empty);
@@ -277,7 +283,9 @@ namespace DTAClient.DXGUI.Generic
 
         private void HandleUpdateFailed(string updateFailureErrorMessage)
         {
+#if !NETFRAMEWORK
             if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+#endif
                 tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
 
             UpdateFailed?.Invoke(this, new UpdateFailureEventArgs(updateFailureErrorMessage));
@@ -295,7 +303,9 @@ namespace DTAClient.DXGUI.Generic
         {
             isStartingForceUpdate = false;
 
+#if !NETFRAMEWORK
             if (OperatingSystem.IsWindowsVersionAtLeast(6, 1))
+#endif
                 tbp.SetProgressState((HWND)WindowManager.GetWindowHandle(), TBPFLAG.TBPF_NOPROGRESS);
 
             UpdateCancelled?.Invoke(this, EventArgs.Empty);
@@ -355,7 +365,11 @@ namespace DTAClient.DXGUI.Generic
             {
                 if (disposing)
                 {
+#if NETFRAMEWORK
+                    if (tbp is not null)
+#else
                     if (tbp is not null && OperatingSystem.IsWindowsVersionAtLeast(5))
+#endif
                     {
                         PInvoke.CoUninitialize();
 

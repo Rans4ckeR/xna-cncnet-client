@@ -46,7 +46,9 @@ namespace DTAClient
             Logger.Log("OSArchitecture: " + RuntimeInformation.OSArchitecture);
             Logger.Log("ProcessArchitecture: " + RuntimeInformation.ProcessArchitecture);
             Logger.Log("FrameworkDescription: " + RuntimeInformation.FrameworkDescription);
+#if !NETFRAMEWORK
             Logger.Log("RuntimeIdentifier: " + RuntimeInformation.RuntimeIdentifier);
+#endif
             Logger.Log("Selected OS profile: " + ProgramConstants.OSId);
             Logger.Log("Current culture: " + CultureInfo.CurrentCulture);
 
@@ -57,7 +59,11 @@ namespace DTAClient
                 Task.Run(CheckSystemSpecifications).HandleTask();
             }
 
+#if NETFRAMEWORK
+            Task.Run(GenerateOnlineId).HandleTask();
+#else
             GenerateOnlineIdAsync().HandleTask();
+#endif
 
 #if ARES
             Task.Run(() => PruneFiles(SafePath.GetDirectory(ProgramConstants.GamePath, "debug"), DateTime.Now.AddDays(-7))).HandleTask();
@@ -235,7 +241,9 @@ namespace DTAClient
         /// <summary>
         /// Writes processor, graphics card and memory info to the log file.
         /// </summary>
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private static void CheckSystemSpecifications()
         {
             string cpu = string.Empty;
@@ -306,7 +314,11 @@ namespace DTAClient
         /// <summary>
         /// Generate an ID for online play.
         /// </summary>
+#if NETFRAMEWORK
+        private static void GenerateOnlineId()
+#else
         private static async ValueTask GenerateOnlineIdAsync()
+#endif
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -362,7 +374,11 @@ namespace DTAClient
             {
                 try
                 {
+#if NETFRAMEWORK
+                    string machineId = File.ReadAllText("/var/lib/dbus/machine-id");
+#else
                     string machineId = await File.ReadAllTextAsync("/var/lib/dbus/machine-id").ConfigureAwait(false);
+#endif
 
                     Connection.SetId(machineId);
                 }
@@ -377,7 +393,9 @@ namespace DTAClient
         /// <summary>
         /// Writes the game installation path to the Windows registry.
         /// </summary>
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private static void WriteInstallPathToRegistry()
         {
             if (!UserINISettings.Instance.WritePathToRegistry)

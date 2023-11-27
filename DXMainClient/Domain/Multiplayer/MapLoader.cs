@@ -63,14 +63,14 @@ namespace DTAClient.Domain.Multiplayer
 
             LoadGameModes(mpMapsIni);
             LoadGameModeAliases(mpMapsIni);
-            await LoadMultiMapsAsync(mpMapsIni).ConfigureAwait(false);
+            LoadMultiMaps(mpMapsIni);
             await LoadCustomMapsAsync().ConfigureAwait(false);
 
             GameModes.RemoveAll(g => g.Maps.Count < 1);
             GameModeMaps = new GameModeMapCollection(GameModes);
         }
 
-        private async ValueTask LoadMultiMapsAsync(IniFile mpMapsIni)
+        private void LoadMultiMaps(IniFile mpMapsIni)
         {
             List<string> keys = mpMapsIni.GetSectionKeys(MultiMapsSection);
 
@@ -96,7 +96,7 @@ namespace DTAClient.Domain.Multiplayer
 
                 var map = new Map(mapFilePathValue, false);
 
-                if (!await map.SetInfoFromMpMapsINIAsync(mpMapsIni).ConfigureAwait(false))
+                if (!map.SetInfoFromMpMapsINI(mpMapsIni))
                     continue;
 
                 maps.Add(map);
@@ -200,6 +200,9 @@ namespace DTAClient.Domain.Multiplayer
                 Maps = customMaps,
                 Version = CurrentCustomMapCacheVersion
             };
+#if NETFRAMEWORK
+            var fileStream = new FileStream(CUSTOM_MAPS_CACHE, FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+#else
             var fileStream = new FileStream(CUSTOM_MAPS_CACHE, new FileStreamOptions
             {
                 Access = FileAccess.Write,
@@ -207,8 +210,13 @@ namespace DTAClient.Domain.Multiplayer
                 Options = FileOptions.Asynchronous,
                 Share = FileShare.None
             });
+#endif
 
-            await using (fileStream.ConfigureAwait(false))
+#if NETFRAMEWORK
+            using (fileStream)
+#else
+            await using (fileStream.ConfigureAwait(true))
+#endif
             {
                 await JsonSerializer.SerializeAsync(fileStream, customMapCache, jsonSerializerOptions).ConfigureAwait(false);
             }
@@ -222,6 +230,9 @@ namespace DTAClient.Domain.Multiplayer
         {
             try
             {
+#if NETFRAMEWORK
+                var jsonData = new FileStream(CUSTOM_MAPS_CACHE, FileMode.Open, FileAccess.Read, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+#else
                 var jsonData = new FileStream(CUSTOM_MAPS_CACHE, new FileStreamOptions
                 {
                     Access = FileAccess.Read,
@@ -229,9 +240,14 @@ namespace DTAClient.Domain.Multiplayer
                     Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
                     Share = FileShare.None
                 });
+#endif
                 CustomMapCache customMapCache;
 
-                await using (jsonData.ConfigureAwait(false))
+#if NETFRAMEWORK
+                using (jsonData)
+#else
+                await using (jsonData.ConfigureAwait(true))
+#endif
                 {
                     customMapCache = await JsonSerializer.DeserializeAsync<CustomMapCache>(jsonData, jsonSerializerOptions).ConfigureAwait(false);
                 }

@@ -151,14 +151,22 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
             try
             {
+#if NETFRAMEWORK
+                data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).ConfigureAwait(false);
+#else
                 data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL), cancellationToken).ConfigureAwait(false);
+#endif
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
             {
                 ProgramConstants.LogException(ex, "Error when downloading tunnel server info. Retrying.");
                 try
                 {
+#if NETFRAMEWORK
+                    data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).ConfigureAwait(false);
+#else
                     data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL), cancellationToken).ConfigureAwait(false);
+#endif
                 }
                 catch (Exception ex1) when (ex1 is HttpRequestException or OperationCanceledException)
                 {
@@ -170,7 +178,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     }
 
                     Logger.Log("Fetching tunnel server list failed. Using cached tunnel data.");
+#if NETFRAMEWORK
+                    data = File.ReadAllText(tunnelCacheFile.FullName);
+#else
                     data = await File.ReadAllTextAsync(tunnelCacheFile.FullName, cancellationToken).ConfigureAwait(false);
+#endif
                 }
             }
 
@@ -209,7 +221,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 if (!clientDirectoryInfo.Exists)
                     clientDirectoryInfo.Create();
 
+#if NETFRAMEWORK
+                File.WriteAllText(tunnelCacheFile.FullName, data);
+#else
                 await File.WriteAllTextAsync(tunnelCacheFile.FullName, data, CancellationToken.None).ConfigureAwait(false);
+#endif
             }
             catch (Exception ex)
             {

@@ -53,7 +53,11 @@ internal sealed class ReplayHandler : IAsyncDisposable
 
         if (spawnFile.Exists)
         {
+#if NETFRAMEWORK
+            settings = File.ReadAllText(spawnFile.FullName);
+#else
             settings = await File.ReadAllTextAsync(spawnFile.FullName, CancellationToken.None).ConfigureAwait(false);
+#endif
             var spawnIni = new IniFile(spawnFile.FullName);
             IniSection settingsSection = spawnIni.GetSection("Settings");
             string playerName = settingsSection.GetStringValue("Name", null);
@@ -79,7 +83,11 @@ internal sealed class ReplayHandler : IAsyncDisposable
         var replay = new Replay(replayId, settings, startTimestamp, gameLocalPlayerId, playerMappings, replayDataList.OrderBy(q => q.TimestampOffset).ToList());
         var tempReplayFileStream = new MemoryStream();
 
+#if NETFRAMEWORK
+        using (tempReplayFileStream)
+#else
         await using (tempReplayFileStream.ConfigureAwait(false))
+#endif
         {
             await JsonSerializer.SerializeAsync(tempReplayFileStream, replay, cancellationToken: CancellationToken.None).ConfigureAwait(false);
 
@@ -87,21 +95,36 @@ internal sealed class ReplayHandler : IAsyncDisposable
 
             FileStream replayFileStream = new(
                 SafePath.CombineFilePath(replayDirectory.Parent.FullName, FormattableString.Invariant($"{replayId}.cnc")),
+#if NETFRAMEWORK
+                FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+#else
                 new FileStreamOptions
                 {
                     Access = FileAccess.Write,
                     Mode = FileMode.CreateNew,
                     Options = FileOptions.Asynchronous
                 });
+#endif
 
+#if NETFRAMEWORK
+            using (replayFileStream)
+#else
             await using (replayFileStream.ConfigureAwait(false))
+#endif
             {
                 var compressionStream = new GZipStream(replayFileStream, CompressionMode.Compress);
 
+#if NETFRAMEWORK
+                using (compressionStream)
+                {
+                    await tempReplayFileStream.CopyToAsync(compressionStream, 81920, CancellationToken.None).ConfigureAwait(false);
+                }
+#else
                 await using (compressionStream.ConfigureAwait(false))
                 {
                     await tempReplayFileStream.CopyToAsync(compressionStream, CancellationToken.None).ConfigureAwait(false);
                 }
+#endif
             }
         }
 
@@ -111,7 +134,14 @@ internal sealed class ReplayHandler : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         foreach ((_, FileStream fileStream) in replayFileStreams)
+#if NETFRAMEWORK
+        {
+            await Task.CompletedTask;
+            fileStream.Dispose();
+        }
+#else
             await fileStream.DisposeAsync().ConfigureAwait(false);
+#endif
 
         replayFileStreams.Clear();
         replayDirectory?.Refresh();
@@ -160,8 +190,19 @@ internal sealed class ReplayHandler : IAsyncDisposable
         {
             fileStream = CreateReplayFileStream();
 
+#if NETFRAMEWORK
+            if (!replayFileStreams.ContainsKey(playerId))
+            {
+                replayFileStreams.Add(playerId, fileStream);
+            }
+            else
+            {
+                fileStream.Dispose();
+            }
+#else
             if (!replayFileStreams.TryAdd(playerId, fileStream))
                 await fileStream.DisposeAsync().ConfigureAwait(false);
+#endif
 
             replayFileStreams.TryGetValue(playerId, out fileStream);
         }
@@ -172,7 +213,11 @@ internal sealed class ReplayHandler : IAsyncDisposable
         var replayData = new ReplayData(e.Timestamp - startTimestamp, playerId, e.GameData);
         var tempStream = new MemoryStream();
 
+#if NETFRAMEWORK
+        using (tempStream)
+#else
         await using (tempStream.ConfigureAwait(false))
+#endif
         {
             await JsonSerializer.SerializeAsync(tempStream, replayData, cancellationToken: CancellationToken.None).ConfigureAwait(false);
             await tempStream.WriteAsync(new UTF8Encoding().GetBytes(new[] { ',' })).ConfigureAwait(false);
@@ -186,10 +231,14 @@ internal sealed class ReplayHandler : IAsyncDisposable
     private FileStream CreateReplayFileStream()
         => new(
             SafePath.CombineFilePath(replayDirectory.FullName, Guid.NewGuid().ToString()),
+#if NETFRAMEWORK
+            FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 4096, FileOptions.Asynchronous | FileOptions.DeleteOnClose);
+#else
             new FileStreamOptions
             {
                 Access = FileAccess.ReadWrite,
                 Mode = FileMode.CreateNew,
                 Options = FileOptions.Asynchronous | FileOptions.DeleteOnClose
             });
+#endif
 }

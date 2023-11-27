@@ -225,7 +225,11 @@ namespace DTAClient.DXGUI.Multiplayer
             GameLeft?.Invoke(this, EventArgs.Empty);
             ResetDiscordPresence();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private void fsw_Created(object sender, FileSystemEventArgs e) =>
@@ -238,7 +242,11 @@ namespace DTAClient.DXGUI.Multiplayer
             if (string.Equals(Path.GetFileName(e.FullPath), "SAVEGAME.NET", StringComparison.OrdinalIgnoreCase))
                 return SavedGameManager.RenameSavedGameAsync();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private async ValueTask BtnLoadGame_LeftClickAsync()
@@ -276,13 +284,21 @@ namespace DTAClient.DXGUI.Multiplayer
 
             WindowManager.FlashWindow();
 #endif
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         protected virtual ValueTask NotAllPresentNotificationAsync()
         {
             AddNotice("You cannot load the game before all players are present.".L10N("Client:Main:NotAllPresent"));
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         protected abstract ValueTask HostStartGameAsync();
@@ -334,7 +350,11 @@ namespace DTAClient.DXGUI.Multiplayer
             spawnMapFileInfo.Delete();
             var spawnMapStreamWriter = new StreamWriter(spawnMapFileInfo.FullName);
 
+#if NETFRAMEWORK
+            using (spawnMapStreamWriter)
+#else
             await using (spawnMapStreamWriter.ConfigureAwait(true))
+#endif
             {
                 await spawnMapStreamWriter.WriteLineAsync("[Map]").ConfigureAwait(true);
                 await spawnMapStreamWriter.WriteLineAsync("Size=0,0,50,50").ConfigureAwait(true);

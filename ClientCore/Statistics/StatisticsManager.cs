@@ -8,8 +8,6 @@ using Rampastring.Tools;
 
 namespace ClientCore.Statistics
 {
-    using System.Globalization;
-
     public class StatisticsManager : GenericStatisticsManager
     {
         private const string VERSION = "1.06";
@@ -123,7 +121,11 @@ namespace ClientCore.Statistics
             {
                 FileStream fs = File.OpenRead(filePath);
 
+#if NETFRAMEWORK
+                using (fs)
+#else
                 await using (fs.ConfigureAwait(false))
+#endif
                 {
                     fs.Position = 4; // Skip version
                     byte[] readBuffer = new byte[128];
@@ -285,7 +287,11 @@ namespace ClientCore.Statistics
             if (removedCount > 0)
                 return SaveDatabaseAsync();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         public async ValueTask AddMatchAndSaveDatabaseAsync(bool addMatch, MatchStatistics ms)
@@ -320,7 +326,11 @@ namespace ClientCore.Statistics
 
             FileStream fs = scoreFileInfo.Open(FileMode.Open, FileAccess.ReadWrite);
 
+#if NETFRAMEWORK
+            using (fs)
+#else
             await using (fs.ConfigureAwait(false))
+#endif
             {
                 fs.Position = 4; // First 4 bytes after the version mean the amount of games
                 await fs.WriteIntAsync(Statistics.Count).ConfigureAwait(false);
@@ -338,7 +348,11 @@ namespace ClientCore.Statistics
 
             var sw = new StreamWriter(SafePath.GetFile(ProgramConstants.GamePath, SCORE_FILE_PATH).Create());
 
+#if NETFRAMEWORK
+            using (sw)
+#else
             await using (sw.ConfigureAwait(false))
+#endif
             {
                 await sw.WriteAsync(VERSION).ConfigureAwait(false);
             }
@@ -355,7 +369,11 @@ namespace ClientCore.Statistics
 
             FileStream fs = scoreFileInfo.Open(FileMode.Open, FileAccess.ReadWrite);
 
+#if NETFRAMEWORK
+            using (fs)
+#else
             await using (fs.ConfigureAwait(false))
+#endif
             {
                 fs.Position = 4; // First 4 bytes after the version mean the amount of games
                 await fs.WriteIntAsync(Statistics.Count).ConfigureAwait(false);

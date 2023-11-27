@@ -80,11 +80,11 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     {
         if (ipV6P2PPorts.Count is 0 && ipV4P2PPorts.Count is 0)
         {
-            if (StunCancellationTokenSource is not null)
 #if NET8_0_OR_GREATER
+            if (StunCancellationTokenSource is not null)
                 await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
-                StunCancellationTokenSource.Cancel();
+            StunCancellationTokenSource?.Cancel();
 #endif
 
             StunCancellationTokenSource?.Dispose();
@@ -355,7 +355,11 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     public ValueTask SaveReplayAsync()
     {
         if (!RecordingEnabled)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         return replayHandler.StopRecordingAsync(gamePlayerIds, playerInfos, V3GameTunnelHandlers.Select(q => q.Tunnel).ToList());
     }
@@ -375,11 +379,11 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     {
         PinnedTunnelPingsMessage = null;
 
-        if (StunCancellationTokenSource is not null)
 #if NET8_0_OR_GREATER
+        if (StunCancellationTokenSource is not null)
             await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
-            StunCancellationTokenSource.Cancel();
+        StunCancellationTokenSource?.Cancel();
 #endif
 
         await ClearConnectionsAsync().ConfigureAwait(false);

@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 #if DEBUG
 using Rampastring.Tools;
 #endif
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
 
@@ -34,7 +37,9 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
         RemoteEndPoint = loopbackIpEndPoint;
 
         // Disable ICMP port not reachable exceptions, happens when the game is still loading and has not yet opened the socket.
+#if !NETFRAMEWORK
         if (OperatingSystem.IsWindows())
+#endif
             Socket.IOControl(unchecked((int)SIO_UDP_CONNRESET), new byte[] { 0 }, null);
 
         Socket.Bind(loopbackIpEndPoint);
@@ -54,14 +59,27 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
             Logger.Log($"{GetType().Name}: Discarded remote data from {Socket.LocalEndPoint} to {RemoteEndPoint} for player {PlayerId}.");
 
 #endif
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         return SendDataAsync(data);
     }
 
     protected override ValueTask<SocketReceiveFromResult> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
+#if NETFRAMEWORK
+    {
+        if (!MemoryMarshal.TryGetArray(buffer[PlayerIdsSize..], out ArraySegment<byte> buffer1))
+            throw new();
+
+        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint));
+    }
+#else
         => Socket.ReceiveFromAsync(buffer[PlayerIdsSize..], SocketFlags.None, RemoteEndPoint, cancellation);
+#endif
 
     protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, SocketReceiveFromResult socketReceiveFromResult)
         => new(PlayerId, buffer[..(PlayerIdsSize + socketReceiveFromResult.ReceivedBytes)]);

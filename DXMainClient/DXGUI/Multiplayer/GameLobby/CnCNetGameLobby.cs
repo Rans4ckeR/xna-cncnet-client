@@ -123,6 +123,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             new StringCommandHandler(CnCNetCommands.GAME_START_V3, ClientLaunchGameV3),
             new NoParamCommandHandler(CnCNetCommands.TUNNEL_CONNECTION_OK, playerName => HandlePlayerConnectedToTunnelAsync(playerName).HandleTask()),
             new NoParamCommandHandler(CnCNetCommands.TUNNEL_CONNECTION_FAIL, playerName => HandleTunnelFailAsync(playerName).HandleTask()),
+            new StringCommandHandler(CnCNetCommands.PLAYER_TUNNEL_PINGS, HandleTunnelPingsMessage),
+            new StringCommandHandler(CnCNetCommands.PLAYER_P2P_REQUEST, (playerName, p2pRequestMessage) => HandleP2PRequestMessageAsync(playerName, p2pRequestMessage, true).HandleTask()),
+            new StringCommandHandler(CnCNetCommands.PLAYER_P2P_PINGS, (playerName, p2pPingsMessage) => HandleP2PPingsMessageAsync(playerName, p2pPingsMessage).HandleTask()),
             new NotificationHandler(CnCNetCommands.AI_SPECTATORS, HandleNotification, () => AISpectatorsNotificationAsync().HandleTask()),
             new NotificationHandler(CnCNetCommands.GET_READY_LOBBY, HandleNotification, () => GetReadyNotificationAsync().HandleTask()),
             new NotificationHandler(CnCNetCommands.INSUFFICIENT_PLAYERS, HandleNotification, () => InsufficientPlayersNotificationAsync().HandleTask()),
@@ -142,10 +145,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             new StringCommandHandler(CnCNetCommands.DICE_ROLL, HandleDiceRollResult),
             new NoParamCommandHandler(CnCNetCommands.CHEAT_DETECTED, HandleCheatDetectedMessage),
             new IntCommandHandler(CnCNetCommands.TUNNEL_PING, HandleTunnelPing),
-            new StringCommandHandler(CnCNetCommands.CHANGE_TUNNEL_SERVER, (playerName, hash) => HandleTunnelServerChangeMessageAsync(playerName, hash).HandleTask()),
-            new StringCommandHandler(CnCNetCommands.PLAYER_TUNNEL_PINGS, HandleTunnelPingsMessage),
-            new StringCommandHandler(CnCNetCommands.PLAYER_P2P_REQUEST, (playerName, p2pRequestMessage) => HandleP2PRequestMessageAsync(playerName, p2pRequestMessage, true).HandleTask()),
-            new StringCommandHandler(CnCNetCommands.PLAYER_P2P_PINGS, (playerName, p2pPingsMessage) => HandleP2PPingsMessageAsync(playerName, p2pPingsMessage).HandleTask())
+            new StringCommandHandler(CnCNetCommands.CHANGE_TUNNEL_SERVER, (playerName, hash) => HandleTunnelServerChangeMessageAsync(playerName, hash).HandleTask())
         ];
 
         MapSharer.MapDownloadFailed += (_, e) => WindowManager.AddCallback(() => MapSharer_HandleMapDownloadFailedAsync(e).HandleTask());
@@ -827,7 +827,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             sb.Append(';')
                 .Append(Players[pId].Name)
                 .Append(';')
+#if NETFRAMEWORK
+                .Append($"{IPAddress.Any}:")
+#else
                 .Append(CultureInfo.InvariantCulture, $"{IPAddress.Any}:")
+#endif
                 .Append(playerPorts[pId]);
         }
 
@@ -1008,10 +1012,10 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 #if NET8_0_OR_GREATER
         if (gameStartCancellationTokenSource is not null)
             await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
-#else
-        gameStartCancellationTokenSource.Cancel();
-#endif
 
+#else
+        gameStartCancellationTokenSource?.Cancel();
+#endif
         await v3ConnectionState.ClearConnectionsAsync().ConfigureAwait(false);
 
         gameStartTimer.Pause();
@@ -1078,15 +1082,27 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private ValueTask HandleOptionsRequestAsync(string playerName, int options)
     {
         if (!IsHost)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (ProgramConstants.IsInGame)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo == null)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         byte[] bytes = BitConverter.GetBytes(options);
         int side = bytes[0];
@@ -1095,10 +1111,18 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         int team = bytes[3];
 
         if (side > SideCount + RandomSelectorCount)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (color > MPColors.Count)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         var disallowedSides = GetDisallowedSides().ToList();
 
@@ -1109,22 +1133,42 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             disallowedSides.Insert(0, false);
 
         if (side > 0 && side <= SideCount && disallowedSides[side - 1])
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (Map.CoopInfo != null)
         {
             if (Map.CoopInfo.DisallowedPlayerSides.Contains(side - 1) || side == SideCount + RandomSelectorCount)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             if (Map.CoopInfo.DisallowedPlayerColors.Contains(color - 1))
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
         }
 
         if (start > Map.MaxPlayers)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (team > 4)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (side != pInfo.SideId
             || start != pInfo.StartingLocation
@@ -1148,12 +1192,20 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private ValueTask HandleReadyRequestAsync(string playerName, int readyStatus)
     {
         if (!IsHost)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
         if (pInfo == null)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         pInfo.Ready = readyStatus > 0;
         pInfo.AutoReady = readyStatus > 1;
@@ -1217,7 +1269,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     protected override ValueTask BroadcastPlayerExtraOptionsAsync()
     {
         if (!IsHost)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         PlayerExtraOptions playerExtraOptions = GetPlayerExtraOptions();
 
@@ -1641,7 +1697,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return BroadcastPlayerTunnelPingsAsync();
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     private ValueTask RequestMapAsync()
@@ -1659,7 +1719,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return channel.SendCTCPMessageAsync(CnCNetCommands.MAP_SHARING_DISABLED, QueuedMessageType.SYSTEM_MESSAGE, 9);
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     private ValueTask ShowOfficialMapMissingMessageAsync(string sha1)
@@ -1697,7 +1761,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (gameStartCancellationTokenSource is not null)
             await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
-        gameStartCancellationTokenSource.Cancel();
+        gameStartCancellationTokenSource?.Cancel();
 #endif
 
         await v3ConnectionState.SaveReplayAsync().ConfigureAwait(false);
@@ -1724,42 +1788,74 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     private ValueTask ClientLaunchGameV2Async(string sender, string message)
     {
         if (tunnelHandler.CurrentTunnel.Version != ProgramConstants.TUNNEL_VERSION_2)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (!sender.Equals(hostName, StringComparison.OrdinalIgnoreCase))
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         string[] parts = message.Split(';');
 
         if (parts.Length < 1)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         UniqueGameID = Conversions.IntFromString(parts[0], -1);
         if (UniqueGameID < 0)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         var recentPlayers = new List<string>();
 
         for (int i = 1; i < parts.Length; i += 2)
         {
             if (parts.Length <= i + 1)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             string pName = parts[i];
             string[] ipAndPort = parts[i + 1].Split(':');
 
             if (ipAndPort.Length < 2)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             bool success = int.TryParse(ipAndPort[1], out int port);
 
             if (!success)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, pName, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             pInfo.Port = port;
             recentPlayers.Add(pName);
@@ -1984,7 +2080,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             }
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     protected override async ValueTask LockGameAsync()
@@ -2014,7 +2114,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     protected override ValueTask KickPlayerAsync(int playerIndex)
     {
         if (playerIndex >= Players.Count)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         PlayerInfo pInfo = Players[playerIndex];
 
@@ -2202,7 +2306,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return channel.SendCTCPMessageAsync(CnCNetCommands.MAP_SHARING_FAIL + " " + e.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     private ValueTask MapSharer_HandleMapUploadFailedAsync(MapEventArgs e)
@@ -2218,7 +2326,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return channel.SendCTCPMessageAsync(CnCNetCommands.MAP_SHARING_FAIL + " " + map.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     private ValueTask MapSharer_HandleMapUploadCompleteAsync(MapEventArgs e)
@@ -2231,7 +2343,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
             return channel.SendCTCPMessageAsync(CnCNetCommands.MAP_SHARING_DOWNLOAD + " " + Map.SHA1, QueuedMessageType.SYSTEM_MESSAGE, 9);
         }
 
+#if NETFRAMEWORK
+        return default;
+#else
         return ValueTask.CompletedTask;
+#endif
     }
 
     /// <summary>
@@ -2349,7 +2465,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     ///
     /// Users and testers can get map hash IDs from this URL template:
     ///
-    /// - https://mapdb.cncnet.org/search.php?game=GAME_ID&search=MAP_NAME_SEARCH_STRING.
+    /// - https://mapdb.cncnet.org/search.php?game=GAME_ID&amp;search=MAP_NAME_SEARCH_STRING.
     ///
     /// </summary>
     /// <param name="parameters">
@@ -2436,13 +2552,25 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         Channel broadcastChannel = connectionManager.FindChannel(gameCollection.GetGameBroadcastingChannelNameFromIdentifier(localGame));
 
         if (broadcastChannel == null)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (ProgramConstants.IsInGame && broadcastChannel.Users.Count > 500)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         if (GameMode == null || Map == null)
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
 
         StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ")
             .Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION)

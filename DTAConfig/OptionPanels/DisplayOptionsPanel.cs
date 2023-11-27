@@ -264,8 +264,18 @@ namespace DTAConfig.OptionPanels
                 ddClientTheme.Width,
                 ddClientTheme.Height);
 
-            foreach (var (translation, name) in Translation.GetTranslations())
+#if NETFRAMEWORK
+            foreach (KeyValuePair<string, string> keyValuePair in Translation.GetTranslations())
+            {
+                string translation = keyValuePair.Key;
+                string name = keyValuePair.Value;
+#else
+            foreach ((string translation, string name) in Translation.GetTranslations())
+#endif
                 ddTranslation.AddItem(new XNADropDownItem { Text = name, Tag = translation });
+#if NETFRAMEWORK
+            }
+#endif
 
 #if TS
             lblCompatibilityFixes = new XNALabel(WindowManager);
@@ -426,7 +436,9 @@ namespace DTAConfig.OptionPanels
             }
         }
 
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private void MessageBox_NoClicked(XNAMessageBox messageBox)
         {
             // Set compatibility fix declined flag in registry
@@ -451,13 +463,17 @@ namespace DTAConfig.OptionPanels
             }
         }
 
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private void MessageBox_YesClicked(XNAMessageBox messageBox)
         {
             BtnGameCompatibilityFix_LeftClick(messageBox, EventArgs.Empty);
         }
 
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private void BtnGameCompatibilityFix_LeftClick(object sender, EventArgs e)
         {
             if (GameCompatFixInstalled)
@@ -516,7 +532,9 @@ namespace DTAConfig.OptionPanels
             }
         }
 
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private void BtnMapEditorCompatibilityFix_LeftClick(object sender, EventArgs e)
         {
             if (FinalSunCompatFixInstalled)

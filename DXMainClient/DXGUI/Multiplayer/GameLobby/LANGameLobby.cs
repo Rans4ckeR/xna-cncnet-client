@@ -19,11 +19,13 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Globalization;
+#if NETFRAMEWORK
+using Windows.Win32.Networking.WinSock;
+#endif
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
-    using System.Globalization;
-
     internal sealed class LANGameLobby : MultiplayerGameLobby
     {
         private const int GAME_OPTION_SPECIAL_FLAG_COUNT = 5;
@@ -81,7 +83,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (cancellationTokenSource is not null)
                 await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
-            cancellationTokenSource.Cancel();
+            cancellationTokenSource?.Cancel();
 #endif
         }
 
@@ -169,13 +171,27 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask SendHostPlayerJoinedMessageAsync(CancellationToken cancellationToken)
         {
+            client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
             try
             {
-                client = new Socket(SocketType.Stream, ProtocolType.Tcp);
-
+#if NETFRAMEWORK
+                await client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT).ConfigureAwait(false);
+#else
                 await client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT, cancellationToken).ConfigureAwait(false);
+#endif
 
                 string message = LANCommands.PLAYER_JOIN + ProgramConstants.LAN_DATA_SEPARATOR + ProgramConstants.PLAYERNAME;
+#if NETFRAMEWORK
+                byte[] buffer1 = Encoding.UTF8.GetBytes(message);
+                var buffer = new ArraySegment<byte>(buffer1);
+
+                await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+            }
+            catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+            {
+            }
+#else
                 const int charSize = sizeof(char);
                 int bufferSize = message.Length * charSize;
                 using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -189,6 +205,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             catch (OperationCanceledException)
             {
             }
+#endif
         }
 
         public async ValueTask PostJoinAsync()
@@ -206,7 +223,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
             listener.Bind(new IPEndPoint(IPAddress.IPv6Any, ProgramConstants.LAN_GAME_LOBBY_PORT));
+#if NETFRAMEWORK
+            listener.Listen(int.MaxValue);
+#else
             listener.Listen();
+#endif
 
             while (!cancellationToken.IsCancellationRequested)
             {
@@ -214,11 +235,19 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 try
                 {
+#if NETFRAMEWORK
+                    newClient = await listener.AcceptAsync().ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+#else
                     newClient = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                     break;
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -253,11 +282,25 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask HandleClientConnectionAsync(LANPlayerInfo lpInfo, CancellationToken cancellationToken)
         {
+#if !NETFRAMEWORK
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(1024);
 
+#endif
             while (!cancellationToken.IsCancellationRequested)
             {
                 int bytesRead;
+#if NETFRAMEWORK
+                byte[] message1 = new byte[1024];
+                var message = new ArraySegment<byte>(message1);
+
+                try
+                {
+                    bytesRead = await lpInfo.TcpClient.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+#else
                 Memory<byte> message;
 
                 try
@@ -268,6 +311,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 catch (OperationCanceledException)
                 {
                     break;
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -282,7 +326,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     break;
                 }
 
+#if NETFRAMEWORK
+                string msg = encoding.GetString(message1, 0, bytesRead);
+#else
                 string msg = encoding.GetString(message.Span[..bytesRead]);
+#endif
                 string[] command = msg.Split(ProgramConstants.LAN_MESSAGE_SEPARATOR);
                 string[] parts = command[0].Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
@@ -380,11 +428,25 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!client.Connected)
                 return;
 
+#if !NETFRAMEWORK
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(1024);
 
+#endif
             while (!cancellationToken.IsCancellationRequested)
             {
                 int bytesRead;
+#if NETFRAMEWORK
+                byte[] message1 = new byte[1024];
+                var message = new ArraySegment<byte>(message1);
+
+                try
+                {
+                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+#else
                 Memory<byte> message;
 
                 try
@@ -395,6 +457,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 catch (OperationCanceledException)
                 {
                     break;
+#endif
                 }
                 catch (Exception ex)
                 {
@@ -405,7 +468,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 if (bytesRead > 0)
                 {
+#if NETFRAMEWORK
+                    string msg = encoding.GetString(message1, 0, bytesRead);
+#else
                     string msg = encoding.GetString(message.Span[..bytesRead]);
+#endif
 
                     msg = overMessage + msg;
 
@@ -525,7 +592,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected override ValueTask BroadcastPlayerOptionsAsync()
         {
             if (!IsHost)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             var sb = new ExtendedStringBuilder(LANCommands.PLAYER_OPTIONS_BROADCAST + " ", true);
             sb.Separator = ProgramConstants.LAN_DATA_SEPARATOR;
@@ -669,6 +740,17 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             message += ProgramConstants.LAN_MESSAGE_SEPARATOR;
 
+#if NETFRAMEWORK
+            byte[] buffer = encoding.GetBytes(message);
+            var buffer1 = new ArraySegment<byte>(buffer);
+
+            try
+            {
+                await client.SendAsync(buffer1, SocketFlags.None).ConfigureAwait(false);
+            }
+            catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+            {
+#else
             try
             {
                 const int charSize = sizeof(char);
@@ -683,6 +765,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
             catch (OperationCanceledException)
             {
+#endif
             }
             catch (Exception ex)
             {
@@ -699,7 +782,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (manual)
                 AddNotice("You've unlocked the game room.".L10N("Client:Main:RoomUnockedByYou"));
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         protected override ValueTask LockGameAsync()
@@ -711,7 +798,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (Locked)
                 AddNotice("You've locked the game room.".L10N("Client:Main:RoomLockedByYou"));
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         protected override async ValueTask GameProcessExitedAsync()
@@ -815,12 +906,20 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length < 2)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
             if (colorIndex < 0 || colorIndex >= chatColors.Length)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             return BroadcastMessageAsync(LANCommands.CHAT_LOBBY_COMMAND + " " + sender + ProgramConstants.LAN_DATA_SEPARATOR + data);
         }
@@ -856,23 +955,39 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!IsHost)
                 return GetReadyNotificationAsync();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private ValueTask HandlePlayerOptionsRequestAsync(string sender, string data)
         {
             if (!IsHost)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length != 4)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             int side = Conversions.IntFromString(parts[0], -1);
             int color = Conversions.IntFromString(parts[1], -1);
@@ -880,25 +995,49 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             int team = Conversions.IntFromString(parts[3], -1);
 
             if (side < 0 || side > SideCount + RandomSelectorCount)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             if (color < 0 || color > MPColors.Count)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             if (Map.CoopInfo != null)
             {
                 if (Map.CoopInfo.DisallowedPlayerSides.Contains(side - 1) || side == SideCount + RandomSelectorCount)
+#if NETFRAMEWORK
+                    return default;
+#else
                     return ValueTask.CompletedTask;
+#endif
 
                 if (Map.CoopInfo.DisallowedPlayerColors.Contains(color - 1))
+#if NETFRAMEWORK
+                    return default;
+#else
                     return ValueTask.CompletedTask;
+#endif
             }
 
             if (start < 0 || start > Map.MaxPlayers)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             if (team < 0 || team > 4)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             if (side != pInfo.SideId
                 || start != pInfo.StartingLocation
@@ -1107,7 +1246,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             pInfo.Ready = true;
             pInfo.AutoReady = Convert.ToBoolean(Conversions.IntFromString(autoReady, 0));
@@ -1121,7 +1264,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             UniqueGameID = Conversions.IntFromString(gameId, -1);
 
             if (UniqueGameID < 0)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             CopyPlayerDataToUI();
             return StartGameAsync();

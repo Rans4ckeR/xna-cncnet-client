@@ -5,9 +5,11 @@ param($Configuration = "Release", $Framework = "net8.0", $AssemblySemVer = "0.0.
 
 . $PSScriptRoot\Common.ps1
 
-Build-Project $Configuration Ares UniversalGL $Framework $AssemblySemVer $AssemblySemFileVer $InformationalVersion
+if ($Framework -notlike 'net4*') {
+  Build-Project $Configuration Ares UniversalGL $Framework $AssemblySemVer $AssemblySemFileVer $InformationalVersion
+}
 if ($IsWindows) {
   @('WindowsDX', 'WindowsGL', 'WindowsXNA') | ForEach-Object {
-    Build-Project $Configuration Ares $_ $Framework'-windows' $AssemblySemVer $AssemblySemFileVer $InformationalVersion
+    Build-Project $Configuration Ares $_ $Framework$($Framework -notlike 'net4*' ? '-windows' : '') $AssemblySemVer $AssemblySemFileVer $InformationalVersion
   }
 }

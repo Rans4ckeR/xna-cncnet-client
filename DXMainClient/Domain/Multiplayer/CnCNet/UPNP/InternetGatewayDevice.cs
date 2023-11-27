@@ -257,7 +257,11 @@ internal sealed record InternetGatewayDevice(
         var requestStream = new MemoryStream();
         HttpResponseMessage httpResponseMessage;
 
-        await using (requestStream)
+#if NETFRAMEWORK
+        using (requestStream)
+#else
+        await using (requestStream.ConfigureAwait(false))
+#endif
         {
             var writer = XmlWriter.Create(
                 requestStream,
@@ -268,7 +272,11 @@ internal sealed record InternetGatewayDevice(
                     Encoding = new UTF8Encoding()
                 });
 
+#if NETFRAMEWORK
+            using (writer)
+#else
             await using (writer.ConfigureAwait(false))
+#endif
             {
                 requestMessage.WriteMessage(writer);
                 await writer.FlushAsync().ConfigureAwait(false);
@@ -285,9 +293,17 @@ internal sealed record InternetGatewayDevice(
 
         using (httpResponseMessage)
         {
+#if NETFRAMEWORK
+            Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
+#else
             Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+#endif
 
+#if NETFRAMEWORK
+            using (stream)
+#else
             await using (stream.ConfigureAwait(false))
+#endif
             {
                 try
                 {
@@ -298,7 +314,11 @@ internal sealed record InternetGatewayDevice(
                     using var reader = new StreamReader(stream);
                     string error = await reader.ReadToEndAsync(CancellationToken.None).ConfigureAwait(false);
 
+#if NETFRAMEWORK
+                    ProgramConstants.LogException(ex, $"P2P: UPnP error {error}.");
+#else
                     ProgramConstants.LogException(ex, $"P2P: UPnP error {ex.StatusCode}:{error}.");
+#endif
 
                     throw;
                 }

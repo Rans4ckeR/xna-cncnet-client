@@ -30,6 +30,9 @@ using Rampastring.XNAUI.XNAControls;
 using SixLabors.ImageSharp;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
+#if NETFRAMEWORK
+using Windows.Win32.Networking.WinSock;
+#endif
 
 namespace DTAClient.DXGUI.Multiplayer
 {
@@ -260,6 +263,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
             foreach ((Socket socket, _) in sockets)
                 socket.Close();
+
+            sockets.Clear();
         }
 
         private async ValueTask GameCreationWindow_LoadGameAsync(GameLoadEventArgs e)
@@ -323,7 +328,11 @@ namespace DTAClient.DXGUI.Multiplayer
                 Logger.Log("No IPv4 address found for LAN.");
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red, "No IPv4 address found for LAN".L10N("Client:Main:NoLANIPv4")));
 
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
             }
 
             foreach (UnicastIPAddressInformation lanIpV4Address in lanIpV4Addresses)
@@ -362,7 +371,11 @@ namespace DTAClient.DXGUI.Multiplayer
             }
 
             if (!initSuccess)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             Logger.Log("Starting LAN listeners.");
 
@@ -381,6 +394,10 @@ namespace DTAClient.DXGUI.Multiplayer
             Task.Run(() => HandleNetworkMessage(message, loopBackIpEndPoint)).HandleTask();
 #pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 
+#if NETFRAMEWORK
+            byte[] buffer1 = encoding.GetBytes(message);
+            var buffer = new ArraySegment<byte>(buffer1);
+#else
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -388,12 +405,17 @@ namespace DTAClient.DXGUI.Multiplayer
             int bytes = encoding.GetBytes(message.AsSpan(), buffer.Span);
 
             buffer = buffer[..bytes];
+#endif
 
             foreach ((Socket socket, IPEndPoint broadcastEndpoint) in sockets)
             {
                 try
                 {
+#if NETFRAMEWORK
+                    await socket.SendToAsync(buffer, SocketFlags.None, broadcastEndpoint).ConfigureAwait(false);
+#else
                     await socket.SendToAsync(buffer, SocketFlags.None, broadcastEndpoint, cancellationToken).ConfigureAwait(false);
+#endif
 #if DEBUG
 #if NETWORKTRACE
                     Logger.Log($"Sent LAN broadcast on {socket.LocalEndPoint} / {broadcastEndpoint}: {message}.");
@@ -402,9 +424,15 @@ namespace DTAClient.DXGUI.Multiplayer
 #endif
 #endif
                 }
+#if NETFRAMEWORK
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                }
+#else
                 catch (OperationCanceledException)
                 {
                 }
+#endif
             }
         }
 
@@ -417,14 +445,27 @@ namespace DTAClient.DXGUI.Multiplayer
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     Memory<byte> buffer = memoryOwner.Memory[..4096];
+#if NETFRAMEWORK
+
+                    if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+                        throw new();
+
+                    SocketReceiveFromResult socketReceiveFromResult =
+                        await socket.ReceiveFromAsync(buffer1, SocketFlags.None, broadcastEndpoint).ConfigureAwait(false);
+#else
                     SocketReceiveFromResult socketReceiveFromResult =
                         await socket.ReceiveFromAsync(buffer, SocketFlags.None, broadcastEndpoint, cancellationToken).ConfigureAwait(false);
+#endif
                     var remoteIpEndPoint = (IPEndPoint)socketReceiveFromResult.RemoteEndPoint;
 
                     if (sockets.Select(q => ((IPEndPoint)q.Socket.LocalEndPoint).Address).ToList().Contains(remoteIpEndPoint.Address))
                         continue;
 
+#if NETFRAMEWORK
+                    string data = encoding.GetString(buffer.ToArray(), 0, socketReceiveFromResult.ReceivedBytes);
+#else
                     string data = encoding.GetString(buffer.Span[..socketReceiveFromResult.ReceivedBytes]);
+#endif
 
                     if (string.IsNullOrEmpty(data))
                         continue;
@@ -439,9 +480,18 @@ namespace DTAClient.DXGUI.Multiplayer
                     AddCallback(() => HandleNetworkMessage(data, remoteIpEndPoint));
                 }
             }
+#if NETFRAMEWORK
+            catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+            {
+            }
+            catch (ObjectDisposedException ex) when (ex.ObjectName.Equals("System.Net.Sockets.Socket", StringComparison.OrdinalIgnoreCase))
+            {
+            }
+#else
             catch (OperationCanceledException)
             {
             }
+#endif
             catch (Exception ex)
             {
                 ProgramConstants.LogException(ex, "LAN socket listener exception.");
@@ -613,9 +663,14 @@ namespace DTAClient.DXGUI.Multiplayer
             try
             {
                 var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
+#if NETFRAMEWORK
+                await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT)).ConfigureAwait(false);
+#else
                 await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT), CancellationToken.None).ConfigureAwait(false);
 
                 const int charSize = sizeof(char);
+#endif
 
                 if (hg.IsLoadedGame)
                 {
@@ -628,6 +683,12 @@ namespace DTAClient.DXGUI.Multiplayer
                     string message = FormattableString.Invariant($"""
                         {LANCommands.PLAYER_JOIN}{ProgramConstants.LAN_DATA_SEPARATOR}{ProgramConstants.PLAYERNAME}{ProgramConstants.LAN_DATA_SEPARATOR}{loadedGameId}{ProgramConstants.LAN_MESSAGE_SEPARATOR}
                         """);
+#if NETFRAMEWORK
+                    byte[] buffer1 = encoding.GetBytes(message);
+                    var buffer = new ArraySegment<byte>(buffer1);
+
+                    await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+#else
                     int bufferSize = message.Length * charSize;
                     using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
                     Memory<byte> buffer = memoryOwner.Memory[..bufferSize];
@@ -635,6 +696,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     buffer = buffer[..bytes];
 
                     await client.SendAsync(buffer, SocketFlags.None, CancellationToken.None).ConfigureAwait(false);
+#endif
                     await lanGameLoadingLobby.PostJoinAsync().ConfigureAwait(false);
                 }
                 else
@@ -644,6 +706,12 @@ namespace DTAClient.DXGUI.Multiplayer
 
                     string message = LANCommands.PLAYER_JOIN + ProgramConstants.LAN_DATA_SEPARATOR +
                         ProgramConstants.PLAYERNAME + ProgramConstants.LAN_MESSAGE_SEPARATOR;
+#if NETFRAMEWORK
+                    byte[] buffer1 = encoding.GetBytes(message);
+                    var buffer = new ArraySegment<byte>(buffer1);
+
+                    await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+#else
                     int bufferSize = message.Length * charSize;
                     using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
                     Memory<byte> buffer = memoryOwner.Memory[..bufferSize];
@@ -651,6 +719,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     buffer = buffer[..bytes];
 
                     await client.SendAsync(buffer, SocketFlags.None, CancellationToken.None).ConfigureAwait(false);
+#endif
                     await lanGameLobby.PostJoinAsync().ConfigureAwait(false);
                 }
             }
@@ -678,6 +747,8 @@ namespace DTAClient.DXGUI.Multiplayer
             foreach ((Socket socket, _) in sockets)
                 socket.Close();
 
+            sockets.Clear();
+
             Exited?.Invoke(this, EventArgs.Empty);
         }
 
@@ -688,7 +759,11 @@ namespace DTAClient.DXGUI.Multiplayer
             else
                 return GameCreationWindow_NewGameAsync();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         public override void Update(GameTime gameTime)

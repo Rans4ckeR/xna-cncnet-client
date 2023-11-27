@@ -273,10 +273,8 @@ namespace DTAClient.Domain.Multiplayer
         /// </summary>
         /// <param name="iniFile">The configuration file for the multiplayer maps.</param>
         /// <returns>True if loading the map succeeded, otherwise false.</returns>
-        public async ValueTask<bool> SetInfoFromMpMapsINIAsync(IniFile iniFile)
+        public bool SetInfoFromMpMapsINI(IniFile iniFile)
         {
-            await ValueTask.CompletedTask.ConfigureAwait(false);
-
             try
             {
                 string baseSectionName = iniFile.GetStringValue(BaseFilePath, "BaseSection", string.Empty);

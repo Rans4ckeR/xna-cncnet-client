@@ -599,7 +599,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 var chatChannel = connectionManager.FindChannel(e.ChannelName);
                 chatChannel?.AddMessage(new ChatMessage(Color.White, string.Format(CultureInfo.CurrentCulture,
                     "Cannot join chat channel {0}, you're banned!".L10N("Client:Main:PlayerBannedByChannel"), chatChannel.UIName)));
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
             }
 
             connectionManager.MainChannel.AddMessage(new ChatMessage(Color.White, string.Format(CultureInfo.CurrentCulture,
@@ -614,7 +618,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     return gameLobby.ClearAsync(false);
             }
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private ValueTask SharedUILogic_GameProcessStartedAsync()
@@ -1134,7 +1142,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 await gameCheckCancellation.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
                 gameCheckCancellation.Cancel();
+#if NETFRAMEWORK
+                await new ValueTask(Task.CompletedTask).ConfigureAwait(false);
+#else
                 await ValueTask.CompletedTask.ConfigureAwait(false);
+#endif
 #endif
                 gameCheckCancellation.Dispose();
             }
@@ -1463,7 +1475,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 string revision = splitMessage[0];
                 int clientProtocolNumber = int.Parse(ProgramConstants.CNCNET_PROTOCOL_REVISION[1..], CultureInfo.InvariantCulture);
 
+#if NETFRAMEWORK
+                if (!int.TryParse(revision[1..], out int gameProtocolNumber) || gameProtocolNumber > clientProtocolNumber)
+#else
                 if (!int.TryParse(revision[1..], CultureInfo.InvariantCulture, out int gameProtocolNumber) || gameProtocolNumber > clientProtocolNumber)
+#endif
                     return;
 
                 string gameVersion = splitMessage[1];

@@ -418,7 +418,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private ValueTask Dropdown_SelectedIndexChangedAsync(object sender)
         {
             if (disableGameOptionUpdateBroadcast)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             var dd = (GameLobbyDropDown)sender;
             dd.HostSelectedIndex = dd.SelectedIndex;
@@ -428,7 +432,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private ValueTask ChkBox_CheckedChangedAsync(object sender)
         {
             if (disableGameOptionUpdateBroadcast)
+#if NETFRAMEWORK
+                return default;
+#else
                 return ValueTask.CompletedTask;
+#endif
 
             var checkBox = (GameLobbyCheckBox)sender;
             checkBox.HostChecked = checkBox.Checked;
@@ -441,7 +449,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             btnLaunchGame.SetRank(GetRank());
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         protected ValueTask DdGameModeMapFilter_SelectedIndexChangedAsync()
@@ -458,7 +470,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             else
                 return ChangeMapAsync(GameModeMap);
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private void BtnPlayerExtraOptions_LeftClick(object sender, EventArgs e)
@@ -940,7 +956,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             UpdateMapPreviewBoxEnabledStatus();
             RefreshBtnPlayerExtraOptionsOpenTexture();
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private void EnablePlayerOptionDropDown(XNAClientDropDown clientDropDown, int playerIndex, bool enable)
@@ -1625,12 +1645,15 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     Logger.Log(errorMessage);
                     Logger.Log(e.Message);
                     XNAMessageBox.Show(WindowManager, "Error".L10N("Client:Main:Error"), errorMessage);
-
                 }
             }
 
             // Write the supplemental map files to the INI (eventual spawnmap.ini)
+#if NETFRAMEWORK
+            mapIni.SetStringValue("Basic", "SupplementalFiles", string.Join(",", supplementalFileNames));
+#else
             mapIni.SetStringValue("Basic", "SupplementalFiles", string.Join(',', supplementalFileNames));
+#endif
         }
 
         /// <summary>
@@ -1804,7 +1827,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             CopyPlayerDataToUI();
             UpdateDiscordPresence(true);
 
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         private async ValueTask ParseStatisticsAsync()
@@ -2051,7 +2078,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask KickPlayerAsync(int playerIndex)
         {
             // Do nothing by default
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         /// <summary>
@@ -2061,7 +2092,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected virtual ValueTask BanPlayerAsync(int playerIndex)
         {
             // Do nothing by default
+#if NETFRAMEWORK
+            return default;
+#else
             return ValueTask.CompletedTask;
+#endif
         }
 
         /// <summary>

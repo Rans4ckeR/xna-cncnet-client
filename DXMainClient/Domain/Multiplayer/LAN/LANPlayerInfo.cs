@@ -7,6 +7,10 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+using Windows.Win32.Networking.WinSock;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.LAN
 {
@@ -86,6 +90,14 @@ namespace DTAClient.Domain.Multiplayer.LAN
         {
             message += ProgramConstants.LAN_MESSAGE_SEPARATOR;
 
+#if NETFRAMEWORK
+            byte[] buffer1 = Encoding.UTF8.GetBytes(message);
+            var buffer = new ArraySegment<byte>(buffer1);
+
+            try
+            {
+                await TcpClient.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+#else
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -99,6 +111,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
             try
             {
                 await TcpClient.SendAsync(buffer, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -128,11 +141,23 @@ namespace DTAClient.Domain.Multiplayer.LAN
 
                 try
                 {
+#if NETFRAMEWORK
+                    if (!MemoryMarshal.TryGetArray(message, out ArraySegment<byte> buffer))
+                        throw new();
+
+                    bytesRead = await TcpClient.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+                }
+#else
                     bytesRead = await TcpClient.ReceiveAsync(message, cancellationToken).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
                 }
+#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Connection error with client " + Name + "; removing.");
@@ -140,7 +165,11 @@ namespace DTAClient.Domain.Multiplayer.LAN
 
                 if (bytesRead > 0)
                 {
+#if NETFRAMEWORK
+                    string msg = encoding.GetString(message.ToArray(), 0, bytesRead);
+#else
                     string msg = encoding.GetString(message.Span[..bytesRead]);
+#endif
 
                     msg = overMessage + msg;
 

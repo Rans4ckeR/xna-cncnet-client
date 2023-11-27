@@ -14,6 +14,9 @@ using System.Text;
 using System.Xml;
 using ClientCore;
 using Rampastring.Tools;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet.UPNP;
 
@@ -21,6 +24,18 @@ internal static class UPnPHandler
 {
     private const int ReceiveTimeoutInSeconds = 2;
 
+#if NETFRAMEWORK
+    public static readonly HttpClient HttpClient = new(
+        new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            ServerCertificateCustomValidationCallback = (_, _, _, sslPolicyErrors) => (sslPolicyErrors & SslPolicyErrors.RemoteCertificateNotAvailable) == 0
+        },
+        true)
+    {
+        Timeout = TimeSpan.FromSeconds(ReceiveTimeoutInSeconds)
+    };
+#else
     public static readonly HttpClient HttpClient = new(
         new SocketsHttpHandler
         {
@@ -69,6 +84,7 @@ internal static class UPnPHandler
         Timeout = TimeSpan.FromSeconds(ReceiveTimeoutInSeconds),
         DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
     };
+#endif
 
     public static async ValueTask<(
         InternetGatewayDevice InternetGatewayDevice,
@@ -129,7 +145,7 @@ internal static class UPnPHandler
     private static async Task<(IPAddress IpAddress, List<(ushort InternalPort, ushort ExternalPort)> Ports, List<ushort> PortIds)> SetupIpV6PortsAsync(
         InternetGatewayDevice internetGatewayDevice, List<ushort> p2pReservedPorts, List<IPAddress> stunServerIpAddresses, CancellationToken cancellationToken)
     {
-        (IPAddress stunPublicIpV6Address, List<(ushort InternalPort, ushort ExternalPort)> ipV6StunPortMapping) = await NetworkHelper.PerformStunAsync(
+        (IPAddress stunPublicIpV6Address, List<(ushort InternalPort, ushort ExternalPort)> ipV6StunPortMapping) = await StunHelper.PerformStunAsync(
             stunServerIpAddresses, p2pReservedPorts, AddressFamily.InterNetworkV6, cancellationToken).ConfigureAwait(false);
         IPAddress localPublicIpV6Address = NetworkHelper.GetLocalPublicIpV6Address();
         var ipV6P2PPorts = new List<(ushort InternalPort, ushort ExternalPort)>();
@@ -197,7 +213,7 @@ internal static class UPnPHandler
             routerPublicIpV4Address = await externalIpv4AddressTask.ConfigureAwait(false);
         }
 
-        (IPAddress stunPublicIpV4Address, List<(ushort InternalPort, ushort ExternalPort)> ipV4StunPortMapping) = await NetworkHelper.PerformStunAsync(
+        (IPAddress stunPublicIpV4Address, List<(ushort InternalPort, ushort ExternalPort)> ipV4StunPortMapping) = await StunHelper.PerformStunAsync(
             stunServerIpAddresses, p2pReservedPorts, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
         IPAddress tracePublicIpV4Address = null;
 
@@ -295,7 +311,11 @@ internal static class UPnPHandler
 
     private static IEnumerable<Dictionary<string, string>> GetFormattedDeviceResponses(IEnumerable<string> responses)
     {
+#if NETFRAMEWORK
+        return responses.Select(q => q.Split(Environment.NewLine.ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+#else
         return responses.Select(q => q.Split(Environment.NewLine)).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+#endif
             s => s[..s.IndexOf(':', StringComparison.OrdinalIgnoreCase)],
             s =>
             {
@@ -321,6 +341,11 @@ internal static class UPnPHandler
             socket.Bind(localEndPoint);
 
             string request = FormattableString.Invariant($"M-SEARCH * HTTP/1.1\r\nHOST: {NetworkHelper.FormatUri(multiCastIpEndPoint).Authority}\r\nST: {UPnPConstants.UPnPRootDevice}\r\nMAN: \"ssdp:discover\"\r\nMX: {ReceiveTimeoutInSeconds}\r\n\r\n");
+#if NETFRAMEWORK
+            byte[] buffer = Encoding.UTF8.GetBytes(request);
+
+            await socket.SendToAsync(new(buffer), SocketFlags.None, multiCastIpEndPoint).ConfigureAwait(false);
+#else
             const int charSize = sizeof(char);
             int bufferSize = request.Length * charSize;
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -330,6 +355,7 @@ internal static class UPnPHandler
             buffer = buffer[..numberOfBytes];
 
             await socket.SendToAsync(buffer, SocketFlags.None, multiCastIpEndPoint, cancellationToken).ConfigureAwait(false);
+#endif
             await ReceiveAsync(socket, responses, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -355,7 +381,14 @@ internal static class UPnPHandler
 
             try
             {
+#if NETFRAMEWORK
+                if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+                    throw new();
+
+                int bytesReceived = await socket.ReceiveAsync(buffer1, SocketFlags.None).ConfigureAwait(false);
+#else
                 int bytesReceived = await socket.ReceiveAsync(buffer, SocketFlags.None, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
 
                 responses.Add(Encoding.UTF8.GetString(buffer.Span[..bytesReceived]));
             }
@@ -367,9 +400,15 @@ internal static class UPnPHandler
 
     private static async ValueTask<UPnPDescription> GetDescriptionAsync(Uri uri, CancellationToken cancellationToken)
     {
+#if NETFRAMEWORK
+        Stream uPnPDescription = await HttpClient.GetStreamAsync(uri).ConfigureAwait(false);
+
+        using (uPnPDescription)
+#else
         Stream uPnPDescription = await HttpClient.GetStreamAsync(uri, cancellationToken).ConfigureAwait(false);
 
         await using (uPnPDescription.ConfigureAwait(false))
+#endif
         {
             using var xmlTextReader = new XmlTextReader(uPnPDescription);
 

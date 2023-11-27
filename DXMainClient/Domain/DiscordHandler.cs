@@ -61,7 +61,7 @@ namespace DTAClient.Domain
         #region methods
 
         /// <summary>
-        /// Initializes or reinitializes Discord RPC client object & event handlers.
+        /// Initializes or reinitializes Discord RPC client object &amp; event handlers.
         /// </summary>
         private void InitializeClient()
         {
@@ -144,7 +144,11 @@ namespace DTAClient.Domain
             bool isHost = false, bool isPassworded = false,
             bool isLocked = false, bool resetTimer = false)
         {
+#if NETFRAMEWORK
+            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+#else
             string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
+#endif
             string stateString = $"{state} [{players}/{maxPlayers}] • {roomName}";
             if (isHost)
                 stateString += "👑";
@@ -196,7 +200,11 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string map, string mode, string state, string side, bool resetTimer = false)
         {
+#if NETFRAMEWORK
+            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+#else
             string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
+#endif
             CurrentPresence = new RichPresence()
             {
                 State = $"{state}",
@@ -217,7 +225,11 @@ namespace DTAClient.Domain
         /// </summary>
         public void UpdatePresence(string mission, string difficulty, string side, bool resetTimer = false)
         {
+#if NETFRAMEWORK
+            string sideKey = new Regex("[^a-zA-Z0-9]").Replace(side.ToLower(), "");
+#else
             string sideKey = SideKeyRegex().Replace(side.ToUpperInvariant(), "");
+#endif
             CurrentPresence = new RichPresence()
             {
                 State = "Playing Mission",
@@ -308,8 +320,10 @@ namespace DTAClient.Domain
 
             client.Dispose();
         }
+#if !NETFRAMEWORK
 
         [GeneratedRegex("[^a-zA-Z0-9]")]
         private static partial Regex SideKeyRegex();
+#endif
     }
 }

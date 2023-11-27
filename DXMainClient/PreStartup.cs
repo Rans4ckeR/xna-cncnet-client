@@ -72,7 +72,16 @@ namespace DTAClient
                 CheckPermissions();
 
             if (clientLogFile.Exists)
-                File.Move(clientLogFile.FullName, SafePath.GetFile(clientUserFilesDirectory.FullName, "client_previous.log").FullName, true);
+            {
+                FileInfo previousLogFile = SafePath.GetFile(clientUserFilesDirectory.FullName, "client_previous.log");
+
+#if NETFRAMEWORK
+                SafePath.DeleteFileIfExists(previousLogFile.FullName);
+                File.Move(clientLogFile.FullName, previousLogFile.FullName);
+#else
+                File.Move(clientLogFile.FullName, previousLogFile.FullName, true);
+#endif
+            }
 
             Logger.Initialize(clientUserFilesDirectory.FullName, clientLogFile.Name);
             Logger.WriteLogFile = true;
@@ -203,13 +212,19 @@ namespace DTAClient
             }
 
 #if WINFORMS
+#if NETFRAMEWORK
+            Application.EnableVisualStyles();
+#else
             ApplicationConfiguration.Initialize();
+#endif
 #endif
 
             new Startup().Execute();
         }
 
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private static void CheckPermissions()
         {
             if (UserHasDirectoryAccessRights(ProgramConstants.GamePath, FileSystemRights.Modify))
@@ -237,7 +252,9 @@ namespace DTAClient
         /// </summary>
         /// <param name="path">The path to the directory.</param>
         /// <param name="accessRights">The file system rights.</param>
+#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
+#endif
         private static bool UserHasDirectoryAccessRights(string path, FileSystemRights accessRights)
         {
             var currentUser = WindowsIdentity.GetCurrent();

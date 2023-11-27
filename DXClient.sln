@@ -29,6 +29,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TranslationNotifierGenerato
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildScripts", "BuildScripts", "{797E18AA-775E-4872-A1F9-DC4BD38E92EA}"
 	ProjectSection(SolutionItems) = preProject
+		BuildScripts\Build-All-Framework.ps1 = BuildScripts\Build-All-Framework.ps1
 		BuildScripts\Build-All.ps1 = BuildScripts\Build-All.ps1
 		BuildScripts\Build-Ares.ps1 = BuildScripts\Build-Ares.ps1
 		BuildScripts\Build-TS.ps1 = BuildScripts\Build-TS.ps1

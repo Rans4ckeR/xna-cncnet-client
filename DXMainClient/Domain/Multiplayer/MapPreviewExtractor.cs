@@ -127,7 +127,11 @@ namespace DTAClient.Domain.Multiplayer
 
                     var stream = new LzoStream(new MemoryStream(dataSource, readBytes, sizeCompressed), CompressionMode.Decompress);
 
-                    await using (stream.ConfigureAwait(false))
+#if NETFRAMEWORK
+                    using (stream)
+#else
+                    await using (stream.ConfigureAwait(true))
+#endif
                     {
                         await stream.ReadAsync(dataDest.AsMemory(writtenBytes, sizeUncompressed)).ConfigureAwait(false);
                     }

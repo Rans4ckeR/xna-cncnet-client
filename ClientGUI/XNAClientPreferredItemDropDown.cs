@@ -51,7 +51,6 @@ namespace ClientGUI
                 PreferredItemIndexes.ForEach(i =>
                 {
                     XNADropDownItem preferredItem = Items[i];
-                    string preferredItemOriginalText = preferredItem.Text;
                     preferredItem.Text += " " + PreferredItemLabel;
                 });
 

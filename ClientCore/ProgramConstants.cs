@@ -25,7 +25,11 @@ namespace ClientCore
 #if DEBUG
         public static readonly string GamePath = SafePath.CombineDirectoryPath(SafePath.GetDirectory(StartupPath).Parent.Parent.FullName);
 #else
+#if NETFRAMEWORK
+        public static readonly string GamePath = SafePath.CombineDirectoryPath(SafePath.GetDirectory(StartupPath).Parent.FullName);
+#else
         public static readonly string GamePath = SafePath.CombineDirectoryPath(SafePath.GetDirectory(StartupPath).Parent.Parent.Parent.FullName);
+#endif
 #endif
 
         public static string ClientUserFilesPath => SafePath.CombineDirectoryPath(GamePath, "Client");
@@ -75,7 +79,14 @@ namespace ClientCore
         public const int GAME_ID_MAX_LENGTH = 4;
 
         public static readonly Encoding LAN_ENCODING = Encoding.UTF8;
+#if NETFRAMEWORK
+        private static bool? isMono;
 
+        /// <summary>
+        /// Gets a value whether or not the application is running under Mono. Uses lazy loading and caching.
+        /// </summary>
+        public static bool ISMONO => isMono ??= Type.GetType("Mono.Runtime") != null;
+#endif
         public static string GAME_VERSION = "Undefined";
         public static string GAME_NAME_LONG = "CnCNet Client";
         public static string GAME_NAME_SHORT = "CnCNet";

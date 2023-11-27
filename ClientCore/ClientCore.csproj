@@ -37,9 +37,15 @@
     <EmbeddedResource Include="Resources\unknownicon.png" />
     <EmbeddedResource Include="Resources\yricon.png" />
   </ItemGroup>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <PackageReference Include="Meziantou.Polyfill" Version="1.0.30">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+  </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="2.3.15" Condition="'!$(Configuration.Contains(Debug))'" />
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="2.3.15" Condition="'$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="2.3.17" Condition="'!$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="2.3.17" Condition="'$(Configuration.Contains(Debug))'" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TranslationNotifierGenerator\TranslationNotifierGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

@@ -8,6 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ClientCore;
 using Rampastring.Tools;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
 {
@@ -208,6 +211,14 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 buffer.Span.Clear();
 
                 long ticks = DateTime.Now.Ticks;
+#if NETFRAMEWORK
+
+                if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+                    throw new();
+
+                await socket.SendToAsync(buffer1, SocketFlags.None, ep).ConfigureAwait(false);
+                await socket.ReceiveFromAsync(buffer1, SocketFlags.None, ep).ConfigureAwait(false);
+#else
                 using var sendTimeoutCancellationTokenSource = new CancellationTokenSource(PING_TIMEOUT);
                 using var sendLinkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(sendTimeoutCancellationTokenSource.Token, cancellationToken);
 
@@ -217,6 +228,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 using var receiveLinkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(receiveTimeoutCancellationTokenSource.Token, cancellationToken);
 
                 await socket.ReceiveFromAsync(buffer, SocketFlags.None, ep, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
 
                 ticks = DateTime.Now.Ticks - ticks;
                 PingInMs = new TimeSpan(ticks).Milliseconds;

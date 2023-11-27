@@ -13,11 +13,14 @@ using ClientCore.Extensions;
 using DTAClient.Domain.Multiplayer;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using Rampastring.Tools;
+using System.Globalization;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+using Windows.Win32.Networking.WinSock;
+#endif
 
 namespace DTAClient.Online
 {
-    using System.Globalization;
-
     /// <summary>
     /// The CnCNet connection handler.
     /// </summary>
@@ -139,10 +142,14 @@ namespace DTAClient.Online
                             connectionManager.OnAttemptedServerChanged(server.Name);
 
                             var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
-                            using var timeoutCancellationTokenSource = new CancellationTokenSource(ConnectTimeout);
-                            using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
                             Logger.Log("Attempting connection to " + server.Host + ":" + port);
+#if NETFRAMEWORK
+                            IAsyncResult result = client.BeginConnect(server.Host, port, null, null);
+                            result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(3), false);
+#else
+                            using var timeoutCancellationTokenSource = new CancellationTokenSource(ConnectTimeout);
+                            using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
                             try
                             {
@@ -155,8 +162,12 @@ namespace DTAClient.Online
                                 Logger.Log("Connecting to " + server.Host + " port " + port + " timed out!");
                                 continue; // Start all over again, using the next port
                             }
+#endif
 
                             Logger.Log("Successfully connected to " + server.Host + " on port " + port);
+#if NETFRAMEWORK
+                            client.EndConnect(result);
+#endif
 
                             IsConnected = true;
                             AttemptingConnection = false;
@@ -221,6 +232,19 @@ namespace DTAClient.Online
             {
                 int bytesRead;
 
+#if NETFRAMEWORK
+                if (!MemoryMarshal.TryGetArray(message, out ArraySegment<byte> buffer))
+                    throw new();
+
+                try
+                {
+                    bytesRead = await socket.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+                }
+#else
                 try
                 {
                     bytesRead = await socket.ReceiveAsync(message, SocketFlags.None, cancellationToken).ConfigureAwait(false);
@@ -229,6 +253,7 @@ namespace DTAClient.Online
                 {
                     break;
                 }
+#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Disconnected from CnCNet due to a socket error.");
@@ -251,7 +276,11 @@ namespace DTAClient.Online
                 errorTimes = 0;
 
                 // A message has been successfully received
+#if NETFRAMEWORK
+                string msg = Encoding.UTF8.GetString(message.ToArray(), 0, bytesRead);
+#else
                 string msg = Encoding.UTF8.GetString(message.Span[..bytesRead]);
+#endif
 
 #if !DEBUG
                 Logger.Log("Message received: " + msg);
@@ -945,6 +974,14 @@ namespace DTAClient.Online
 
             Logger.Log("SRM: " + message);
 
+#if NETFRAMEWORK
+            byte[] buffer1 = Encoding.UTF8.GetBytes(message + "\r\n");
+            var buffer = new ArraySegment<byte>(buffer1);
+
+            try
+            {
+                await socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+#else
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -958,6 +995,7 @@ namespace DTAClient.Online
             try
             {
                 await socket.SendAsync(buffer, SocketFlags.None, timeoutCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
             }
             catch (SocketException ex)
             {

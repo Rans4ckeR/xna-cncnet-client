@@ -9,7 +9,6 @@ using ClientCore.Extensions;
 using Color = Microsoft.Xna.Framework.Color;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
 #if ARES
-using ClientCore.Extensions;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -188,7 +187,7 @@ namespace DTAClient.DXGUI
 
             bool debugLogModified = false;
             FileInfo debugLogFileInfo = SafePath.GetFile(ProgramConstants.GamePath, "debug", "debug.log");
-            DateTime lastWriteTime = new DateTime();
+            DateTime lastWriteTime = default(DateTime);
 
             if (debugLogFileInfo.Exists)
                 lastWriteTime = debugLogFileInfo.LastAccessTime;
@@ -385,13 +384,21 @@ namespace DTAClient.DXGUI
                 {
                     FileStream stream = file.OpenRead();
 
+#if NETFRAMEWORK
+                    using (stream)
+#else
                     await using (stream.ConfigureAwait(false))
+#endif
                     {
                         using Image image = await Image.LoadAsync(stream).ConfigureAwait(false);
                         FileInfo newFile = SafePath.GetFile(screenshotsDirectory.FullName, FormattableString.Invariant($"{Path.GetFileNameWithoutExtension(file.FullName)}.png"));
                         FileStream newFileStream = newFile.OpenWrite();
 
+#if NETFRAMEWORK
+                        using (newFileStream)
+#else
                         await using (newFileStream.ConfigureAwait(false))
+#endif
                         {
                             await image.SaveAsPngAsync(newFileStream).ConfigureAwait(false);
                         }

@@ -60,7 +60,14 @@ namespace DTAClient.Online
                 FileInfo listFile = SafePath.GetFile(ProgramConstants.GamePath, path);
 
                 if (listFile.Exists)
+#if NETFRAMEWORK
+                {
+                    await new ValueTask(Task.CompletedTask).ConfigureAwait(false);
+                    return File.ReadAllLines(listFile.FullName).ToList();
+                }
+#else
                     return (await File.ReadAllLinesAsync(listFile.FullName).ConfigureAwait(false)).ToList();
+#endif
 
                 Logger.Log($"Loading {path} failed! File does not exist.");
                 return [];
@@ -82,9 +89,13 @@ namespace DTAClient.Online
                 {
                     FileStream fileStream = File.OpenRead(listFile.FullName);
 
+#if NETFRAMEWORK
+                    using (fileStream)
+#else
                     await using (fileStream.ConfigureAwait(false))
+#endif
                     {
-                        return (await JsonSerializer.DeserializeAsync<List<T>>(fileStream).ConfigureAwait(false)) ?? [];
+                        return await JsonSerializer.DeserializeAsync<List<T>>(fileStream).ConfigureAwait(false) ?? [];
                     }
                 }
 
@@ -107,7 +118,12 @@ namespace DTAClient.Online
                 FileInfo listFileInfo = SafePath.GetFile(ProgramConstants.GamePath, path);
 
                 listFileInfo.Delete();
+#if NETFRAMEWORK
+                File.WriteAllLines(listFileInfo.FullName, textList);
+                await new ValueTask(Task.CompletedTask).ConfigureAwait(false);
+#else
                 await File.WriteAllLinesAsync(listFileInfo.FullName, textList).ConfigureAwait(false);
+#endif
             }
             catch (Exception ex)
             {
@@ -127,7 +143,11 @@ namespace DTAClient.Online
 
                 FileStream fileStream = listFileInfo.OpenWrite();
 
+#if NETFRAMEWORK
+                using (fileStream)
+#else
                 await using (fileStream.ConfigureAwait(false))
+#endif
                 {
                     await JsonSerializer.SerializeAsync(fileStream, jsonList).ConfigureAwait(false);
                 }

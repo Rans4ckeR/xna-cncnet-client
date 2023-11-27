@@ -12,11 +12,27 @@
     <AssemblyName Condition="'$(Engine)' == 'WindowsXNA'">clientxna</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Prefer32Bit Condition="'$(Engine)' == 'WindowsXNA' And '$(TargetFrameworkIdentifier)' == '.NETFramework'">true</Prefer32Bit>
     <UseAppHost>false</UseAppHost>
     <SelfContained>false</SelfContained>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="clienticon.ico" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <PackageReference Include="Meziantou.Polyfill" Version="1.0.30">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Management" />
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <Reference Include="System.ServiceModel" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
+    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.ServiceModel.Http" Version="6.2.0" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.49-beta">
@@ -26,16 +42,14 @@
     <PackageReference Include="lzo.net" Version="0.0.6" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="OpenMcdf" Version="2.3.0" />
-    <PackageReference Include="System.Management" Version="8.0.0" />
-    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
-    <PackageReference Include="System.ServiceModel.Http" Version="6.2.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\DTAConfig\DTAConfig.csproj" />
-  </ItemGroup>
-  <Import Project="$(MSBuildThisFileDirectory)..\build\WinForms.props" />
-  <Import Project="$(MSBuildThisFileDirectory)..\build\AfterPublish.targets" />
-  <ItemGroup>
     <ProjectReference Include="..\TranslationNotifierGenerator\TranslationNotifierGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <Import Project="$(MSBuildThisFileDirectory)..\build\AfterPublish.targets" />
+  <Import Project="$(MSBuildThisFileDirectory)..\build\WinForms.props" />
+  <PropertyGroup>
+    <MeziantouPolyfill_ExcludedPolyfills>T:System.Diagnostics.CodeAnalysis.UnscopedRefAttribute</MeziantouPolyfill_ExcludedPolyfills>
+  </PropertyGroup>
 </Project>
