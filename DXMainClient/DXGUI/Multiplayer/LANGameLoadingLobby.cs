@@ -720,7 +720,11 @@ namespace DTAClient.DXGUI.Multiplayer
                 for (int i = 1; i < Players.Count; i++)
                 {
                     LANPlayerInfo lpInfo = (LANPlayerInfo)Players[i];
+#if NET8_0_OR_GREATER
+                    if (!Task.Run(() => lpInfo.UpdateAsync(gameTime).HandleTask(ConfigureAwaitOptions.ContinueOnCapturedContext)).Result)
+#else
                     if (!Task.Run(() => lpInfo.UpdateAsync(gameTime).HandleTask(true)).Result)
+#endif
                     {
                         CleanUpPlayer(lpInfo);
                         Players.RemoveAt(i);
