@@ -6,7 +6,7 @@
   </PropertyGroup>
   <Import Project="$(MSBuildThisFileDirectory)..\build\WinForms.props" />
   <ItemGroup>
-    <PackageReference Include="CnCNet.RS.ClientUpdater" Version="1.0.0" />
+    <PackageReference Include="CnCNet.RS.ClientUpdater" Version="1.0.17" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ClientGUI\ClientGUI.csproj" />
