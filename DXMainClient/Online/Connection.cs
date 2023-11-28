@@ -18,6 +18,11 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Windows.Win32.Networking.WinSock;
 #endif
+#if NET8_0_OR_GREATER
+using System.Collections.Frozen;
+#else
+using System.Collections.ObjectModel;
+#endif
 
 namespace DTAClient.Online
 {
@@ -44,17 +49,25 @@ namespace DTAClient.Online
         /// <summary>
         /// The list of CnCNet / GameSurge IRC servers to connect to.
         /// </summary>
-        private static readonly IList<Server> Servers = new List<Server>
+#if NET8_0_OR_GREATER
+        private static readonly FrozenSet<Server> Servers = new Server[]
+#else
+        private static readonly IReadOnlyCollection<Server> Servers = new ReadOnlyCollection<Server>(new Server[]
+#endif
         {
-            new("Burstfire.UK.EU.GameSurge.net", "GameSurge London, UK", new[] { 6667, 6668, 7000 }, []),
-            new("Gameservers.NJ.US.GameSurge.net", "GameSurge Newark, NJ", new[] { 6665, 6666, 6667, 6668, 6669, 7000, 8080 }, []),
-            new("Krypt.CA.US.GameSurge.net", "GameSurge Santa Ana, CA", new[] { 6666, 6667, 6668, 6669 }, []),
-            new("NuclearFallout.WA.US.GameSurge.net", "GameSurge Seattle, WA", new[] { 6667, 5960 }, []),
-            new("Stockholm.SE.EU.GameSurge.net", "GameSurge Stockholm, Sweden", new[] { 6660, 6666, 6667, 6668, 6669 }, []),
-            new("Prothid.NY.US.GameSurge.Net", "GameSurge NYC, NY", new[] { 5960, 6660, 6666, 6667, 6668, 6669 }, [6697]),
-            new("LAN-Team.DE.EU.GameSurge.net", "GameSurge Nuremberg, Germany", new[] { 6660, 6666, 6667, 6668, 6669 }, []),
-            new("irc.gamesurge.net", "GameSurge", new[] { 6667 }, [])
-        }.AsReadOnly();
+            new("Burstfire.UK.EU.GameSurge.net", "GameSurge London, UK", [6667, 6668, 7000], []),
+            new("Gameservers.NJ.US.GameSurge.net", "GameSurge Newark, NJ", [6665, 6666, 6667, 6668, 6669, 7000, 8080], []),
+            new("Krypt.CA.US.GameSurge.net", "GameSurge Santa Ana, CA", [6666, 6667, 6668, 6669], []),
+            new("NuclearFallout.WA.US.GameSurge.net", "GameSurge Seattle, WA", [6667, 5960], []),
+            new("Stockholm.SE.EU.GameSurge.net", "GameSurge Stockholm, Sweden", [6660, 6666, 6667, 6668, 6669], []),
+            new("Prothid.NY.US.GameSurge.Net", "GameSurge NYC, NY", [5960, 6660, 6666, 6667, 6668, 6669], [6697]),
+            new("LAN-Team.DE.EU.GameSurge.net", "GameSurge Nuremberg, Germany", [6660, 6666, 6667, 6668, 6669], []),
+            new("irc.gamesurge.net", "GameSurge", [6667], [])
+#if NET8_0_OR_GREATER
+        }.ToFrozenSet();
+#else
+        });
+#endif
 
         private bool IsConnected { get; set; }
 
@@ -370,9 +383,7 @@ namespace DTAClient.Online
                 int[] serverSecurePorts = serverInfoGroup.SelectMany(serverInfo => serverInfo.SecurePorts).Distinct().ToArray();
 
                 return (ipAddress, serverNames, serverPorts, serverSecurePorts);
-            }).
-            Where(q => (q.ipAddress.AddressFamily is AddressFamily.InterNetworkV6 && hasIPv6Internet)
-                || (q.ipAddress.AddressFamily is AddressFamily.InterNetwork && hasIPv4Internet))
+            }).Where(q => (q.ipAddress.AddressFamily is AddressFamily.InterNetworkV6 && hasIPv6Internet) || (q.ipAddress.AddressFamily is AddressFamily.InterNetwork && hasIPv4Internet))
             .ToArray();
 
             // Do logging.

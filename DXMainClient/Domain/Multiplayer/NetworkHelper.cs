@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -12,7 +11,9 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using ClientCore;
-#if NETFRAMEWORK
+#if NET8_0_OR_GREATER
+using System.Collections.Frozen;
+#else
 using System.Collections.ObjectModel;
 #endif
 
@@ -23,18 +24,18 @@ internal static class NetworkHelper
     private const string PingHost = "cncnet.org";
     private const int PingTimeout = 1000;
 
-#if NETFRAMEWORK
-    private static readonly IReadOnlyCollection<AddressFamily> SupportedAddressFamilies = new ReadOnlyCollection<AddressFamily>(new[]
-    {
-        AddressFamily.InterNetwork,
-        AddressFamily.InterNetworkV6
-    });
+#if NET8_0_OR_GREATER
+    private static readonly FrozenSet<AddressFamily> SupportedAddressFamilies = new[]
 #else
-    private static readonly IReadOnlyCollection<AddressFamily> SupportedAddressFamilies = new[]
+    private static readonly IReadOnlyCollection<AddressFamily> SupportedAddressFamilies = new ReadOnlyCollection<AddressFamily>(new[]
+#endif
     {
         AddressFamily.InterNetwork,
         AddressFamily.InterNetworkV6
-    }.AsReadOnly();
+#if NET8_0_OR_GREATER
+    }.ToFrozenSet();
+#else
+    });
 #endif
 
     public static bool HasIPv6Internet()

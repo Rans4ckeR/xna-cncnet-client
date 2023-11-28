@@ -91,7 +91,7 @@ namespace DTAClient.Domain.Multiplayer.LAN
             message += ProgramConstants.LAN_MESSAGE_SEPARATOR;
 
 #if NETFRAMEWORK
-            byte[] buffer1 = Encoding.UTF8.GetBytes(message);
+            byte[] buffer1 = encoding.GetBytes(message);
             var buffer = new ArraySegment<byte>(buffer1);
 
             try

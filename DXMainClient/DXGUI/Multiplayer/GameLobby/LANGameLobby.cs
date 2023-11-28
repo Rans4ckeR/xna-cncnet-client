@@ -183,7 +183,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 string message = LANCommands.PLAYER_JOIN + ProgramConstants.LAN_DATA_SEPARATOR + ProgramConstants.PLAYERNAME;
 #if NETFRAMEWORK
-                byte[] buffer1 = Encoding.UTF8.GetBytes(message);
+                byte[] buffer1 = encoding.GetBytes(message);
                 var buffer = new ArraySegment<byte>(buffer1);
 
                 await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
