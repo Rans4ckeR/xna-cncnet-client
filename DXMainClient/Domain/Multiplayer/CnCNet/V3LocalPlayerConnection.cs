@@ -8,6 +8,7 @@ using Rampastring.Tools;
 #endif
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
+using ClientCore.Extensions;
 #endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
@@ -75,7 +76,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
         if (!MemoryMarshal.TryGetArray(buffer[PlayerIdsSize..], out ArraySegment<byte> buffer1))
             throw new();
 
-        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint));
+        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(cancellation));
     }
 #else
         => Socket.ReceiveFromAsync(buffer[PlayerIdsSize..], SocketFlags.None, RemoteEndPoint, cancellation);

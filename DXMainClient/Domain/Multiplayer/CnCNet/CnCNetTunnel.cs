@@ -10,6 +10,7 @@ using ClientCore;
 using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
+using ClientCore.Extensions;
 #endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet
@@ -211,22 +212,24 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 buffer.Span.Clear();
 
                 long ticks = DateTime.Now.Ticks;
-#if NETFRAMEWORK
-
-                if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
-                    throw new();
-
-                await socket.SendToAsync(buffer1, SocketFlags.None, ep).ConfigureAwait(false);
-                await socket.ReceiveFromAsync(buffer1, SocketFlags.None, ep).ConfigureAwait(false);
-#else
                 using var sendTimeoutCancellationTokenSource = new CancellationTokenSource(PING_TIMEOUT);
                 using var sendLinkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(sendTimeoutCancellationTokenSource.Token, cancellationToken);
 
+#if NETFRAMEWORK
+                if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
+                    throw new();
+
+                await socket.SendToAsync(buffer1, SocketFlags.None, ep).WithCancellation(sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#else
                 await socket.SendToAsync(buffer, SocketFlags.None, ep, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
 
                 using var receiveTimeoutCancellationTokenSource = new CancellationTokenSource(PING_TIMEOUT);
                 using var receiveLinkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(receiveTimeoutCancellationTokenSource.Token, cancellationToken);
 
+#if NETFRAMEWORK
+                await socket.ReceiveFromAsync(buffer1, SocketFlags.None, ep).WithCancellation(receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#else
                 await socket.ReceiveFromAsync(buffer, SocketFlags.None, ep, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
 

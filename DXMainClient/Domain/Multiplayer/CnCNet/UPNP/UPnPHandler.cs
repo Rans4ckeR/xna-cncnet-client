@@ -16,6 +16,7 @@ using ClientCore;
 using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
+using ClientCore.Extensions;
 #endif
 #if NET8_0_OR_GREATER
 using System.Collections.Frozen;
@@ -68,7 +69,7 @@ internal static class UPnPHandler
                 }
                 catch
                 {
-                    socket?.Dispose();
+                    socket?.Close();
 
                     throw;
                 }
@@ -353,7 +354,7 @@ internal static class UPnPHandler
 #if NETFRAMEWORK
             byte[] buffer = Encoding.UTF8.GetBytes(request);
 
-            await socket.SendToAsync(new(buffer), SocketFlags.None, multiCastIpEndPoint).ConfigureAwait(false);
+            await socket.SendToAsync(new(buffer), SocketFlags.None, multiCastIpEndPoint).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
             const int charSize = sizeof(char);
             int bufferSize = request.Length * charSize;
@@ -394,7 +395,7 @@ internal static class UPnPHandler
                 if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
                     throw new();
 
-                int bytesReceived = await socket.ReceiveAsync(buffer1, SocketFlags.None).ConfigureAwait(false);
+                int bytesReceived = await socket.ReceiveAsync(buffer1, SocketFlags.None).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
                 int bytesReceived = await socket.ReceiveAsync(buffer, SocketFlags.None, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
@@ -410,7 +411,7 @@ internal static class UPnPHandler
     private static async ValueTask<UPnPDescription> GetDescriptionAsync(Uri uri, CancellationToken cancellationToken)
     {
 #if NETFRAMEWORK
-        Stream uPnPDescription = await HttpClient.GetStreamAsync(uri).ConfigureAwait(false);
+        Stream uPnPDescription = await HttpClient.GetStreamAsync(uri).WithCancellation(cancellationToken).ConfigureAwait(false);
 
         using (uPnPDescription)
 #else

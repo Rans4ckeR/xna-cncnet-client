@@ -8,6 +8,7 @@ using ClientCore;
 using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
+using ClientCore.Extensions;
 #endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
@@ -100,10 +101,10 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 #else
         if (!BitConverter.TryWriteBytes(buffer.Span[..PlayerIdSize], PlayerId))
             throw new GameDataException();
+#endif
 
         using var timeoutCancellationTokenSource = new CancellationTokenSource(SendTimeout);
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, CancellationToken);
-#endif
 
         try
         {
@@ -111,7 +112,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
             if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
                 throw new();
 
-            await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).ConfigureAwait(false);
+            await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             await Socket.SendToAsync(buffer, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
@@ -131,7 +132,6 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         {
             return;
         }
-#if !NETFRAMEWORK
         catch (OperationCanceledException)
         {
 #if DEBUG
@@ -143,7 +143,6 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
             return;
         }
-#endif
 
 #if DEBUG
         Logger.Log($"{GetType().Name}: Connection from {Socket.LocalEndPoint} to {RemoteEndPoint} established.");
@@ -159,7 +158,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
             throw new();
 
-        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint));
+        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(cancellation));
     }
 #else
         => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint, cancellation);

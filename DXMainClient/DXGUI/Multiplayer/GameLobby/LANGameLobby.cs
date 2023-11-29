@@ -176,7 +176,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             try
             {
 #if NETFRAMEWORK
-                await client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT).ConfigureAwait(false);
+                await client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
                 await client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT, cancellationToken).ConfigureAwait(false);
 #endif
@@ -186,7 +186,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 byte[] buffer1 = encoding.GetBytes(message);
                 var buffer = new ArraySegment<byte>(buffer1);
 
-                await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                await client.SendAsync(buffer, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
             }
             catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
             {
@@ -202,10 +202,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 await client.SendAsync(buffer, SocketFlags.None, cancellationToken).ConfigureAwait(false);
             }
+#endif
             catch (OperationCanceledException)
             {
             }
-#endif
         }
 
         public async ValueTask PostJoinAsync()
@@ -236,18 +236,18 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 try
                 {
 #if NETFRAMEWORK
-                    newClient = await listener.AcceptAsync().ConfigureAwait(false);
+                    newClient = await listener.AcceptAsync().WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                     break;
 #else
                     newClient = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
+#endif
                 }
                 catch (OperationCanceledException)
                 {
                     break;
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -295,11 +295,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 try
                 {
-                    bytesRead = await lpInfo.TcpClient.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await lpInfo.TcpClient.ReceiveAsync(message, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                     break;
+                }
 #else
                 Memory<byte> message;
 
@@ -308,10 +309,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     message = memoryOwner.Memory[..1024];
                     bytesRead = await lpInfo.TcpClient.ReceiveAsync(message, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                     break;
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -441,11 +442,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 try
                 {
-                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                     break;
+                }
 #else
                 Memory<byte> message;
 
@@ -454,10 +456,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     message = memoryOwner.Memory[..1024];
                     bytesRead = await client.ReceiveAsync(message, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                     break;
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -746,7 +748,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             try
             {
-                await client.SendAsync(buffer1, SocketFlags.None).ConfigureAwait(false);
+                await client.SendAsync(buffer1, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
             }
             catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
             {
@@ -762,10 +764,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 buffer = buffer[..bytes];
 
                 await client.SendAsync(buffer, SocketFlags.None, cancellationToken).ConfigureAwait(false);
+#endif
             }
             catch (OperationCanceledException)
             {
-#endif
             }
             catch (Exception ex)
             {

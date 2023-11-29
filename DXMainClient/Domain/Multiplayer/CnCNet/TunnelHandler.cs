@@ -152,7 +152,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             try
             {
 #if NETFRAMEWORK
-                data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).ConfigureAwait(false);
+                data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
                 data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL), cancellationToken).ConfigureAwait(false);
 #endif
@@ -163,7 +163,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 try
                 {
 #if NETFRAMEWORK
-                    data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).ConfigureAwait(false);
+                    data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL)).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
                     data = await Constants.CnCNetHttpClient.GetStringAsync(new Uri(ProgramConstants.CNCNET_TUNNEL_LIST_URL), cancellationToken).ConfigureAwait(false);
 #endif

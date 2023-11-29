@@ -5,7 +5,9 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-#if !NETFRAMEWORK
+#if NETFRAMEWORK
+using ClientCore.Extensions;
+#else
 using System.Runtime.Versioning;
 #endif
 using System.Threading;
@@ -148,7 +150,7 @@ internal static class NetworkHelper
         try
         {
 #if NETFRAMEWORK
-            IPAddress[] ipAddresses = await Dns.GetHostAddressesAsync(PingHost).ConfigureAwait(false);
+            IPAddress[] ipAddresses = await Dns.GetHostAddressesAsync(PingHost).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
             IPAddress[] ipAddresses = await Dns.GetHostAddressesAsync(PingHost, cancellationToken).ConfigureAwait(false);
 #endif

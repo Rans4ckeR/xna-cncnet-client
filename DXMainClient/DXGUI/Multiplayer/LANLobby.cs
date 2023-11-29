@@ -412,7 +412,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 try
                 {
 #if NETFRAMEWORK
-                    await socket.SendToAsync(buffer, SocketFlags.None, broadcastEndpoint).ConfigureAwait(false);
+                    await socket.SendToAsync(buffer, SocketFlags.None, broadcastEndpoint).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
                     await socket.SendToAsync(buffer, SocketFlags.None, broadcastEndpoint, cancellationToken).ConfigureAwait(false);
 #endif
@@ -428,11 +428,10 @@ namespace DTAClient.DXGUI.Multiplayer
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                 }
-#else
+#endif
                 catch (OperationCanceledException)
                 {
                 }
-#endif
             }
         }
 
@@ -451,7 +450,7 @@ namespace DTAClient.DXGUI.Multiplayer
                         throw new();
 
                     SocketReceiveFromResult socketReceiveFromResult =
-                        await socket.ReceiveFromAsync(buffer1, SocketFlags.None, broadcastEndpoint).ConfigureAwait(false);
+                        await socket.ReceiveFromAsync(buffer1, SocketFlags.None, broadcastEndpoint).WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
                     SocketReceiveFromResult socketReceiveFromResult =
                         await socket.ReceiveFromAsync(buffer, SocketFlags.None, broadcastEndpoint, cancellationToken).ConfigureAwait(false);
@@ -487,11 +486,10 @@ namespace DTAClient.DXGUI.Multiplayer
             catch (ObjectDisposedException ex) when (ex.ObjectName.Equals("System.Net.Sockets.Socket", StringComparison.OrdinalIgnoreCase))
             {
             }
-#else
+#endif
             catch (OperationCanceledException)
             {
             }
-#endif
             catch (Exception ex)
             {
                 ProgramConstants.LogException(ex, "LAN socket listener exception.");
@@ -665,7 +663,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
 #if NETFRAMEWORK
-                await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT)).ConfigureAwait(false);
+                await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT)).WithCancellation(CancellationToken.None).ConfigureAwait(false);
 #else
                 await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT), CancellationToken.None).ConfigureAwait(false);
 
@@ -687,7 +685,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     byte[] buffer1 = encoding.GetBytes(message);
                     var buffer = new ArraySegment<byte>(buffer1);
 
-                    await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    await client.SendAsync(buffer, SocketFlags.None).WithCancellation(CancellationToken.None).ConfigureAwait(false);
 #else
                     int bufferSize = message.Length * charSize;
                     using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
@@ -710,7 +708,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     byte[] buffer1 = encoding.GetBytes(message);
                     var buffer = new ArraySegment<byte>(buffer1);
 
-                    await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    await client.SendAsync(buffer, SocketFlags.None).WithCancellation(CancellationToken.None).ConfigureAwait(false);
 #else
                     int bufferSize = message.Length * charSize;
                     using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);

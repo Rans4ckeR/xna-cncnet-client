@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+#if NETFRAMEWORK
+using System.Threading;
+#endif
 
 namespace ClientCore.Extensions;
 
@@ -181,6 +184,48 @@ public static class TaskExtensions
 
             throw whenAllTask.Exception;
         }
+    }
+#endif
+#if NETFRAMEWORK
+
+    /// <summary>
+    /// Runs a <see cref="Task"/> which is cancelled with the given <paramref name="cancellationToken"/>.
+    /// </summary>
+    /// <param name="task">The <see cref="Task"/> whose exceptions will be handled.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use to cancel <paramref name="task"/>.</param>
+    public static async Task WithCancellation(this Task task, CancellationToken cancellationToken)
+    {
+        var timeOutTask = Task.Delay(TimeSpan.FromMilliseconds(-1), cancellationToken);
+
+        await Task.WhenAny([task, timeOutTask]).ConfigureAwait(false);
+
+        if (task.IsCompleted)
+            return;
+
+        if (task.IsFaulted)
+            throw task.Exception;
+
+        throw new OperationCanceledException();
+    }
+
+    /// <summary>
+    /// Runs a <see cref="Task"/> which is cancelled with the given <paramref name="cancellationToken"/>.
+    /// </summary>
+    /// <param name="task">The <see cref="Task"/> whose exceptions will be handled.</param>
+    /// <param name="cancellationToken">The <see cref="CancellationToken"/> to use to cancel <paramref name="task"/>.</param>
+    public static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
+    {
+        var timeOutTask = Task.Delay(TimeSpan.FromMilliseconds(-1), cancellationToken);
+
+        await Task.WhenAny([task, timeOutTask]).ConfigureAwait(false);
+
+        if (task.IsCompleted)
+            return await task.ConfigureAwait(false);
+
+        if (task.IsFaulted)
+            throw task.Exception;
+
+        throw new OperationCanceledException();
     }
 #endif
 

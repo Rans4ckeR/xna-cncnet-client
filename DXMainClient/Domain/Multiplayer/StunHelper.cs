@@ -112,15 +112,15 @@ internal static class StunHelper
             {
                 stunServerIpEndPoint = new(stunServerIpAddress, stunPort);
 
-#if NETFRAMEWORK
-                await socket.SendToAsync(buffer1, SocketFlags.None, stunServerIpEndPoint).ConfigureAwait(false);
-
-                SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
-                    buffer1, SocketFlags.None, stunServerIpEndPoint).ConfigureAwait(false);
-#else
                 using var timeoutCancellationTokenSource = new CancellationTokenSource(PingTimeout);
                 using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
+#if NETFRAMEWORK
+                await socket.SendToAsync(buffer1, SocketFlags.None, stunServerIpEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+
+                SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
+                    buffer1, SocketFlags.None, stunServerIpEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#else
                 await socket.SendToAsync(buffer, stunServerIpEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 
                 SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(

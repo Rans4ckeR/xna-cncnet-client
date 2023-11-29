@@ -15,6 +15,9 @@ using System.Xml;
 using System.ServiceModel.Channels;
 using ClientCore;
 using Rampastring.Tools;
+#if NETFRAMEWORK
+using ClientCore.Extensions;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet.UPNP;
 
@@ -294,7 +297,7 @@ internal sealed record InternetGatewayDevice(
         using (httpResponseMessage)
         {
 #if NETFRAMEWORK
-            Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync().WithCancellation(cancellationToken).ConfigureAwait(false);
 #else
             Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 #endif
@@ -311,9 +314,17 @@ internal sealed record InternetGatewayDevice(
                 }
                 catch (HttpRequestException ex)
                 {
-                    using var reader = new StreamReader(stream);
-                    string error = await reader.ReadToEndAsync(CancellationToken.None).ConfigureAwait(false);
+                    string error;
 
+                    if (stream.CanRead)
+                    {
+                        using var reader = new StreamReader(stream);
+                        error = await reader.ReadToEndAsync(CancellationToken.None).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        error = ex.Message;
+                    }
 #if NETFRAMEWORK
                     ProgramConstants.LogException(ex, $"P2P: UPnP error {error}.");
 #else

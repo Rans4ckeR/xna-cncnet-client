@@ -8,6 +8,7 @@ using ClientCore;
 using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
+using ClientCore.Extensions;
 #endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet;
@@ -71,11 +72,9 @@ internal abstract class PlayerConnection : IDisposable
 
     protected async ValueTask SendDataAsync(ReadOnlyMemory<byte> data)
     {
-#if !NETFRAMEWORK
         using var timeoutCancellationTokenSource = new CancellationTokenSource(SendTimeout);
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, CancellationToken);
 
-#endif
         try
         {
 #if DEBUG
@@ -89,7 +88,7 @@ internal abstract class PlayerConnection : IDisposable
             if (!MemoryMarshal.TryGetArray(data, out ArraySegment<byte> buffer1))
                 throw new();
 
-            await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).ConfigureAwait(false);
+            await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             await Socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
@@ -109,7 +108,6 @@ internal abstract class PlayerConnection : IDisposable
         catch (OperationCanceledException) when (CancellationToken.IsCancellationRequested)
         {
         }
-#if !NETFRAMEWORK
         catch (OperationCanceledException)
         {
 #if DEBUG
@@ -119,7 +117,6 @@ internal abstract class PlayerConnection : IDisposable
 #endif
             OnRaiseConnectionCutEvent(EventArgs.Empty);
         }
-#endif
     }
 
     private async ValueTask ReceiveLoopAsync()

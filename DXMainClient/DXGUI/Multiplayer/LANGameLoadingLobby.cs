@@ -130,7 +130,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 byte[] buffer1 = encoding.GetBytes(message);
                 var buffer = new ArraySegment<byte>(buffer1);
 
-                await this.client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                await this.client.SendAsync(buffer, SocketFlags.None).WithCancellation(CancellationToken.None).ConfigureAwait(false);
 #else
                 const int charSize = sizeof(char);
                 int bufferSize = message.Length * charSize;
@@ -149,7 +149,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
             else
             {
-                this.client?.Dispose();
+                this.client?.Close();
                 this.client = client;
             }
 
@@ -188,18 +188,18 @@ namespace DTAClient.DXGUI.Multiplayer
                 try
                 {
 #if NETFRAMEWORK
-                    newPlayerSocket = await listener.AcceptAsync().ConfigureAwait(false);
+                    newPlayerSocket = await listener.AcceptAsync().WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                     break;
 #else
                     newPlayerSocket = await listener.AcceptAsync(cancellationToken).ConfigureAwait(false);
+#endif
                 }
                 catch (OperationCanceledException)
                 {
                     break;
-#endif
                 }
                 catch (Exception ex)
                 {
@@ -231,7 +231,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                 try
                 {
-                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
@@ -245,11 +245,11 @@ namespace DTAClient.DXGUI.Multiplayer
                     message = memoryOwner.Memory[..4096];
                     bytesRead = await client.ReceiveAsync(message, SocketFlags.None, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                     break;
                 }
-#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Socket error with client " + lpInfo.IPAddress + "; removing.");
@@ -385,7 +385,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                 try
                 {
-                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await client.ReceiveAsync(message, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
@@ -399,11 +399,11 @@ namespace DTAClient.DXGUI.Multiplayer
                     message = memoryOwner.Memory[..4096];
                     bytesRead = await client.ReceiveAsync(message, SocketFlags.None, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                     break;
                 }
-#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Reading data from the server failed!");
@@ -683,7 +683,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             try
             {
-                await client.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                await client.SendAsync(buffer, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
             }
             catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
             {

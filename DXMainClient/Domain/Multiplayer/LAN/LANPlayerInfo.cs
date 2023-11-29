@@ -14,6 +14,8 @@ using Windows.Win32.Networking.WinSock;
 
 namespace DTAClient.Domain.Multiplayer.LAN
 {
+    using ClientCore.Extensions;
+
     internal sealed class LANPlayerInfo : PlayerInfo
     {
         public LANPlayerInfo(Encoding encoding)
@@ -90,21 +92,22 @@ namespace DTAClient.Domain.Multiplayer.LAN
         {
             message += ProgramConstants.LAN_MESSAGE_SEPARATOR;
 
+            using var timeoutCancellationTokenSource = new CancellationTokenSource(SEND_TIMEOUT);
+            using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
+
 #if NETFRAMEWORK
             byte[] buffer1 = encoding.GetBytes(message);
             var buffer = new ArraySegment<byte>(buffer1);
 
             try
             {
-                await TcpClient.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                await TcpClient.SendAsync(buffer, SocketFlags.None).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
             using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
             Memory<byte> buffer = memoryOwner.Memory[..bufferSize];
             int bytes = encoding.GetBytes(message.AsSpan(), buffer.Span);
-            using var timeoutCancellationTokenSource = new CancellationTokenSource(SEND_TIMEOUT);
-            using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
             buffer = buffer[..bytes];
 
@@ -139,25 +142,27 @@ namespace DTAClient.Domain.Multiplayer.LAN
                 int bytesRead = 0;
                 Memory<byte> message = memoryOwner.Memory[..4096];
 
+#if NETFRAMEWORK
+                if (!MemoryMarshal.TryGetArray(message, out ArraySegment<byte> buffer))
+                    throw new();
+
                 try
                 {
-#if NETFRAMEWORK
-                    if (!MemoryMarshal.TryGetArray(message, out ArraySegment<byte> buffer))
-                        throw new();
-
-                    bytesRead = await TcpClient.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await TcpClient.ReceiveAsync(buffer, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
                     break;
                 }
 #else
+                try
+                {
                     bytesRead = await TcpClient.ReceiveAsync(message, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                 }
-#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Connection error with client " + Name + "; removing.");

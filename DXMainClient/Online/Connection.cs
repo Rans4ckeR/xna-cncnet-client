@@ -148,39 +148,38 @@ namespace DTAClient.Online
 
                 foreach (Server server in sortedServerList)
                 {
+                    Socket client = null;
+
                     try
                     {
                         foreach (int port in server.Ports)
                         {
                             connectionManager.OnAttemptedServerChanged(server.Name);
 
-                            var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                            client = new Socket(SocketType.Stream, ProtocolType.Tcp);
 
                             Logger.Log("Attempting connection to " + server.Host + ":" + port);
-#if NETFRAMEWORK
-                            IAsyncResult result = client.BeginConnect(server.Host, port, null, null);
-                            result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(3), false);
-#else
+
                             using var timeoutCancellationTokenSource = new CancellationTokenSource(ConnectTimeout);
                             using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
 
                             try
                             {
-                                await client.ConnectAsync(
-                                    new IPEndPoint(IPAddress.Parse(server.Host), port),
-                                    linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#if NETFRAMEWORK
+                                await client.ConnectAsync(new IPEndPoint(IPAddress.Parse(server.Host), port)).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#else
+                                await client.ConnectAsync(new IPEndPoint(IPAddress.Parse(server.Host), port),linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
                             }
                             catch (OperationCanceledException) when (timeoutCancellationTokenSource.Token.IsCancellationRequested)
                             {
                                 Logger.Log("Connecting to " + server.Host + " port " + port + " timed out!");
+                                client.Close();
+
                                 continue; // Start all over again, using the next port
                             }
-#endif
 
                             Logger.Log("Successfully connected to " + server.Host + " on port " + port);
-#if NETFRAMEWORK
-                            client.EndConnect(result);
-#endif
 
                             IsConnected = true;
                             AttemptingConnection = false;
@@ -205,10 +204,12 @@ namespace DTAClient.Online
                     }
                     catch (OperationCanceledException)
                     {
+                        client?.Close();
                         throw;
                     }
                     catch (Exception ex)
                     {
+                        client?.Close();
                         ProgramConstants.LogException(ex, "Unable to connect to the server.");
                     }
                 }
@@ -251,7 +252,7 @@ namespace DTAClient.Online
 
                 try
                 {
-                    bytesRead = await socket.ReceiveAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                    bytesRead = await socket.ReceiveAsync(buffer, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
                 }
                 catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
                 {
@@ -262,11 +263,11 @@ namespace DTAClient.Online
                 {
                     bytesRead = await socket.ReceiveAsync(message, SocketFlags.None, cancellationToken).ConfigureAwait(false);
                 }
+#endif
                 catch (OperationCanceledException)
                 {
                     break;
                 }
-#endif
                 catch (Exception ex)
                 {
                     ProgramConstants.LogException(ex, "Disconnected from CnCNet due to a socket error.");
@@ -985,13 +986,15 @@ namespace DTAClient.Online
 
             Logger.Log("SRM: " + message);
 
+            using var timeoutCancellationTokenSource = new CancellationTokenSource(SendTimeout);
+
 #if NETFRAMEWORK
             byte[] buffer1 = Encoding.UTF8.GetBytes(message + "\r\n");
             var buffer = new ArraySegment<byte>(buffer1);
 
             try
             {
-                await socket.SendAsync(buffer, SocketFlags.None).ConfigureAwait(false);
+                await socket.SendAsync(buffer, SocketFlags.None).WithCancellation(timeoutCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             const int charSize = sizeof(char);
             int bufferSize = message.Length * charSize;
@@ -1000,8 +1003,6 @@ namespace DTAClient.Online
             int bytes = Encoding.UTF8.GetBytes((message + "\r\n").AsSpan(), buffer.Span);
 
             buffer = buffer[..bytes];
-
-            using var timeoutCancellationTokenSource = new CancellationTokenSource(SendTimeout);
 
             try
             {
