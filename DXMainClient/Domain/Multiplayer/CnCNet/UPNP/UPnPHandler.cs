@@ -17,6 +17,9 @@ using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
 #endif
+#if NET8_0_OR_GREATER
+using System.Collections.Frozen;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.CnCNet.UPNP;
 
@@ -287,7 +290,7 @@ internal static class UPnPHandler
     private static async ValueTask<IEnumerable<InternetGatewayDevice>> GetDevicesAsync(CancellationToken cancellationToken)
     {
         IEnumerable<(IPAddress LocalIpAddress, IEnumerable<string> Responses)> rawDeviceResponses = await DetectDevicesAsync(cancellationToken).ConfigureAwait(false);
-        IEnumerable<(IPAddress LocalIpAddress, IEnumerable<Dictionary<string, string>> Responses)> formattedDeviceResponses =
+        IEnumerable<(IPAddress LocalIpAddress, IEnumerable<IDictionary<string, string>> Responses)> formattedDeviceResponses =
             rawDeviceResponses.Select(q => (q.LocalIpAddress, GetFormattedDeviceResponses(q.Responses)));
         IEnumerable<IGrouping<string, InternetGatewayDeviceResponse>> groupedInternetGatewayDeviceResponses =
             GetGroupedDeviceResponses(formattedDeviceResponses);
@@ -297,9 +300,9 @@ internal static class UPnPHandler
     }
 
     private static IEnumerable<IGrouping<string, InternetGatewayDeviceResponse>> GetGroupedDeviceResponses(
-        IEnumerable<(IPAddress LocalIpAddress, IEnumerable<Dictionary<string, string>> Responses)> formattedDeviceResponses)
+        IEnumerable<(IPAddress LocalIpAddress, IEnumerable<IDictionary<string, string>> Responses)> formattedDeviceResponses)
         => formattedDeviceResponses
-            .SelectMany(q => q.Responses.Where(r => Guid.TryParse(r["LOCATION"], out _)).Select(r => new InternetGatewayDeviceResponse(new(r["LOCATION"]), r["SERVER"], r["USN"], q.LocalIpAddress)))
+            .SelectMany(q => q.Responses.Where(r => r.ContainsKey("LOCATION") && r.ContainsKey("SERVER") && r.ContainsKey("USN")).Select(r => new InternetGatewayDeviceResponse(new(r["LOCATION"]), r["SERVER"], r["USN"], q.LocalIpAddress)))
             .GroupBy(q => q.Usn);
 
     private static Uri GetPreferredLocation(IReadOnlyCollection<Uri> locations)
@@ -309,12 +312,14 @@ internal static class UPnPHandler
             ?? locations.First(q => q.HostNameType is UriHostNameType.IPv4);
     }
 
-    private static IEnumerable<Dictionary<string, string>> GetFormattedDeviceResponses(IEnumerable<string> responses)
+    private static IEnumerable<IDictionary<string, string>> GetFormattedDeviceResponses(IEnumerable<string> responses)
     {
 #if NETFRAMEWORK
-        return responses.Select(q => q.Split(Environment.NewLine.ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+        return responses.Select(q => q.Split("\r\n".ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+#elif NET8_0_OR_GREATER
+        return responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToFrozenDictionary(
 #else
-        return responses.Select(q => q.Split(Environment.NewLine)).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+        return responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
 #endif
             s => s[..s.IndexOf(':', StringComparison.OrdinalIgnoreCase)],
             s =>
@@ -326,7 +331,11 @@ internal static class UPnPHandler
 
                 return value.Replace(": ", null, StringComparison.OrdinalIgnoreCase);
             },
+#if NETFRAMEWORK || NET8_0_OR_GREATER
             StringComparer.OrdinalIgnoreCase));
+#else
+            StringComparer.OrdinalIgnoreCase).AsReadOnly());
+#endif
     }
 
     private static async Task<(IPAddress LocalIpAddress, IEnumerable<string> Responses)> SearchDevicesAsync(IPAddress localAddress, IPAddress multicastAddress, CancellationToken cancellationToken)
