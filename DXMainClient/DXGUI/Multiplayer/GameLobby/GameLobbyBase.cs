@@ -1603,8 +1603,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             mapIni.MoveSectionToFirst("MultiplayerDialogSettings"); // Required by YR
 
-            string mapIniFileName = Path.GetFileName(mapIni.FileName);
-            mapIni.SetStringValue("Basic", "OriginalFilename", mapIniFileName);
+            // TODO: reverted https://github.com/CnCNet/xna-cncnet-client/issues/419, not compatible with public client/spawner
+            //string mapIniFileName = Path.GetFileName(mapIni.FileName);
+            //mapIni.SetStringValue("Basic", "OriginalFilename", mapIniFileName);
             CopySupplementalMapFiles(mapIni);
 
             ManipulateStartingLocations(mapIni, houseInfos);
