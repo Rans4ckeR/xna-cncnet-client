@@ -1504,7 +1504,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
                 CnCNetTunnel tunnel = null;
                 string tunnelAddress = null;
-                int? tunnelPort = null;
+                ushort tunnelPort = ushort.MinValue;
                 const int CNCNET_PROTOCOL_REVISION_DYNAMIC_TUNNELS = 11;
 
                 if (gameProtocolNumber < CNCNET_PROTOCOL_REVISION_DYNAMIC_TUNNELS)
@@ -1512,7 +1512,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                     string[] tunnelAddressAndPort = tunnelHash.Split(':');
 
                     tunnelAddress = tunnelAddressAndPort[0];
-                    tunnelPort = tunnelAddressAndPort.Length > 1 ? int.Parse(tunnelAddressAndPort[1], CultureInfo.InvariantCulture) : -1;
+                    tunnelPort = tunnelAddressAndPort.Length > 1 ? ushort.Parse(tunnelAddressAndPort[1], CultureInfo.InvariantCulture) : ushort.MinValue;
                     tunnel = tunnelHandler.Tunnels.Find(t => t.IPAddresses.Contains(IPAddress.Parse(tunnelAddress)) && t.Port == tunnelPort) ?? tunnelHandler.Tunnels.Find(t => t.IPAddresses.Contains(IPAddress.Parse(tunnelAddress)));
                 }
                 else if (!ProgramConstants.CNCNET_DYNAMIC_TUNNELS.Equals(tunnelHash, StringComparison.OrdinalIgnoreCase))

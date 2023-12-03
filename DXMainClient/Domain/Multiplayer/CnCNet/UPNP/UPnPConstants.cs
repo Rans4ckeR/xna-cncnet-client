@@ -17,8 +17,9 @@ internal static class UPnPConstants
     public const string AddPortMapping = "AddPortMapping";
     public const string DeletePinhole = "DeletePinhole";
     public const string DeletePortMapping = "DeletePortMapping";
-    public const string GetExternalIPAddress = "GetExternalIPAddress";
+    public const string GetExternalIpAddress = "GetExternalIPAddress";
     public const string GetFirewallStatus = "GetFirewallStatus";
     public const string GetNatRsipStatus = "GetNatRsipStatus";
+    public const string Udp = "UDP";
     public const int UPnPMultiCastPort = 1900;
 }

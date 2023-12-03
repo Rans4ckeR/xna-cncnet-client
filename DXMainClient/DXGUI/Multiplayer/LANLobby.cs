@@ -224,8 +224,7 @@ namespace DTAClient.DXGUI.Multiplayer
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLobby);
             lanGameLobby.Disable();
 
-            lanGameLoadingLobby = new LANGameLoadingLobby(WindowManager,
-                chatColors, mapLoader, discordHandler);
+            lanGameLoadingLobby = new LANGameLoadingLobby(WindowManager, chatColors, discordHandler);
             DarkeningPanel.AddAndInitializeWithControl(WindowManager, lanGameLoadingLobby);
             lanGameLoadingLobby.Disable();
 
@@ -341,7 +340,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
                 try
                 {
-                    var socket = new Socket(SocketType.Dgram, ProtocolType.Udp)
+                    var socket = new Socket(lanIpV4Address.Address.AddressFamily, SocketType.Dgram, ProtocolType.Udp)
                     {
                         EnableBroadcast = true
                     };
@@ -660,7 +659,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
             try
             {
-                var client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                var client = new Socket(hg.EndPoint.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
 #if NETFRAMEWORK
                 await client.ConnectAsync(new IPEndPoint(hg.EndPoint.Address, ProgramConstants.LAN_GAME_LOBBY_PORT)).WithCancellation(CancellationToken.None).ConfigureAwait(false);

@@ -44,7 +44,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
 
     public bool ConnectSucceeded { get; private set; }
 
-    public void SetUp(IPEndPoint remoteIpEndPoint, ushort localPort, uint gameLocalPlayerId, CancellationToken cancellationToken)
+    public void SetUp(IPAddress remoteIpAddress, ushort remotePort, ushort localPort, uint gameLocalPlayerId, CancellationToken cancellationToken)
     {
         using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             connectionErrorCancellationTokenSource.Token, cancellationToken);
@@ -60,7 +60,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
         remoteHostConnection.RaiseConnectionCutEvent += remoteHostConnectionConnectionCutFunc;
         remoteHostConnection.RaiseDataReceivedEvent += remoteHostConnectionDataReceivedFunc;
 
-        remoteHostConnection.SetUp(remoteIpEndPoint, localPort, gameLocalPlayerId, cancellationToken);
+        remoteHostConnection.SetUp(remoteIpAddress, remotePort, localPort, gameLocalPlayerId, cancellationToken);
     }
 
     public IEnumerable<ushort> CreatePlayerConnections(List<uint> playerIds)

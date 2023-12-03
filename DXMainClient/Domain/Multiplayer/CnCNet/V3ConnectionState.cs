@@ -256,7 +256,8 @@ internal sealed class V3ConnectionState : IAsyncDisposable
                 remoteHostConnectedAction,
                 remoteHostConnectionFailedAction,
                 playerInfos.Where(q => !q.Name.Equals(localPlayerName, StringComparison.OrdinalIgnoreCase)).Select(q => q.Name).ToList(),
-                new(tunnelHandler.CurrentTunnel.IPAddress, tunnelHandler.CurrentTunnel.Port),
+                tunnelHandler.CurrentTunnel.IPAddress,
+                tunnelHandler.CurrentTunnel.Port,
                 0,
                 cancellationToken);
         }
@@ -266,7 +267,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
 
             if (P2PEnabled)
             {
-                foreach (var (remotePlayerName, remoteIpV6Ports, remoteIpV4Ports, localPingResults, remotePingResults) in P2PPlayers.Where(q => q.RemotePingResults.Count is not 0 && q.LocalPingResults.Count is not 0))
+                foreach ((string remotePlayerName, ushort[] remoteIpV6Ports, ushort[] remoteIpV4Ports, var localPingResults, var remotePingResults) in P2PPlayers.Where(q => q.RemotePingResults.Count is not 0 && q.LocalPingResults.Count is not 0))
                 {
                     (IPAddress selectedRemoteIpAddress, long combinedPing) = localPingResults
                         .Where(q => q.RemoteIpAddress is not null && remotePingResults
@@ -304,7 +305,8 @@ internal sealed class V3ConnectionState : IAsyncDisposable
                             remoteHostConnectedAction,
                             remoteHostConnectionFailedAction,
                             [remotePlayerName],
-                            new(selectedRemoteIpAddress, remotePort),
+                            selectedRemoteIpAddress,
+                            remotePort,
                             localPort,
                             cancellationToken);
                         p2pPlayerTunnels.Add(remotePlayerName);
@@ -319,7 +321,8 @@ internal sealed class V3ConnectionState : IAsyncDisposable
                     remoteHostConnectedAction,
                     remoteHostConnectionFailedAction,
                     tunnelGrouping.Select(q => q.Name).ToList(),
-                    new(tunnelGrouping.Key.IPAddress, tunnelGrouping.Key.Port),
+                    tunnelGrouping.Key.IPAddress,
+                    tunnelGrouping.Key.Port,
                     0,
                     cancellationToken);
             }
@@ -443,7 +446,8 @@ internal sealed class V3ConnectionState : IAsyncDisposable
         Action remoteHostConnectedAction,
         Action remoteHostConnectionFailedAction,
         List<string> remotePlayerNames,
-        IPEndPoint remoteIpEndpoint,
+        IPAddress remoteIpAddress,
+        ushort remotePort,
         ushort localPort,
         CancellationToken cancellationToken)
     {
@@ -458,7 +462,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
             gameTunnelHandler.RaiseLocalGameDataReceivedEvent += replayHandler.LocalGameConnection_DataReceivedAsync;
         }
 
-        gameTunnelHandler.SetUp(remoteIpEndpoint, localPort, gameLocalPlayerId, cancellationToken);
+        gameTunnelHandler.SetUp(remoteIpAddress, remotePort, localPort, gameLocalPlayerId, cancellationToken);
         gameTunnelHandler.ConnectToTunnel();
         V3GameTunnelHandlers.Add(new(remotePlayerNames, gameTunnelHandler));
     }

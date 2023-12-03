@@ -149,6 +149,7 @@ namespace DTAClient.Online
                 foreach (Server server in sortedServerList)
                 {
                     Socket client = null;
+                    var ipAddress = IPAddress.Parse(server.Host);
 
                     try
                     {
@@ -156,7 +157,7 @@ namespace DTAClient.Online
                         {
                             connectionManager.OnAttemptedServerChanged(server.Name);
 
-                            client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                            client = new(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
                             Logger.Log("Attempting connection to " + server.Host + ":" + port);
 
@@ -166,9 +167,9 @@ namespace DTAClient.Online
                             try
                             {
 #if NETFRAMEWORK
-                                await client.ConnectAsync(new IPEndPoint(IPAddress.Parse(server.Host), port)).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+                                await client.ConnectAsync(new IPEndPoint(ipAddress, port)).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-                                await client.ConnectAsync(new IPEndPoint(IPAddress.Parse(server.Host), port),linkedCancellationTokenSource.Token).ConfigureAwait(false);
+                                await client.ConnectAsync(new IPEndPoint(ipAddress, port), linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
                             }
                             catch (OperationCanceledException) when (timeoutCancellationTokenSource.Token.IsCancellationRequested)

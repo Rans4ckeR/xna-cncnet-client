@@ -769,20 +769,18 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     /// <summary>
     /// Starts the game for the game host.
     /// </summary>
-    protected override async ValueTask HostLaunchGameAsync()
+    protected override ValueTask HostLaunchGameAsync()
     {
         if (Players.Count > 1)
         {
             AddNotice("Contacting remote hosts...".L10N("Client:Main:LaunchConnectingTunnel"));
 
-            if (tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_2)
-                await HostLaunchGameV2Async().ConfigureAwait(false);
-            else if (v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_3)
-                await HostLaunchGameV3Async().ConfigureAwait(false);
-            else
-                throw new InvalidOperationException("Unknown tunnel server version!");
-
-            return;
+            return tunnelHandler.CurrentTunnel?.Version switch
+            {
+                ProgramConstants.TUNNEL_VERSION_2 => HostLaunchGameV2Async(),
+                ProgramConstants.TUNNEL_VERSION_3 => HostLaunchGameV3Async(),
+                _ => throw new InvalidOperationException("Unknown tunnel server version!")
+            };
         }
 
         Logger.Log("One player MP -- starting!");
@@ -790,7 +788,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         CopyPlayerDataToUI();
         cncnetUserData.AddRecentPlayers(Players.Select(p => p.Name), channel.UIName);
 
-        await StartGameAsync().ConfigureAwait(false);
+        return StartGameAsync();
     }
 
     private async ValueTask HostLaunchGameV2Async()
@@ -1024,12 +1022,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     }
 
     protected override IPAddress GetIPAddressForPlayer(PlayerInfo player)
-    {
-        if (v3ConnectionState.P2PEnabled || v3ConnectionState.DynamicTunnelsEnabled || tunnelHandler.CurrentTunnel.Version == ProgramConstants.TUNNEL_VERSION_3)
-            return IPAddress.Loopback.MapToIPv4();
-
-        return base.GetIPAddressForPlayer(player);
-    }
+        => tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_3 ? IPAddress.Loopback : base.GetIPAddressForPlayer(player);
 
     protected override ValueTask RequestPlayerOptionsAsync(int side, int color, int start, int team)
     {
@@ -1787,13 +1780,6 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     /// </summary>
     private ValueTask ClientLaunchGameV2Async(string sender, string message)
     {
-        if (tunnelHandler.CurrentTunnel.Version != ProgramConstants.TUNNEL_VERSION_2)
-#if NETFRAMEWORK
-            return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
-
         if (!sender.Equals(hostName, StringComparison.OrdinalIgnoreCase))
 #if NETFRAMEWORK
             return default;
@@ -1889,9 +1875,9 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         base.WriteSpawnIniAdditions(iniFile);
 
-        if (tunnelHandler.CurrentTunnel?.Version == ProgramConstants.TUNNEL_VERSION_2)
+        if (tunnelHandler.CurrentTunnel?.Version is ProgramConstants.TUNNEL_VERSION_2)
         {
-            iniFile.SetStringValue("Tunnel", "Ip", tunnelHandler.CurrentTunnel.Address);
+            iniFile.SetStringValue("Tunnel", "Ip", tunnelHandler.CurrentTunnel.IPAddresses.Single(q => q.AddressFamily is AddressFamily.InterNetwork).ToString());
             iniFile.SetIntValue("Tunnel", "Port", tunnelHandler.CurrentTunnel.Port);
         }
 
@@ -2150,9 +2136,11 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         if (!sender.Equals(hostName, StringComparison.OrdinalIgnoreCase))
             return;
 
-        CnCNetTunnel tunnel = tunnelHandler.Tunnels.Find(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase));
+        CnCNetTunnel tunnel = hash.Contains(':')
+            ? tunnelHandler.Tunnels.Find(t => IPAddress.TryParse(hash[..hash.LastIndexOf(':')], out IPAddress ipAddress) && t.IPAddresses.Contains(ipAddress) && t.Port == ushort.Parse(hash[(hash.LastIndexOf(':') + 1)..], CultureInfo.InvariantCulture))
+            : tunnelHandler.Tunnels.Find(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase));
 
-        if (tunnel == null)
+        if (tunnel is null)
         {
             tunnelErrorMode = true;
             AddNotice(("The game host has selected an invalid tunnel server! " +
@@ -2237,7 +2225,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         tunnelHandler.CurrentTunnel = tunnel;
 
-        AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed the tunnel server to: {0}".L10N("Client:Main:HostChangeTunnel"), tunnel.Name));
+        AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed the tunnel server to: {0} (V{1})".L10N("Client:Main:HostChangeTunnel"), tunnel.Name, tunnel.Version));
         return UpdatePingAsync();
     }
 

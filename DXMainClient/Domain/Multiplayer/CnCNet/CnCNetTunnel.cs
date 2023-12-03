@@ -76,7 +76,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 if (secondaryIpAddress is not null)
                     tunnel.IPAddresses.Add(secondaryIpAddress);
 
-                tunnel.Port = int.Parse(addressAndPort[(addressAndPort.LastIndexOf(':') + 1)..], CultureInfo.InvariantCulture);
+                tunnel.Port = ushort.Parse(addressAndPort[(addressAndPort.LastIndexOf(':') + 1)..], CultureInfo.InvariantCulture);
                 tunnel.Country = parts[1];
                 tunnel.CountryCode = parts[2];
                 tunnel.Name = parts[3];
@@ -105,8 +105,8 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
         }
 
-        public static CnCNetTunnel Parse(string ipAddress, int? port)
-            => new() { Address = ipAddress, Port = port ?? 0 };
+        public static CnCNetTunnel Parse(string ipAddress, ushort port)
+            => new() { Address = ipAddress, Port = port };
 
         public string Address
         {
@@ -124,7 +124,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
         public List<IPAddress> IPAddresses { get; private set; }
 
-        public int Port { get; private set; }
+        public ushort Port { get; private set; }
 
         public string Country { get; private set; }
 
@@ -166,7 +166,7 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
         /// <returns>A list of player ports to use.</returns>
         public async ValueTask<List<int>> GetPlayerPortInfoAsync(int playerCount)
         {
-            if (Version != ProgramConstants.TUNNEL_VERSION_2)
+            if (Version is not ProgramConstants.TUNNEL_VERSION_2)
                 throw new InvalidOperationException($"{nameof(GetPlayerPortInfoAsync)} only works with version {ProgramConstants.TUNNEL_VERSION_2} tunnels.");
 
             try
@@ -201,11 +201,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
         public async ValueTask UpdatePingAsync(CancellationToken cancellationToken)
         {
-            using var socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            using var socket = new Socket(IPAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            var remoteEndpoint = new IPEndPoint(IPAddress, Port);
 
             try
             {
-                EndPoint ep = new IPEndPoint(IPAddress, Port);
                 using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(PING_PACKET_SEND_SIZE);
                 Memory<byte> buffer = memoryOwner.Memory[..PING_PACKET_SEND_SIZE];
 
@@ -219,18 +219,24 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                 if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
                     throw new();
 
-                await socket.SendToAsync(buffer1, SocketFlags.None, ep).WithCancellation(sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+                await socket.SendToAsync(buffer1, SocketFlags.None, remoteEndpoint).WithCancellation(sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#elif NET8_0_OR_GREATER
+                SocketAddress remoteSocketAddress = remoteEndpoint.Serialize();
+
+                await socket.SendToAsync(buffer, SocketFlags.None, remoteSocketAddress, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-                await socket.SendToAsync(buffer, SocketFlags.None, ep, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+                await socket.SendToAsync(buffer, SocketFlags.None, remoteEndpoint, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
 
                 using var receiveTimeoutCancellationTokenSource = new CancellationTokenSource(PING_TIMEOUT);
                 using var receiveLinkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(receiveTimeoutCancellationTokenSource.Token, cancellationToken);
 
 #if NETFRAMEWORK
-                await socket.ReceiveFromAsync(buffer1, SocketFlags.None, ep).WithCancellation(receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+                await socket.ReceiveFromAsync(buffer1, SocketFlags.None, remoteEndpoint).WithCancellation(receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+#elif NET8_0_OR_GREATER
+                await socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteSocketAddress, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-                await socket.ReceiveFromAsync(buffer, SocketFlags.None, ep, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+                await socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
 
                 ticks = DateTime.Now.Ticks - ticks;
@@ -240,11 +246,11 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
             }
             catch (SocketException ex)
             {
-                ProgramConstants.LogException(ex, $"Failed to ping tunnel {Name} ({Address}:{Port}).");
+                ProgramConstants.LogException(ex, $"Failed to ping tunnel {Name} ({remoteEndpoint}).");
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                Logger.Log($"Failed to ping tunnel (time-out) {Name} ({Address}:{Port}).");
+                Logger.Log($"Failed to ping tunnel (time-out) {Name} ({remoteEndpoint}).");
             }
             catch (OperationCanceledException)
             {

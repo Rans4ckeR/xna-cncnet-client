@@ -165,9 +165,9 @@ namespace ClientCore
 
         private static void LogExceptionRecursive(Exception ex, string message = null, bool innerException = false)
         {
-            if (!innerException)
-                Logger.Log(message);
-            else
+            Logger.Log(message);
+
+            if (innerException)
                 Logger.Log("InnerException info:");
 
             Logger.Log("Type: " + ex.GetType());

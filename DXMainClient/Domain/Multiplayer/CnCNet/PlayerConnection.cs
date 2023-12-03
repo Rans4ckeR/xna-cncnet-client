@@ -19,12 +19,40 @@ internal abstract class PlayerConnection : IDisposable
     protected const int PlayerIdsSize = PlayerIdSize * 2;
     protected const int SendTimeout = 10000;
     protected const int MaximumPacketSize = 1024;
+#if NET8_0_OR_GREATER && DEBUG
 
-    protected CancellationToken CancellationToken;
-    protected Socket Socket;
-    protected EndPoint RemoteEndPoint;
+    private SocketAddress remoteSocketAddress;
+
+    private IPEndPoint remoteEndPoint;
+#endif
 
     public uint PlayerId { get; protected set; }
+
+    protected CancellationToken CancellationToken { get; set; }
+
+    protected Socket Socket { get; set; }
+
+#if NET8_0_OR_GREATER
+    protected SocketAddress RemoteSocketAddress { get; set; }
+#if DEBUG
+
+    protected IPEndPoint RemoteEndPoint
+    {
+        get
+        {
+            if (RemoteSocketAddress.Equals(remoteSocketAddress))
+                return remoteEndPoint;
+
+            remoteEndPoint = (IPEndPoint)new IPEndPoint(0, 0).Create(RemoteSocketAddress);
+            remoteSocketAddress = RemoteSocketAddress;
+
+            return remoteEndPoint;
+        }
+    }
+#endif
+#else
+    protected IPEndPoint RemoteEndPoint { get; set; }
+#endif
 
     protected virtual int GameStartReceiveTimeout => 60000;
 
@@ -66,9 +94,9 @@ internal abstract class PlayerConnection : IDisposable
         => ValueTask.CompletedTask;
 #endif
 
-    protected abstract ValueTask<SocketReceiveFromResult> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation);
+    protected abstract ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation);
 
-    protected abstract DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, SocketReceiveFromResult socketReceiveFromResult);
+    protected abstract DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, int bytesReceived);
 
     protected async ValueTask SendDataAsync(ReadOnlyMemory<byte> data)
     {
@@ -79,7 +107,7 @@ internal abstract class PlayerConnection : IDisposable
         {
 #if DEBUG
 #if NETWORKTRACE
-            Logger.Log($"{GetType().Name}: Sending data from {Socket.LocalEndPoint} to {RemoteEndPoint} for player {PlayerId}: {BitConverter.ToString(data.Span.ToArray())}.");
+            Logger.Log($"{GetType().Name}: Sending data from {Socket.LocalEndPoint} to {RemoteEndpoint} for player {PlayerId}: {BitConverter.ToString(data.Span.ToArray())}.");
 #else
             Logger.Log($"{GetType().Name}: Sending data from {Socket.LocalEndPoint} to {RemoteEndPoint} for player {PlayerId}.");
 #endif
@@ -89,6 +117,8 @@ internal abstract class PlayerConnection : IDisposable
                 throw new();
 
             await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#elif NET8_0_OR_GREATER
+            await Socket.SendToAsync(data, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             await Socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
@@ -133,14 +163,13 @@ internal abstract class PlayerConnection : IDisposable
         while (!CancellationToken.IsCancellationRequested)
         {
             Memory<byte> buffer = memoryOwner.Memory[..MaximumPacketSize];
-            SocketReceiveFromResult socketReceiveFromResult;
+            int bytesReceived;
             using var timeoutCancellationTokenSource = new CancellationTokenSource(receiveTimeout);
             using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, CancellationToken);
 
             try
             {
-                socketReceiveFromResult = await DoReceiveDataAsync(buffer, linkedCancellationTokenSource.Token).ConfigureAwait(false);
-                RemoteEndPoint = socketReceiveFromResult.RemoteEndPoint;
+                bytesReceived = await DoReceiveDataAsync(buffer, linkedCancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (SocketException ex)
             {
@@ -177,13 +206,13 @@ internal abstract class PlayerConnection : IDisposable
 
 #if DEBUG
 #if NETWORKTRACE
-            Logger.Log($"{GetType().Name}: Received data from {RemoteEndPoint} on {Socket.LocalEndPoint} for player {PlayerId}: {BitConverter.ToString(buffer.Span.ToArray())}.");
+            Logger.Log($"{GetType().Name}: Received data from {RemoteEndpoint} on {Socket.LocalEndPoint} for player {PlayerId}: {BitConverter.ToString(buffer.Span.ToArray())}.");
 #else
             Logger.Log($"{GetType().Name}: Received data from {RemoteEndPoint} on {Socket.LocalEndPoint} for player {PlayerId}.");
 #endif
 #endif
 
-            DataReceivedEventArgs dataReceivedEventArgs = ProcessReceivedData(buffer, socketReceiveFromResult);
+            DataReceivedEventArgs dataReceivedEventArgs = ProcessReceivedData(buffer, bytesReceived);
 
             if (dataReceivedEventArgs is not null)
                 OnRaiseDataReceivedEvent(dataReceivedEventArgs);

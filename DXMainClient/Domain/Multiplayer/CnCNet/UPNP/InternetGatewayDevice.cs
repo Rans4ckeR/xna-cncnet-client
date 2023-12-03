@@ -40,7 +40,7 @@ internal sealed record InternetGatewayDevice(
         switch (uPnPVersion)
         {
             case 2:
-                var addAnyPortMappingRequest = new AddAnyPortMappingRequest(string.Empty, port, "UDP", port, ipAddress.ToString(), 1, PortMappingDescription, IpLeaseTimeInSeconds);
+                var addAnyPortMappingRequest = new AddAnyPortMappingRequest(string.Empty, port, UPnPConstants.Udp, port, ipAddress.ToString(), 1, PortMappingDescription, IpLeaseTimeInSeconds);
                 AddAnyPortMappingResponse addAnyPortMappingResponse = await DoSoapActionAsync<AddAnyPortMappingRequest, AddAnyPortMappingResponse>(
                     addAnyPortMappingRequest, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.AddAnyPortMapping, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
 
@@ -48,10 +48,10 @@ internal sealed record InternetGatewayDevice(
 
                 break;
             case 1:
-                var addPortMappingRequest = new AddPortMappingRequest(string.Empty, port, "UDP", port, ipAddress.ToString(), 1, PortMappingDescription, IpLeaseTimeInSeconds);
+                var addPortMappingRequest = new AddPortMappingRequest(string.Empty, port, UPnPConstants.Udp, port, ipAddress.ToString(), 1, PortMappingDescription, IpLeaseTimeInSeconds);
 
                 await DoSoapActionAsync<AddPortMappingRequest, AddPortMappingResponse>(
-                     addPortMappingRequest, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", "AddPortMapping", AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
+                     addPortMappingRequest, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.AddPortMapping, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
 
                 break;
             default:
@@ -74,14 +74,14 @@ internal sealed record InternetGatewayDevice(
             switch (uPnPVersion)
             {
                 case 2:
-                    var deletePortMappingRequestV2 = new DeletePortMappingRequestV2(string.Empty, port, "UDP");
+                    var deletePortMappingRequestV2 = new DeletePortMappingRequestV2(string.Empty, port, UPnPConstants.Udp);
 
                     await DoSoapActionAsync<DeletePortMappingRequestV2, DeletePortMappingResponseV2>(
                         deletePortMappingRequestV2, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.DeletePortMapping, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
 
                     break;
                 case 1:
-                    var deletePortMappingRequestV1 = new DeletePortMappingRequestV1(string.Empty, port, "UDP");
+                    var deletePortMappingRequestV1 = new DeletePortMappingRequestV1(string.Empty, port, UPnPConstants.Udp);
 
                     await DoSoapActionAsync<DeletePortMappingRequestV1, DeletePortMappingResponseV1>(
                         deletePortMappingRequestV1, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.DeletePortMapping, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
@@ -112,14 +112,14 @@ internal sealed record InternetGatewayDevice(
             {
                 case 2:
                     GetExternalIPAddressResponseV2 getExternalIpAddressResponseV2 = await DoSoapActionAsync<GetExternalIPAddressRequestV2, GetExternalIPAddressResponseV2>(
-                        default, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.GetExternalIPAddress, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
+                        default, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.GetExternalIpAddress, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
 
                     ipAddress = string.IsNullOrWhiteSpace(getExternalIpAddressResponseV2.ExternalIPAddress) ? null : IPAddress.Parse(getExternalIpAddressResponseV2.ExternalIPAddress);
 
                     break;
                 case 1:
                     GetExternalIPAddressResponseV1 getExternalIpAddressResponseV1 = await DoSoapActionAsync<GetExternalIPAddressRequestV1, GetExternalIPAddressResponseV1>(
-                        default, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.GetExternalIPAddress, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
+                        default, $"{UPnPConstants.WanIpConnection}:{uPnPVersion}", UPnPConstants.GetExternalIpAddress, AddressFamily.InterNetwork, cancellationToken).ConfigureAwait(false);
 
                     ipAddress = string.IsNullOrWhiteSpace(getExternalIpAddressResponseV1.ExternalIPAddress) ? null : IPAddress.Parse(getExternalIpAddressResponseV1.ExternalIPAddress);
                     break;
@@ -247,9 +247,6 @@ internal sealed record InternetGatewayDevice(
     private static async ValueTask<TResponse> ExecuteSoapAction<TRequest, TResponse>(
         Uri serviceUri, string soapAction, string defaultNamespace, TRequest request, CancellationToken cancellationToken)
     {
-        UPnPHandler.HttpClient.DefaultRequestHeaders.Remove("SOAPAction");
-        UPnPHandler.HttpClient.DefaultRequestHeaders.Add("SOAPAction", soapAction);
-
         var xmlSerializerFormatAttribute = new XmlSerializerFormatAttribute
         {
             Style = OperationFormatStyle.Rpc,
@@ -290,6 +287,7 @@ internal sealed record InternetGatewayDevice(
             using var content = new StreamContent(requestStream);
 
             content.Headers.ContentType = MediaTypeHeaderValue.Parse("text/xml");
+            content.Headers.Add("SOAPAction", soapAction);
 
             httpResponseMessage = await UPnPHandler.HttpClient.PostAsync(serviceUri, content, cancellationToken).ConfigureAwait(false);
         }
@@ -323,12 +321,12 @@ internal sealed record InternetGatewayDevice(
                     }
                     else
                     {
-                        error = ex.Message;
+                        error = "Stream was closed.";
                     }
 #if NETFRAMEWORK
-                    ProgramConstants.LogException(ex, $"P2P: UPnP error {error}.");
+                    ProgramConstants.LogException(ex, $"P2P: UPnP error \\r\\nRequest:\\r\\n{{requestMessage}}\\r\\nResponse:\\r\\n{{error}}.");
 #else
-                    ProgramConstants.LogException(ex, $"P2P: UPnP error {ex.StatusCode}:{error}.");
+                    ProgramConstants.LogException(ex, $"P2P: UPnP error {ex.StatusCode}\r\nRequest:\r\n{requestMessage}\r\nResponse:\r\n{error}.");
 #endif
 
                     throw;

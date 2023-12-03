@@ -24,11 +24,15 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
     protected override int GameInProgressReceiveTimeout => 1200000;
 
-    public void SetUp(IPEndPoint remoteEndPoint, ushort localPort, uint gameLocalPlayerId, CancellationToken cancellationToken)
+    public void SetUp(IPAddress remoteIpAddress, ushort remotePort, ushort localPort, uint gameLocalPlayerId, CancellationToken cancellationToken)
     {
         CancellationToken = cancellationToken;
         PlayerId = gameLocalPlayerId;
-        RemoteEndPoint = remoteEndPoint;
+#if NET8_0_OR_GREATER
+        RemoteSocketAddress = new IPEndPoint(remoteIpAddress, remotePort).Serialize();
+#else
+        RemoteEndPoint = new(remoteIpAddress, remotePort);
+#endif
         this.localPort = localPort;
     }
 
@@ -61,7 +65,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
         for (int i = PlayerIdSize; i < PlayerIdSize * 2; i++)
         {
-            data.Span[i] = bytes[i];
+            data.Span[i] = bytes[i - PlayerIdSize];
         }
 #else
         if (!BitConverter.TryWriteBytes(data.Span[..PlayerIdSize], PlayerId))
@@ -82,9 +86,15 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         Logger.Log($"{GetType().Name}: Attempting to establish a connection on port {localPort}.");
 #endif
 
-        Socket = new(SocketType.Dgram, ProtocolType.Udp);
+#if NET8_0_OR_GREATER
+        Socket = new(RemoteSocketAddress.Family, SocketType.Dgram, ProtocolType.Udp);
 
-        Socket.Bind(new IPEndPoint(IPAddress.IPv6Any, localPort));
+        Socket.Bind(new IPEndPoint(RemoteSocketAddress.Family is AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, localPort));
+#else
+        Socket = new(RemoteEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+
+        Socket.Bind(new IPEndPoint(RemoteEndPoint.AddressFamily is AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, localPort));
+#endif
 
         using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(MaximumPacketSize);
         Memory<byte> buffer = memoryOwner.Memory[..MaximumPacketSize];
@@ -113,6 +123,8 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
                 throw new();
 
             await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#elif NET8_0_OR_GREATER
+            await Socket.SendToAsync(buffer, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
             await Socket.SendToAsync(buffer, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
@@ -152,31 +164,47 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         OnRaiseConnectedEvent(EventArgs.Empty);
     }
 
-    protected override ValueTask<SocketReceiveFromResult> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
+#if NET8_0_OR_GREATER
+    protected override ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
+#else
+    protected override async ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
+#endif
 #if NETFRAMEWORK
     {
         if (!MemoryMarshal.TryGetArray(buffer, out ArraySegment<byte> buffer1))
             throw new();
 
-        return new(Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(cancellation));
+        SocketReceiveFromResult socketReceiveFromResult = await Socket.ReceiveFromAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(cancellation).ConfigureAwait(false);
+
+        RemoteEndPoint = (IPEndPoint)socketReceiveFromResult.RemoteEndPoint;
+
+        return socketReceiveFromResult.ReceivedBytes;
     }
+#elif NET8_0_OR_GREATER
+        => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteSocketAddress, cancellation);
 #else
-        => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint, cancellation);
+    {
+        SocketReceiveFromResult socketReceiveFromResult = await Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint, cancellation).ConfigureAwait(false);
+
+        RemoteEndPoint = (IPEndPoint)socketReceiveFromResult.RemoteEndPoint;
+
+        return socketReceiveFromResult.ReceivedBytes;
+    }
 #endif
 
-    protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, SocketReceiveFromResult socketReceiveFromResult)
+    protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, int bytesReceived)
     {
-        if (socketReceiveFromResult.ReceivedBytes < PlayerIdsSize)
+        if (bytesReceived < PlayerIdsSize)
         {
 #if DEBUG
-            Logger.Log($"{GetType().Name}: Invalid data packet from {socketReceiveFromResult.RemoteEndPoint}");
+            Logger.Log($"{GetType().Name}: Invalid data packet from {RemoteEndPoint}");
 #else
             Logger.Log($"{GetType().Name}: Invalid data packet on port {localPort}");
 #endif
             return null;
         }
 
-        Memory<byte> data = buffer[(PlayerIdSize * 2)..socketReceiveFromResult.ReceivedBytes];
+        Memory<byte> data = buffer[(PlayerIdSize * 2)..bytesReceived];
 #if NETFRAMEWORK
         uint senderId = BitConverter.ToUInt32(buffer[..PlayerIdSize].ToArray(), 0);
         uint receiverId = BitConverter.ToUInt32(buffer[PlayerIdSize..(PlayerIdSize * 2)].ToArray(), 0);
@@ -186,13 +214,13 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 #endif
 
 #if DEBUG
-        Logger.Log($"{GetType().Name}: Received {senderId} -> {receiverId} from {socketReceiveFromResult.RemoteEndPoint} on {Socket.LocalEndPoint}.");
+        Logger.Log($"{GetType().Name}: Received {senderId} -> {receiverId} from {RemoteEndPoint} on {Socket.LocalEndPoint}.");
 
 #endif
         if (receiverId != PlayerId)
         {
 #if DEBUG
-            Logger.Log($"{GetType().Name}: Invalid target (received: {receiverId}, expected: {PlayerId}) from {socketReceiveFromResult.RemoteEndPoint}.");
+            Logger.Log($"{GetType().Name}: Invalid target (received: {receiverId}, expected: {PlayerId}) from {RemoteEndPoint}.");
 #else
             Logger.Log($"{GetType().Name}: Invalid target (received: {receiverId}, expected: {PlayerId}) on port {localPort}.");
 #endif

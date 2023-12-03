@@ -26,8 +26,6 @@ namespace DTAClient.Domain.Multiplayer.CnCNet.UPNP;
 
 internal static class UPnPHandler
 {
-    private const int ReceiveTimeoutInSeconds = 2;
-
 #if NETFRAMEWORK
     public static readonly HttpClient HttpClient = new(
         new HttpClientHandler
@@ -55,15 +53,28 @@ internal static class UPnPHandler
                         NoDelay = true
                     };
 
-                    if (IPAddress.Parse(context.DnsEndPoint.Host).AddressFamily is AddressFamily.InterNetworkV6)
+                    var remoteIpAddress = IPAddress.Parse(context.DnsEndPoint.Host);
+
+                    if (remoteIpAddress.AddressFamily is AddressFamily.InterNetworkV6)
                     {
-                        socket.Bind(
-                            new IPEndPoint(NetworkHelper.GetLocalPublicIpV6Address()
-                            ?? NetworkHelper.GetPrivateIpAddresses().First(q => q.AddressFamily is AddressFamily.InterNetworkV6),
-                            0));
+                        IPAddress ipV6Address = NetworkHelper.GetLocalPublicIpV6Address() ?? NetworkHelper.GetPrivateIpAddresses().First(q => q.AddressFamily is AddressFamily.InterNetworkV6);
+
+#if DEBUG
+                        Logger.Log(FormattableString.Invariant($"{nameof(UPnPHandler)}.{nameof(HttpClient)} connecting to {remoteIpAddress.AddressFamily} Host {context.DnsEndPoint.Host} using {ipV6Address}"));
+#endif
+                        socket.Bind(new IPEndPoint(ipV6Address, 0));
                     }
+#if DEBUG
+                    else
+                    {
+                        Logger.Log(FormattableString.Invariant($"{nameof(UPnPHandler)}.{nameof(HttpClient)} connecting to {remoteIpAddress.AddressFamily} Host {context.DnsEndPoint.Host}"));
+                    }
+#endif
 
                     await socket.ConnectAsync(context.DnsEndPoint, token).ConfigureAwait(false);
+#if DEBUG
+                    Logger.Log(FormattableString.Invariant($"{nameof(UPnPHandler)}.{nameof(HttpClient)} connected to {remoteIpAddress.AddressFamily} Host {context.DnsEndPoint.Host} using {((IPEndPoint)socket.LocalEndPoint!).Address}"));
+#endif
 
                     return new NetworkStream(socket, true);
                 }
@@ -89,6 +100,8 @@ internal static class UPnPHandler
         DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrHigher
     };
 #endif
+
+    private const int ReceiveTimeoutInSeconds = 2;
 
     public static async ValueTask<(
         InternetGatewayDevice InternetGatewayDevice,
@@ -285,7 +298,7 @@ internal static class UPnPHandler
         return devices.Where(q => q?.UPnPDescription.Device.DeviceType?.StartsWith($"{UPnPConstants.UPnPInternetGatewayDevice}:", StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
-    private static InternetGatewayDevice GetInternetGatewayDeviceByVersion(List<InternetGatewayDevice> internetGatewayDevices, ushort uPnPVersion)
+    private static InternetGatewayDevice GetInternetGatewayDeviceByVersion(IEnumerable<InternetGatewayDevice> internetGatewayDevices, ushort uPnPVersion)
         => internetGatewayDevices.FirstOrDefault(q => $"{UPnPConstants.UPnPInternetGatewayDevice}:{uPnPVersion}".Equals(q.UPnPDescription.Device.DeviceType, StringComparison.OrdinalIgnoreCase));
 
     private static async ValueTask<IEnumerable<InternetGatewayDevice>> GetDevicesAsync(CancellationToken cancellationToken)
@@ -314,13 +327,12 @@ internal static class UPnPHandler
     }
 
     private static IEnumerable<IDictionary<string, string>> GetFormattedDeviceResponses(IEnumerable<string> responses)
-    {
 #if NETFRAMEWORK
-        return responses.Select(q => q.Split("\r\n".ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+        => responses.Select(q => q.Split("\r\n".ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
 #elif NET8_0_OR_GREATER
-        return responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToFrozenDictionary(
+        => responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToFrozenDictionary(
 #else
-        return responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+        => responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
 #endif
             s => s[..s.IndexOf(':', StringComparison.OrdinalIgnoreCase)],
             s =>
@@ -337,12 +349,11 @@ internal static class UPnPHandler
 #else
             StringComparer.OrdinalIgnoreCase).AsReadOnly());
 #endif
-    }
 
     private static async Task<(IPAddress LocalIpAddress, IEnumerable<string> Responses)> SearchDevicesAsync(IPAddress localAddress, IPAddress multicastAddress, CancellationToken cancellationToken)
     {
         var responses = new List<string>();
-        using var socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+        using var socket = new Socket(localAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         var localEndPoint = new IPEndPoint(localAddress, 0);
         var multiCastIpEndPoint = new IPEndPoint(multicastAddress, UPnPConstants.UPnPMultiCastPort);
 
@@ -351,6 +362,11 @@ internal static class UPnPHandler
             socket.Bind(localEndPoint);
 
             string request = FormattableString.Invariant($"M-SEARCH * HTTP/1.1\r\nHOST: {NetworkHelper.FormatUri(multiCastIpEndPoint).Authority}\r\nST: {UPnPConstants.UPnPRootDevice}\r\nMAN: \"ssdp:discover\"\r\nMX: {ReceiveTimeoutInSeconds}\r\n\r\n");
+#if DEBUG
+
+            Logger.Log(FormattableString.Invariant($"SSDP Discover: sending to {multiCastIpEndPoint.Address} using {localAddress}."));
+
+#endif
 #if NETFRAMEWORK
             byte[] buffer = Encoding.UTF8.GetBytes(request);
 
@@ -364,7 +380,13 @@ internal static class UPnPHandler
 
             buffer = buffer[..numberOfBytes];
 
+#if NET8_0_OR_GREATER
+            SocketAddress multiCastSocketAddress = multiCastIpEndPoint.Serialize();
+
+            await socket.SendToAsync(buffer, SocketFlags.None, multiCastSocketAddress, cancellationToken).ConfigureAwait(false);
+#else
             await socket.SendToAsync(buffer, SocketFlags.None, multiCastIpEndPoint, cancellationToken).ConfigureAwait(false);
+#endif
 #endif
             await ReceiveAsync(socket, responses, cancellationToken).ConfigureAwait(false);
         }

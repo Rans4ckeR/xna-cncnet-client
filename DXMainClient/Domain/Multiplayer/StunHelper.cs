@@ -44,7 +44,7 @@ internal static class StunHelper
             foreach (ushort p2pReservedPort in p2pReservedPorts)
             {
                 IPEndPoint stunPublicIpEndPoint = await PerformStunAsync(
-                    stunServerIpAddress, p2pReservedPort, addressFamily, cancellationToken).ConfigureAwait(false);
+                    stunServerIpAddress, p2pReservedPort, cancellationToken).ConfigureAwait(false);
 
                 if (stunPublicIpEndPoint is null)
                     break;
@@ -74,14 +74,14 @@ internal static class StunHelper
         return (stunPublicAddress, stunPortMapping);
     }
 
-    private static async ValueTask<IPEndPoint> PerformStunAsync(IPAddress stunServerIpAddress, ushort localPort, AddressFamily addressFamily, CancellationToken cancellationToken)
+    private static async ValueTask<IPEndPoint> PerformStunAsync(IPAddress stunServerIpAddress, ushort localPort, CancellationToken cancellationToken)
     {
         const short stunId = 26262;
         const int stunPort1 = 3478;
         const int stunPort2 = 8054;
         const int stunSize = 48;
         int[] stunPorts = { stunPort1, stunPort2 };
-        using var socket = new Socket(addressFamily, SocketType.Dgram, ProtocolType.Udp);
+        using var socket = new Socket(stunServerIpAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
         short stunIdNetworkOrder = IPAddress.HostToNetworkOrder(stunId);
         using IMemoryOwner<byte> receiveMemoryOwner = MemoryPool<byte>.Shared.Rent(stunSize);
         Memory<byte> buffer = receiveMemoryOwner.Memory[..stunSize];
@@ -104,30 +104,39 @@ internal static class StunHelper
         int addressBytes = stunServerIpAddress.GetAddressBytes().Length;
         const int portBytes = sizeof(ushort);
 
-        socket.Bind(new IPEndPoint(addressFamily is AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, localPort));
+        socket.Bind(new IPEndPoint(stunServerIpAddress.AddressFamily is AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, localPort));
 
         foreach (int stunPort in stunPorts)
         {
             try
             {
-                stunServerIpEndPoint = new(stunServerIpAddress, stunPort);
-
                 using var timeoutCancellationTokenSource = new CancellationTokenSource(PingTimeout);
                 using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
+
+                stunServerIpEndPoint = new(stunServerIpAddress, stunPort);
 
 #if NETFRAMEWORK
                 await socket.SendToAsync(buffer1, SocketFlags.None, stunServerIpEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
 
                 SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
                     buffer1, SocketFlags.None, stunServerIpEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+                int bytesReceived = socketReceiveFromResult.ReceivedBytes;
+#elif NET8_0_OR_GREATER
+                SocketAddress socketAddress = stunServerIpEndPoint.Serialize();
+
+                await socket.SendToAsync(buffer, SocketFlags.None, socketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+
+                int bytesReceived = await socket.ReceiveFromAsync(
+                    buffer, SocketFlags.None, socketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
                 await socket.SendToAsync(buffer, stunServerIpEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 
                 SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
                     buffer, SocketFlags.None, stunServerIpEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
-
+                int bytesReceived = socketReceiveFromResult.ReceivedBytes;
 #endif
-                buffer = buffer[..socketReceiveFromResult.ReceivedBytes];
+
+                buffer = buffer[..bytesReceived];
 
                 // de-obfuscate
                 for (int i = 0; i < addressBytes + portBytes; i++)
@@ -170,7 +179,7 @@ internal static class StunHelper
             {
                 foreach (ushort localPort in localPorts)
                 {
-                    await PerformStunAsync(stunServerIpAddress, localPort, stunServerIpAddress.AddressFamily, cancellationToken).ConfigureAwait(false);
+                    await PerformStunAsync(stunServerIpAddress, localPort, cancellationToken).ConfigureAwait(false);
                     await Task.Delay(100, cancellationToken).ConfigureAwait(false);
                 }
 

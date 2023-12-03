@@ -37,7 +37,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public override void Initialize()
         {
-            ClientRectangle = new Rectangle(0, 0, 235, 264);
+            ClientRectangle = new Rectangle(0, 0, 235, 310);
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 255), 1, 1);
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
 

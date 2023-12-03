@@ -127,7 +127,7 @@ public class Translation : ICloneable
         _culture = other._culture;
         Author = other.Author;
 
-        foreach (var (key, value) in other.Values)
+        foreach ((string key, string value) in other.Values)
             Values.Add(key, value);
     }
 
@@ -148,7 +148,7 @@ public class Translation : ICloneable
     public void AppendValuesFromIniFile(IniFile ini)
     {
         IniSection valuesSection = ini.GetSection(nameof(Values));
-        foreach (var (key, value) in valuesSection.Keys)
+        foreach ((string key, string value) in valuesSection.Keys)
             Values[key] = value.FromIniString();
     }
 
@@ -257,7 +257,7 @@ public class Translation : ICloneable
         ini.AddSection(nameof(Values));
         IniSection translation = ini.GetSection(nameof(Values));
 
-        foreach (var (key, value) in Values.OrderBy(kvp => kvp.Key))
+        foreach ((string key, string value) in Values.OrderBy(kvp => kvp.Key))
         {
             bool valueMissing = MissingKeys.Contains(key);
             if (!saveOnlyMissingValues || valueMissing)

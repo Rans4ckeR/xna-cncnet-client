@@ -246,7 +246,7 @@ namespace ClientCore
             var themeSection = clientDefinitionsIni.GetSection("Themes");
             foreach (var key in themeSection.Keys)
             {
-                var (name, path) = key.Value.Split(',');
+                (string name, string path) = key.Value.Split(',');
                 if (string.Equals(name, themeName, StringComparison.OrdinalIgnoreCase))
                     return path;
             }

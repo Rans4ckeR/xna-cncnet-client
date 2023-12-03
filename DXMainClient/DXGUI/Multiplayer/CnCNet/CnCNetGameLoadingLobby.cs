@@ -619,9 +619,11 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            CnCNetTunnel tunnel = tunnelHandler.Tunnels.Find(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase));
+            CnCNetTunnel tunnel = hash.Contains(':')
+                ? tunnelHandler.Tunnels.Find(t => IPAddress.TryParse(hash[..hash.LastIndexOf(':')], out IPAddress ipAddress) && t.IPAddresses.Contains(ipAddress) && t.Port == ushort.Parse(hash[(hash.LastIndexOf(':') + 1)..], CultureInfo.InvariantCulture))
+                : tunnelHandler.Tunnels.Find(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase));
 
-            if (tunnel == null)
+            if (tunnel is null)
             {
                 AddNotice(("The game host has selected an invalid tunnel server! " +
                     "The game host needs to change the server or you will be unable " +
@@ -642,7 +644,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void HandleTunnelServerChange(CnCNetTunnel tunnel)
         {
             tunnelHandler.CurrentTunnel = tunnel;
-            AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed the tunnel server to: {0}".L10N("Client:Main:HostChangeTunnel"), tunnel.Name));
+            AddNotice(string.Format(CultureInfo.CurrentCulture, "The game host has changed the tunnel server to: {0} (V{1})".L10N("Client:Main:HostChangeTunnel"), tunnel.Name, tunnel.Version));
         }
 
         #endregion

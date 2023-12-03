@@ -171,7 +171,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask SendHostPlayerJoinedMessageAsync(CancellationToken cancellationToken)
         {
-            client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            client = new(SocketType.Stream, ProtocolType.Tcp);
 
             try
             {
@@ -220,7 +220,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
         private async ValueTask ListenForClientsAsync(CancellationToken cancellationToken)
         {
-            listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            listener = new(SocketType.Stream, ProtocolType.Tcp);
 
             listener.Bind(new IPEndPoint(IPAddress.IPv6Any, ProgramConstants.LAN_GAME_LOBBY_PORT));
 #if NETFRAMEWORK

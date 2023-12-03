@@ -34,13 +34,11 @@ namespace DTAClient.DXGUI.Multiplayer
         public LANGameLoadingLobby(
             WindowManager windowManager,
             LANColor[] chatColors,
-            MapLoader mapLoader,
             DiscordHandler discordHandler)
             : base(windowManager, discordHandler)
         {
             encoding = ProgramConstants.LAN_ENCODING;
             this.chatColors = chatColors;
-            this.mapLoader = mapLoader;
 
             localGame = ClientConfiguration.Instance.LocalGame;
 
@@ -79,7 +77,6 @@ namespace DTAClient.DXGUI.Multiplayer
         private Socket client;
 
         private readonly LANColor[] chatColors;
-        private readonly MapLoader mapLoader;
         private const int chatColorIndex = 0;
         private readonly Encoding encoding;
 
@@ -95,8 +92,6 @@ namespace DTAClient.DXGUI.Multiplayer
         private readonly string localGame;
 
         private string localFileHash;
-
-        private List<GameMode> gameModes => mapLoader.GameModes;
 
         private int loadedGameId;
 
@@ -119,7 +114,7 @@ namespace DTAClient.DXGUI.Multiplayer
             {
                 ListenForClientsAsync(cancellationTokenSource.Token).HandleTask();
 
-                this.client = new Socket(SocketType.Stream, ProtocolType.Tcp);
+                this.client = new(SocketType.Stream, ProtocolType.Tcp);
                 await this.client.ConnectAsync(IPAddress.Loopback, ProgramConstants.LAN_GAME_LOBBY_PORT).ConfigureAwait(false);
 
                 string message = LANCommands.PLAYER_JOIN +
@@ -173,7 +168,8 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private async ValueTask ListenForClientsAsync(CancellationToken cancellationToken)
         {
-            listener = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            listener = new(SocketType.Stream, ProtocolType.Tcp);
+
             listener.Bind(new IPEndPoint(IPAddress.IPv6Any, ProgramConstants.LAN_GAME_LOBBY_PORT));
 #if NETFRAMEWORK
             listener.Listen(int.MaxValue);
