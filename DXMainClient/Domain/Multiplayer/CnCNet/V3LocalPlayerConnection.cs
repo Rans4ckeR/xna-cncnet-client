@@ -77,11 +77,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
             Logger.Log($"{GetType().Name}: Discarded remote data from {Socket.LocalEndPoint} to {RemoteEndPoint} for player {PlayerId}.");
 
 #endif
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         return SendDataAsync(data);

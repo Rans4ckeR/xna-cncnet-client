@@ -251,11 +251,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     bool success = SavedGameManager.InitSavedGames();
 
                     if (!success)
-#if NETFRAMEWORK
                         return default;
-#else
-                        return ValueTask.CompletedTask;
-#endif
                 }
 
                 gameSaved = true;
@@ -263,11 +259,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 return SavedGameManager.RenameSavedGameAsync();
             }
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected override ValueTask StartGameAsync()
@@ -513,11 +505,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     if (!int.TryParse(parts[0], out dieCount) || !int.TryParse(parts[1], out dieSides))
                     {
                         AddNotice("Invalid dice specified. Expected format: /roll <die count>d<die sides>".L10N("Client:Main:ChatboxCommandRollInvalidAndSyntax"));
-#if NETFRAMEWORK
                         return default;
-#else
-                        return ValueTask.CompletedTask;
-#endif
                     }
                 }
             }
@@ -525,21 +513,13 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (dieCount > MAX_DICE || dieCount < 1)
             {
                 AddNotice("You can only between 1 to 10 dies at once.".L10N("Client:Main:ChatboxCommandRollInvalid2"));
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
             }
 
             if (dieSides > MAX_DIE_SIDES || dieSides < 2)
             {
                 AddNotice("You can only have between 2 and 100 sides in a die.".L10N("Client:Main:ChatboxCommandRollInvalid3"));
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
             }
 
             int[] results = new int[dieCount];
@@ -898,44 +878,28 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             AddNotice("You need to lock the game room before launching the game.".L10N("Client:Main:LockGameNotification"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask SharedColorsNotificationAsync()
         {
             AddNotice("Multiple human players cannot share the same color.".L10N("Client:Main:SharedColorsNotification"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask AISpectatorsNotificationAsync()
         {
             AddNotice("AI players don't enjoy spectating matches. They want some action!".L10N("Client:Main:AISpectatorsNotification"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask SharedStartingLocationNotificationAsync()
         {
             AddNotice("Multiple players cannot share the same starting location on this map.".L10N("Client:Main:SharedStartingLocationNotification"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask NotVerifiedNotificationAsync(int playerIndex)
@@ -943,11 +907,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (playerIndex > -1 && playerIndex < Players.Count)
                 AddNotice(string.Format(CultureInfo.CurrentCulture, "Unable to launch game. Player {0} hasn't been verified.".L10N("Client:Main:NotVerifiedNotification"), Players[playerIndex].Name));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask StillInGameNotificationAsync(int playerIndex)
@@ -958,11 +918,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                     Players[playerIndex].Name));
             }
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask GetReadyNotificationAsync()
@@ -971,11 +927,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!IsHost && !Players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase)).Ready)
                 sndGetReadySound.Play();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask InsufficientPlayersNotificationAsync()
@@ -987,11 +939,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 AddNotice(String.Format(CultureInfo.CurrentCulture, "Unable to launch game: this map cannot be played with fewer than {0} players.".L10N("Client:Main:InsufficientPlayersNotification2"),
                     Map.MinPlayers));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected virtual ValueTask TooManyPlayersNotificationAsync()
@@ -1000,11 +948,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 AddNotice(String.Format(CultureInfo.CurrentCulture, "Unable to launch game: this map cannot be played with more than {0} players.".L10N("Client:Main:TooManyPlayersNotification"),
                     Map.MaxPlayers));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         public virtual ValueTask ClearAsync(bool exiting)
@@ -1014,11 +958,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             Players.Clear();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected override async ValueTask OnGameOptionChangedAsync()

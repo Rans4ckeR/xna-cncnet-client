@@ -287,11 +287,7 @@ namespace ClientCore.Statistics
             if (removedCount > 0)
                 return SaveDatabaseAsync();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         public async ValueTask AddMatchAndSaveDatabaseAsync(bool addMatch, MatchStatistics ms)

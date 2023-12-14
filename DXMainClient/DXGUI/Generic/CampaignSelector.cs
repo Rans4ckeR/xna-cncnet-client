@@ -240,11 +240,7 @@ namespace DTAClient.DXGUI.Generic
                 missionToLaunch = mission;
                 cheaterWindow.Enable();
 
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
             }
 
             return LaunchMissionAsync(mission);

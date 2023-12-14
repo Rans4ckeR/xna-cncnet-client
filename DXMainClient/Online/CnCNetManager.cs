@@ -553,11 +553,7 @@ namespace DTAClient.Online
             Channel channel = FindChannel(channelName);
 
             if (channel == null)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             bool isAdmin = false;
             string name = userName;

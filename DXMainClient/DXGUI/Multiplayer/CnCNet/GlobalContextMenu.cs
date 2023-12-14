@@ -109,11 +109,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         {
             // note it's assumed that if the channel name is specified, the game name must be also
             if (string.IsNullOrEmpty(contextMenuData.inviteChannelName) || ProgramConstants.IsInGame)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             string messageBody = CnCNetCommands.GAME_INVITE + " " + contextMenuData.inviteChannelName + ";" + contextMenuData.inviteGameName;
 
@@ -195,11 +191,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (!string.IsNullOrEmpty(ircUser.Ident))
             {
                 callback.Invoke(ircUser.Ident);
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
             }
 
             void WhoIsReply(object sender, WhoEventArgs whoEventargs)

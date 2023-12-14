@@ -95,11 +95,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
 #else
         {
             connectionErrorCancellationTokenSource.Cancel();
-#if NETFRAMEWORK
-            await new ValueTask(Task.CompletedTask).ConfigureAwait(false);
-#else
-            await ValueTask.CompletedTask.ConfigureAwait(false);
-#endif
+            await default(ValueTask).ConfigureAwait(false);
         }
 #endif
 
@@ -136,13 +132,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
         localGamePlayerConnection.RaiseDataReceivedEvent -= localGameConnectionDataReceivedFunc;
         localGamePlayerConnection.Dispose();
 
-        return localGameConnections.Count is 0
-            ? DisposeAsync()
-#if NETFRAMEWORK
-            : default;
-#else
-            : ValueTask.CompletedTask;
-#endif
+        return localGameConnections.Count is 0 ? DisposeAsync() : default;
     }
 
     /// <summary>
@@ -152,12 +142,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
     {
         OnRaiseLocalGameDataReceivedEvent(sender, e);
 
-        return remoteHostConnection?.SendDataToRemotePlayerAsync(e.GameData, e.PlayerId)
-#if NETFRAMEWORK
-            ?? default;
-#else
-            ?? ValueTask.CompletedTask;
-#endif
+        return remoteHostConnection?.SendDataToRemotePlayerAsync(e.GameData, e.PlayerId) ?? default;
     }
 
     /// <summary>
@@ -169,12 +154,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
 
         V3LocalPlayerConnection v3LocalPlayerConnection = GetLocalPlayerConnection(e.PlayerId);
 
-        return v3LocalPlayerConnection?.SendDataToGameAsync(e.GameData)
-#if NETFRAMEWORK
-            ?? default;
-#else
-            ?? ValueTask.CompletedTask;
-#endif
+        return v3LocalPlayerConnection?.SendDataToGameAsync(e.GameData) ?? default;
     }
 
     private V3LocalPlayerConnection GetLocalPlayerConnection(uint senderId)

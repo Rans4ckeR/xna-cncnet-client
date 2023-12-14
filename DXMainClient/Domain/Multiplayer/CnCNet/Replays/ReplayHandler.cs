@@ -136,7 +136,7 @@ internal sealed class ReplayHandler : IAsyncDisposable
         foreach ((_, FileStream fileStream) in replayFileStreams)
 #if NETFRAMEWORK
         {
-            await Task.CompletedTask;
+            await default(ValueTask).ConfigureAwait(false);
             fileStream.Dispose();
         }
 #else

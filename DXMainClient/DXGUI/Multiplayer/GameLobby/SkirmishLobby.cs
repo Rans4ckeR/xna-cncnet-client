@@ -192,11 +192,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             topBar.RemovePrimarySwitchable(this);
             ResetDiscordPresence();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private void PlayerSideChanged(object sender, EventArgs e)

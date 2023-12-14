@@ -64,11 +64,7 @@ namespace DTAClient.DXGUI.Multiplayer
             if (client is { Connected: true })
                 return ClearAsync();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         public event EventHandler<GameBroadcastEventArgs> GameBroadcast;
@@ -536,20 +532,12 @@ namespace DTAClient.DXGUI.Multiplayer
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length < 2)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
             if (colorIndex < 0 || colorIndex >= chatColors.Length)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             return BroadcastMessageAsync(LANCommands.CHAT_GAME_LOADING_COMMAND + " " + sender +
                 ProgramConstants.LAN_DATA_SEPARATOR + colorIndex +
@@ -566,11 +554,7 @@ namespace DTAClient.DXGUI.Multiplayer
         private ValueTask Server_HandleReadyRequestAsync(LANPlayerInfo sender)
         {
             if (sender.Ready)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             sender.Ready = true;
             CopyPlayerDataToUI();

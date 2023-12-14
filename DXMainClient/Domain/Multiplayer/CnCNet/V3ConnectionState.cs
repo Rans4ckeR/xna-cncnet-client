@@ -358,11 +358,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     public ValueTask SaveReplayAsync()
     {
         if (!RecordingEnabled)
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
 
         return replayHandler.StopRecordingAsync(gamePlayerIds, playerInfos, V3GameTunnelHandlers.Select(q => q.Tunnel).ToList());
     }

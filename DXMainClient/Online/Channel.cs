@@ -130,7 +130,7 @@ namespace DTAClient.Online
             if (Persistent && IsChatChannel && string.Equals(user.IRCUser.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 await RequestUserInfoAsync().ConfigureAwait(false);
 #else
-            await Task.CompletedTask.ConfigureAwait(false);
+            await default(ValueTask).ConfigureAwait(false);
 #endif
         }
 

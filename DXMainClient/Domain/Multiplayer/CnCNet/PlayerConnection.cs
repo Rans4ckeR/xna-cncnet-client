@@ -88,11 +88,7 @@ internal abstract class PlayerConnection : IDisposable
     }
 
     protected virtual ValueTask DoStartConnectionAsync()
-#if NETFRAMEWORK
         => default;
-#else
-        => ValueTask.CompletedTask;
-#endif
 
     protected abstract ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation);
 

@@ -327,11 +327,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 Logger.Log("No IPv4 address found for LAN.");
                 lbChatMessages.AddMessage(new ChatMessage(Color.Red, "No IPv4 address found for LAN".L10N("Client:Main:NoLANIPv4")));
 
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
             }
 
             foreach (UnicastIPAddressInformation lanIpV4Address in lanIpV4Addresses)
@@ -370,11 +366,7 @@ namespace DTAClient.DXGUI.Multiplayer
             }
 
             if (!initSuccess)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             Logger.Log("Starting LAN listeners.");
 
@@ -756,11 +748,7 @@ namespace DTAClient.DXGUI.Multiplayer
             else
                 return GameCreationWindow_NewGameAsync();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         public override void Update(GameTime gameTime)

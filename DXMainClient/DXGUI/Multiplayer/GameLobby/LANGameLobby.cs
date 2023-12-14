@@ -594,11 +594,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         protected override ValueTask BroadcastPlayerOptionsAsync()
         {
             if (!IsHost)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             var sb = new ExtendedStringBuilder(LANCommands.PLAYER_OPTIONS_BROADCAST + " ", true);
             sb.Separator = ProgramConstants.LAN_DATA_SEPARATOR;
@@ -784,11 +780,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (manual)
                 AddNotice("You've unlocked the game room.".L10N("Client:Main:RoomUnockedByYou"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected override ValueTask LockGameAsync()
@@ -800,11 +792,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (Locked)
                 AddNotice("You've locked the game room.".L10N("Client:Main:RoomLockedByYou"));
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         protected override async ValueTask GameProcessExitedAsync()
@@ -912,20 +900,12 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length < 2)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             int colorIndex = Conversions.IntFromString(parts[0], -1);
 
             if (colorIndex < 0 || colorIndex >= chatColors.Length)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             return BroadcastMessageAsync(LANCommands.CHAT_LOBBY_COMMAND + " " + sender + ProgramConstants.LAN_DATA_SEPARATOR + data);
         }
@@ -961,39 +941,23 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (!IsHost)
                 return GetReadyNotificationAsync();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private ValueTask HandlePlayerOptionsRequestAsync(string sender, string data)
         {
             if (!IsHost)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             string[] parts = data.Split(ProgramConstants.LAN_DATA_SEPARATOR);
 
             if (parts.Length != 4)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             int side = Conversions.IntFromString(parts[0], -1);
             int color = Conversions.IntFromString(parts[1], -1);
@@ -1001,49 +965,25 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             int team = Conversions.IntFromString(parts[3], -1);
 
             if (side < 0 || side > SideCount + RandomSelectorCount)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             if (color < 0 || color > MPColors.Count)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             if (Map.CoopInfo != null)
             {
                 if (Map.CoopInfo.DisallowedPlayerSides.Contains(side - 1) || side == SideCount + RandomSelectorCount)
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
 
                 if (Map.CoopInfo.DisallowedPlayerColors.Contains(color - 1))
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
             }
 
             if (start < 0 || start > Map.MaxPlayers)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             if (team < 0 || team > 4)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             if (side != pInfo.SideId
                 || start != pInfo.StartingLocation
@@ -1252,11 +1192,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             pInfo.Ready = true;
             pInfo.AutoReady = Convert.ToBoolean(Conversions.IntFromString(autoReady, 0));
@@ -1270,11 +1206,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             UniqueGameID = Conversions.IntFromString(gameId, -1);
 
             if (UniqueGameID < 0)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             CopyPlayerDataToUI();
             return StartGameAsync();

@@ -278,11 +278,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             int index = Players.FindIndex(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
             if (index == -1)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             sndLeaveSound.Play();
 
@@ -298,11 +294,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return ClearAsync();
             }
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private void Channel_MessageAdded(object sender, IRCMessageEventArgs e)
@@ -318,13 +310,8 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         protected override ValueTask BroadcastOptionsAsync()
         {
             if (!IsHost)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
-            //if (Players.Count > 0)
             Players[0].Ready = true;
 
             StringBuilder message = new StringBuilder(CnCNetCommands.OPTIONS + " ");
@@ -390,11 +377,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private ValueTask HandleGetReadyNotificationAsync(string sender)
         {
             if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             return GetReadyNotificationAsync();
         }
@@ -402,11 +385,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private ValueTask HandleNotAllPresentNotificationAsync(string sender)
         {
             if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             return NotAllPresentNotificationAsync();
         }
@@ -414,54 +393,34 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private ValueTask HandleFileHashCommandAsync(string sender, string fileHash)
         {
             if (!IsHost)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             if (!string.Equals(fileHash, gameFilesHash, StringComparison.OrdinalIgnoreCase))
             {
                 PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
                 if (pInfo == null)
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
 
                 pInfo.Verified = true;
 
                 return HandleCheaterNotificationAsync(hostName, sender); // This is kinda hacky
             }
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private ValueTask HandleCheaterNotificationAsync(string sender, string cheaterName)
         {
             if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             AddNotice(string.Format(CultureInfo.CurrentCulture, "{0} - modified files detected! They could be cheating!".L10N("Client:Main:PlayerCheating"), cheaterName), Color.Red);
 
             if (IsHost)
                 return channel.SendCTCPMessageAsync(CnCNetCommands.INVALID_FILE_HASH + " " + cheaterName, QueuedMessageType.SYSTEM_MESSAGE, 0);
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private void HandleTunnelPing(string sender, int pingInMs)
@@ -540,11 +499,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private ValueTask HandleStartGameCommandAsync(string sender, string data)
         {
             if (!string.Equals(sender, hostName, StringComparison.OrdinalIgnoreCase))
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             string[] parts = data.Split(';');
 
@@ -553,30 +508,18 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             for (int i = 0; i < playerCount; i++)
             {
                 if (parts.Length < i * 2 + 1)
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
 
                 string pName = parts[i * 2];
                 string ipAndPort = parts[i * 2 + 1];
                 string[] ipAndPortSplit = ipAndPort.Split(':');
 
                 if (ipAndPortSplit.Length < 2)
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
 
                 bool success = int.TryParse(ipAndPortSplit[1], out int port);
                 if (!success)
-#if NETFRAMEWORK
                     return default;
-#else
-                    return ValueTask.CompletedTask;
-#endif
 
                 PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, pName, StringComparison.OrdinalIgnoreCase));
 
@@ -594,11 +537,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             PlayerInfo pInfo = Players.Find(p => string.Equals(p.Name, sender, StringComparison.OrdinalIgnoreCase));
 
             if (pInfo == null)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             pInfo.Ready = Convert.ToBoolean(readyStatus);
 
@@ -607,11 +546,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             if (IsHost)
                 return BroadcastOptionsAsync();
 
-#if NETFRAMEWORK
             return default;
-#else
-            return ValueTask.CompletedTask;
-#endif
         }
 
         private void HandleTunnelServerChangeMessage(string sender, string hash)
@@ -714,11 +649,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             Channel broadcastChannel = connectionManager.FindChannel(gameCollection.GetGameBroadcastingChannelNameFromIdentifier(localGame));
 
             if (broadcastChannel == null)
-#if NETFRAMEWORK
                 return default;
-#else
-                return ValueTask.CompletedTask;
-#endif
 
             StringBuilder sb = new StringBuilder(CnCNetCommands.GAME + " ");
             sb.Append(tunnelHandler.CurrentTunnel.Version is ProgramConstants.TUNNEL_VERSION_2 ? ProgramConstants.CNCNET_PROTOCOL_COMPATIBILITY_REVISION : ProgramConstants.CNCNET_PROTOCOL_REVISION);
