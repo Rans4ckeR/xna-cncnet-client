@@ -230,7 +230,7 @@ internal static class NetworkHelper
 
             socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
 
-            ushort foundPort = (ushort)((IPEndPoint)socket.LocalEndPoint).Port;
+            ushort foundPort = (ushort)((IPEndPoint)socket.LocalEndPoint!).Port;
 
             if (!activeV4AndV6Ports.Contains(foundPort))
             {
@@ -251,14 +251,24 @@ internal static class NetworkHelper
                 || ipAddress.IsIPv6UniqueLocal
 #endif
                 || ipAddress.IsIPv6LinkLocal,
+#if NET8_0_OR_GREATER
+            AddressFamily.InterNetwork => IPNetwork.Parse("10.0.0.0/8").Contains(ipAddress)
+                || IPNetwork.Parse("172.16.0.0/12").Contains(ipAddress)
+                || IPNetwork.Parse("192.168.0.0/16").Contains(ipAddress)
+                || IPNetwork.Parse("169.254.0.0/16").Contains(ipAddress)
+                || IPNetwork.Parse("127.0.0.0/8").Contains(ipAddress)
+                || IPNetwork.Parse("0.0.0.0/8").Contains(ipAddress),
+#else
             AddressFamily.InterNetwork => IsInRange("10.0.0.0", "10.255.255.255", ipAddress)
                 || IsInRange("172.16.0.0", "172.31.255.255", ipAddress)
                 || IsInRange("192.168.0.0", "192.168.255.255", ipAddress)
                 || IsInRange("169.254.0.0", "169.254.255.255", ipAddress)
                 || IsInRange("127.0.0.0", "127.255.255.255", ipAddress)
                 || IsInRange("0.0.0.0", "0.255.255.255", ipAddress),
+#endif
             _ => throw new ArgumentOutOfRangeException(nameof(ipAddress.AddressFamily), ipAddress.AddressFamily, null),
         };
+#if !NET8_0_OR_GREATER
 
     private static bool IsInRange(string startIpAddress, string endIpAddress, IPAddress address)
     {
@@ -268,4 +278,5 @@ internal static class NetworkHelper
 
         return ip >= ipStart && ip <= ipEnd;
     }
+#endif
 }

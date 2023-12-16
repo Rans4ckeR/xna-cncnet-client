@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Net.Mime;
 using System.Net.Sockets;
 using System.ServiceModel;
 using System.ServiceModel.Description;
@@ -286,7 +286,7 @@ internal sealed record InternetGatewayDevice(
 
             using var content = new StreamContent(requestStream);
 
-            content.Headers.ContentType = MediaTypeHeaderValue.Parse("text/xml");
+            content.Headers.ContentType = new(MediaTypeNames.Text.Xml);
             content.Headers.Add("SOAPAction", soapAction);
 
             httpResponseMessage = await UPnPHandler.HttpClient.PostAsync(serviceUri, content, cancellationToken).ConfigureAwait(false);
