@@ -121,19 +121,13 @@ internal static class StunHelper
                 SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
                     buffer1, SocketFlags.None, stunServerIpEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
                 int bytesReceived = socketReceiveFromResult.ReceivedBytes;
-#elif NET8_0_OR_GREATER
+#else
                 SocketAddress socketAddress = stunServerIpEndPoint.Serialize();
 
                 await socket.SendToAsync(buffer, SocketFlags.None, socketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 
                 int bytesReceived = await socket.ReceiveFromAsync(
                     buffer, SocketFlags.None, socketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
-#else
-                await socket.SendToAsync(buffer, stunServerIpEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
-
-                SocketReceiveFromResult socketReceiveFromResult = await socket.ReceiveFromAsync(
-                    buffer, SocketFlags.None, stunServerIpEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
-                int bytesReceived = socketReceiveFromResult.ReceivedBytes;
 #endif
 
                 buffer = buffer[..bytesReceived];

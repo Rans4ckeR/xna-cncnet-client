@@ -28,7 +28,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
     {
         CancellationToken = cancellationToken;
         PlayerId = gameLocalPlayerId;
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         RemoteSocketAddress = new IPEndPoint(remoteIpAddress, remotePort).Serialize();
 #else
         RemoteEndPoint = new(remoteIpAddress, remotePort);
@@ -86,7 +86,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         Logger.Log($"{GetType().Name}: Attempting to establish a connection on port {localPort}.");
 #endif
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         Socket = new(RemoteSocketAddress.Family, SocketType.Dgram, ProtocolType.Udp);
 
         Socket.Bind(new IPEndPoint(RemoteSocketAddress.Family is AddressFamily.InterNetworkV6 ? IPAddress.IPv6Any : IPAddress.Any, localPort));
@@ -123,10 +123,8 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
                 throw new();
 
             await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
-#elif NET8_0_OR_GREATER
-            await Socket.SendToAsync(buffer, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-            await Socket.SendToAsync(buffer, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+            await Socket.SendToAsync(buffer, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
         }
         catch (SocketException ex)
@@ -164,7 +162,7 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
         OnRaiseConnectedEvent(EventArgs.Empty);
     }
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     protected override ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
 #else
     protected override async ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
@@ -180,16 +178,8 @@ internal sealed class V3RemotePlayerConnection : PlayerConnection
 
         return socketReceiveFromResult.ReceivedBytes;
     }
-#elif NET8_0_OR_GREATER
-        => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteSocketAddress, cancellation);
 #else
-    {
-        SocketReceiveFromResult socketReceiveFromResult = await Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteEndPoint, cancellation).ConfigureAwait(false);
-
-        RemoteEndPoint = (IPEndPoint)socketReceiveFromResult.RemoteEndPoint;
-
-        return socketReceiveFromResult.ReceivedBytes;
-    }
+        => Socket.ReceiveFromAsync(buffer, SocketFlags.None, RemoteSocketAddress, cancellation);
 #endif
 
     protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, int bytesReceived)

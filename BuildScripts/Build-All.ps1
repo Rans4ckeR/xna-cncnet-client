@@ -5,6 +5,6 @@ param($Configuration = "Release", $AssemblySemVer = "0.0.0", $AssemblySemFileVer
 
 . $PSScriptRoot\Common.ps1
 
-@('net8.0', 'net7.0', 'net481', 'net48') | ForEach-Object {
+@('net8.0', 'net48') | ForEach-Object {
   . "$PSScriptRoot\Build-All-Framework.ps1" $Configuration $_ $AssemblySemVer $AssemblySemFileVer $InformationalVersion
 }

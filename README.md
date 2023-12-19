@@ -15,7 +15,9 @@ However, there is no limitation in the client that would prevent incorporating i
 
 ## Development requirements
 
-The client has 4 builds: Windows DirectX11, Windows OpenGL, Windows XNA and Universal OpenGL.
+The client has 2 variants: .NET 4.8 and .NET 8.0.
+
+Each variant has 4 builds: Windows DirectX11, Windows OpenGL, Windows XNA and Universal OpenGL.
 * The DirectX11 and OpenGL builds rely on MonoGame.
 * The XNA build relies on Microsoft's XNA Framework 4.0 Refresh.
 
@@ -27,23 +29,27 @@ When using the included build scripts PowerShell 7.2 or newer is required.
 
 * Compiling itself is simple: assuming you have the .NET 8.0 SDK installed, you can just open the solution with Visual Studio and compile it right away.
 * When built as a debug build, the client executable expects to reside in the same directory with the target project's main game executable. Resources should exist in a "Resources" sub-directory in the same directory. The repository contains sample resources and post-build commands for copying them so that you can immediately run the client in debug mode by just hitting the Debug button in Visual Studio.
-* When built in release mode, the client executable expects to reside in the "Resources" sub-directory itself. In target projects, the client libraries are named `clientdx.dll`, `clientogl.dll` and `clientxna.dll` respectively for each platform.
+* When built in release mode, the client executable expects to reside in the "Resources" sub-directory itself. In target projects, the client libraries are named `clientdx.dll`, `clientogl.dll` and `clientxna.dll` respectively for each platform. For .NET 4.8 these will be `.exe` instead of `.dll` files.
 * When built on an OS other than Windows, only the Universal OpenGL build is available.
 * The `BuildScripts` directory has automated build scripts that build the client for all platforms and copy the output files to a folder named `Compiled` in the project root. You can then copy the contents of this `Compiled` directory into the `Resources` sub-directory of any target project.
 
 ## End-user usage
 
-* Windows: Windows 7 SP1 or higher is required. The DirectX11 build is preferred. The XNA build is intended for those whose GPU does not properly support DX11.
+* Windows: Windows 7 SP1 or higher is required. The DirectX11 build is preferred. The OpenGL or XNA build is intended for those whose GPU does not properly support DX11. On Windows 10/11 the .NET 8.0 variant is recommended, on legacy Windows versions the .NET 4.8 variant is recommended.
 * Other OS: Use the Universal OpenGL build.
 
 ## End-user requirements
 
 ### Windows requirements:
 
+(Optional) The XNA build requires:
+* [Microsoft XNA Framework Redistributable 4.0 Refresh](https://www.microsoft.com/en-us/download/details.aspx?id=27598).
+
+#### Windows .NET 8.0 requirements:
+
 * The [.NET 8.0 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0/runtime?initial-os=windows) for your specific platform.
 
 (Optional) The XNA build additionally requires:
-* [Microsoft XNA Framework Redistributable 4.0 Refresh](https://www.microsoft.com/en-us/download/details.aspx?id=27598).
 * [.NET 8.0 Desktop Runtime x86](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-8.0.0-windows-x86-installer).
 
 Windows 7 SP1 and Windows 8.x additionally require:
@@ -51,6 +57,10 @@ Windows 7 SP1 and Windows 8.x additionally require:
 
 Windows 7 SP1 additionally requires:
 * KB3063858 [64-bit](https://www.microsoft.com/download/details.aspx?id=47442) / [32-bit](https://www.microsoft.com/download/details.aspx?id=47409).
+
+#### Windows .NET 4.8 requirements:
+
+* The [.NET Framework 4.8 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet-framework/thank-you/net48-web-installer)
 
 ### Linux requirements:
 

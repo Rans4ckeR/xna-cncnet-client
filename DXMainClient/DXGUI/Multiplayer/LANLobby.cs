@@ -253,7 +253,7 @@ namespace DTAClient.DXGUI.Multiplayer
                     await SendMessageAsync(LANCommands.PLAYER_QUIT_COMMAND, cancellationToken).ConfigureAwait(false);
             }
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             if (cancellationTokenSource is not null)
                 await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
@@ -727,7 +727,7 @@ namespace DTAClient.DXGUI.Multiplayer
             Visible = false;
             Enabled = false;
             await SendMessageAsync(LANCommands.PLAYER_QUIT_COMMAND, CancellationToken.None).ConfigureAwait(false);
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
             cancellationTokenSource.Cancel();

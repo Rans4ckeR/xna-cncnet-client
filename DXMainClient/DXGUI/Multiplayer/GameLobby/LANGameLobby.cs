@@ -79,7 +79,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (client is { Connected: true })
                 await ClearAsync(true).ConfigureAwait(false);
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             if (cancellationTokenSource is not null)
                 await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
@@ -567,7 +567,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 await SendMessageToHostAsync(LANCommands.PLAYER_QUIT_COMMAND, cancellationTokenSource?.Token ?? default).ConfigureAwait(false);
             }
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             await cancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
             cancellationTokenSource.Cancel();
@@ -834,7 +834,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 for (int i = 1; i < Players.Count; i++)
                 {
                     LANPlayerInfo lpInfo = (LANPlayerInfo)Players[i];
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
                     if (!Task.Run(() => lpInfo.UpdateAsync(gameTime).HandleTask(ConfigureAwaitOptions.ContinueOnCapturedContext)).Result)
 #else
                     if (!Task.Run(() => lpInfo.UpdateAsync(gameTime).HandleTask(true)).Result)

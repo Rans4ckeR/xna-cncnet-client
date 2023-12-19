@@ -506,7 +506,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         tunnelHandler.CurrentTunnelPinged -= tunnelHandler_CurrentTunnelFunc;
         tunnelHandler.CurrentTunnel = null;
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (gameStartCancellationTokenSource is not null)
             await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
@@ -991,7 +991,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
 
         gameStartTimer.Pause();
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (v3ConnectionState.StunCancellationTokenSource is not null)
             await v3ConnectionState.StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
@@ -1007,7 +1007,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
     {
         btnLaunchGame.InputEnabled = true;
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (gameStartCancellationTokenSource is not null)
             await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 
@@ -1690,7 +1690,7 @@ internal sealed class CnCNetGameLobby : MultiplayerGameLobby
         await base.GameProcessExitedAsync().ConfigureAwait(false);
         await channel.SendCTCPMessageAsync(CnCNetCommands.RETURN, QueuedMessageType.SYSTEM_MESSAGE, 20).ConfigureAwait(false);
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (gameStartCancellationTokenSource is not null)
             await gameStartCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else

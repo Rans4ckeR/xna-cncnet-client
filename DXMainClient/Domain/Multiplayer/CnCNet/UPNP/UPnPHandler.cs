@@ -17,8 +17,7 @@ using Rampastring.Tools;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
 using ClientCore.Extensions;
-#endif
-#if NET8_0_OR_GREATER
+#else
 using System.Collections.Frozen;
 #endif
 
@@ -329,10 +328,8 @@ internal static class UPnPHandler
     private static IEnumerable<IDictionary<string, string>> GetFormattedDeviceResponses(IEnumerable<string> responses)
 #if NETFRAMEWORK
         => responses.Select(q => q.Split("\r\n".ToCharArray())).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
-#elif NET8_0_OR_GREATER
-        => responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToFrozenDictionary(
 #else
-        => responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToDictionary(
+        => responses.Select(q => q.Split("\r\n")).Select(q => q.Where(r => r.Contains(':', StringComparison.OrdinalIgnoreCase)).ToFrozenDictionary(
 #endif
             s => s[..s.IndexOf(':', StringComparison.OrdinalIgnoreCase)],
             s =>
@@ -344,11 +341,7 @@ internal static class UPnPHandler
 
                 return value.Replace(": ", null, StringComparison.OrdinalIgnoreCase);
             },
-#if NETFRAMEWORK || NET8_0_OR_GREATER
             StringComparer.OrdinalIgnoreCase));
-#else
-            StringComparer.OrdinalIgnoreCase).AsReadOnly());
-#endif
 
     private static async Task<(IPAddress LocalIpAddress, IEnumerable<string> Responses)> SearchDevicesAsync(IPAddress localAddress, IPAddress multicastAddress, CancellationToken cancellationToken)
     {
@@ -380,13 +373,9 @@ internal static class UPnPHandler
 
             buffer = buffer[..numberOfBytes];
 
-#if NET8_0_OR_GREATER
             SocketAddress multiCastSocketAddress = multiCastIpEndPoint.Serialize();
 
             await socket.SendToAsync(buffer, SocketFlags.None, multiCastSocketAddress, cancellationToken).ConfigureAwait(false);
-#else
-            await socket.SendToAsync(buffer, SocketFlags.None, multiCastIpEndPoint, cancellationToken).ConfigureAwait(false);
-#endif
 #endif
             await ReceiveAsync(socket, responses, cancellationToken).ConfigureAwait(false);
         }

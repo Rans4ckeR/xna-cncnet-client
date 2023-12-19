@@ -90,7 +90,7 @@ internal sealed class V3GameTunnelHandler : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         if (!connectionErrorCancellationTokenSource.IsCancellationRequested)
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             await connectionErrorCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
         {

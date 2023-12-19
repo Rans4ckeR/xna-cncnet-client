@@ -530,7 +530,7 @@ namespace DTAClient.DXGUI.Generic
         {
             Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             if (cncnetPlayerCountCancellationSource is not null)
                 await cncnetPlayerCountCancellationSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 

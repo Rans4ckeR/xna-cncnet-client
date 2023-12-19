@@ -23,7 +23,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
     private const uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
 
     private readonly IPEndPoint loopbackEndPoint = new(IPAddress.Loopback, 0);
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     private SocketAddress loopbackSocketAddress;
 #endif
 
@@ -38,7 +38,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
         CancellationToken = cancellationToken;
         PlayerId = playerId;
         Socket = new(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         loopbackSocketAddress = loopbackEndPoint.Serialize();
 
         var remoteSocketAddress = new SocketAddress(AddressFamily.InterNetwork);
@@ -67,7 +67,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
     /// <param name="data">The data to send to the game.</param>
     public ValueTask SendDataToGameAsync(ReadOnlyMemory<byte> data)
     {
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (RemoteSocketAddress.Equals(loopbackSocketAddress) || data.Length < PlayerIdsSize)
 #else
         if (RemoteEndPoint.Equals(loopbackEndPoint) || data.Length < PlayerIdsSize)
@@ -83,7 +83,7 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
         return SendDataAsync(data);
     }
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     protected override ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
 #else
     protected override async ValueTask<int> DoReceiveDataAsync(Memory<byte> buffer, CancellationToken cancellation)
@@ -99,16 +99,8 @@ internal sealed class V3LocalPlayerConnection : PlayerConnection
 
         return socketReceiveFromResult.ReceivedBytes;
     }
-#elif NET8_0_OR_GREATER
-        => Socket.ReceiveFromAsync(buffer[PlayerIdsSize..], SocketFlags.None, RemoteSocketAddress, cancellation);
 #else
-    {
-        SocketReceiveFromResult socketReceiveFromResult = await Socket.ReceiveFromAsync(buffer[PlayerIdsSize..], SocketFlags.None, RemoteEndPoint, cancellation).ConfigureAwait(false);
-
-        RemoteEndPoint = (IPEndPoint)socketReceiveFromResult.RemoteEndPoint;
-
-        return socketReceiveFromResult.ReceivedBytes;
-    }
+        => Socket.ReceiveFromAsync(buffer[PlayerIdsSize..], SocketFlags.None, RemoteSocketAddress, cancellation);
 #endif
 
     protected override DataReceivedEventArgs ProcessReceivedData(Memory<byte> buffer, int bytesReceived)

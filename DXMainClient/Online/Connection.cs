@@ -17,11 +17,9 @@ using System.Globalization;
 #if NETFRAMEWORK
 using System.Runtime.InteropServices;
 using Windows.Win32.Networking.WinSock;
-#endif
-#if NET8_0_OR_GREATER
-using System.Collections.Frozen;
-#else
 using System.Collections.ObjectModel;
+#else
+using System.Collections.Frozen;
 #endif
 
 namespace DTAClient.Online
@@ -49,7 +47,7 @@ namespace DTAClient.Online
         /// <summary>
         /// The list of CnCNet / GameSurge IRC servers to connect to.
         /// </summary>
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         private static readonly FrozenSet<Server> Servers = new Server[]
 #else
         private static readonly IReadOnlyCollection<Server> Servers = new ReadOnlyCollection<Server>(new Server[]
@@ -63,7 +61,7 @@ namespace DTAClient.Online
             new("Prothid.NY.US.GameSurge.Net", "GameSurge NYC, NY", [5960, 6660, 6666, 6667, 6668, 6669], [6697]),
             new("LAN-Team.DE.EU.GameSurge.net", "GameSurge Nuremberg, Germany", [6660, 6666, 6667, 6668, 6669], []),
             new("irc.gamesurge.net", "GameSurge", [6667], [])
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         }.ToFrozenSet();
 #else
         });
@@ -320,7 +318,7 @@ namespace DTAClient.Online
 
             if (connectionCut)
             {
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
                 await sendQueueCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
                 sendQueueCancellationTokenSource.Cancel();
@@ -506,7 +504,7 @@ namespace DTAClient.Online
         public async ValueTask DisconnectAsync()
         {
             await SendMessageAsync(IRCCommands.QUIT).ConfigureAwait(false);
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             await connectionCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
             connectionCancellationTokenSource.Cancel();

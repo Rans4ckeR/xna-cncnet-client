@@ -220,12 +220,10 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
                     throw new();
 
                 await socket.SendToAsync(buffer1, SocketFlags.None, remoteEndpoint).WithCancellation(sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
-#elif NET8_0_OR_GREATER
+#else
                 SocketAddress remoteSocketAddress = remoteEndpoint.Serialize();
 
                 await socket.SendToAsync(buffer, SocketFlags.None, remoteSocketAddress, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
-#else
-                await socket.SendToAsync(buffer, SocketFlags.None, remoteEndpoint, sendLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
 
                 using var receiveTimeoutCancellationTokenSource = new CancellationTokenSource(PING_TIMEOUT);
@@ -233,10 +231,8 @@ namespace DTAClient.Domain.Multiplayer.CnCNet
 
 #if NETFRAMEWORK
                 await socket.ReceiveFromAsync(buffer1, SocketFlags.None, remoteEndpoint).WithCancellation(receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
-#elif NET8_0_OR_GREATER
-                await socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteSocketAddress, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-                await socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteEndpoint, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
+                await socket.ReceiveFromAsync(buffer, SocketFlags.None, remoteSocketAddress, receiveLinkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
 
                 ticks = DateTime.Now.Ticks - ticks;

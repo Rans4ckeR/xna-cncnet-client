@@ -19,7 +19,7 @@ internal abstract class PlayerConnection : IDisposable
     protected const int PlayerIdsSize = PlayerIdSize * 2;
     protected const int SendTimeout = 10000;
     protected const int MaximumPacketSize = 1024;
-#if NET8_0_OR_GREATER && DEBUG
+#if !NETFRAMEWORK && DEBUG
 
     private SocketAddress remoteSocketAddress;
 
@@ -32,7 +32,7 @@ internal abstract class PlayerConnection : IDisposable
 
     protected Socket Socket { get; set; }
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     protected SocketAddress RemoteSocketAddress { get; set; }
 #if DEBUG
 
@@ -113,10 +113,8 @@ internal abstract class PlayerConnection : IDisposable
                 throw new();
 
             await Socket.SendToAsync(buffer1, SocketFlags.None, RemoteEndPoint).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
-#elif NET8_0_OR_GREATER
-            await Socket.SendToAsync(data, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #else
-            await Socket.SendToAsync(data, SocketFlags.None, RemoteEndPoint, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+            await Socket.SendToAsync(data, SocketFlags.None, RemoteSocketAddress, linkedCancellationTokenSource.Token).ConfigureAwait(false);
 #endif
         }
         catch (SocketException ex)

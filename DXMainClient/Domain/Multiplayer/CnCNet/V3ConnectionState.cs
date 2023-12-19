@@ -80,7 +80,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     {
         if (ipV6P2PPorts.Count is 0 && ipV4P2PPorts.Count is 0)
         {
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             if (StunCancellationTokenSource is not null)
                 await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
@@ -378,7 +378,7 @@ internal sealed class V3ConnectionState : IAsyncDisposable
     {
         PinnedTunnelPingsMessage = null;
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
         if (StunCancellationTokenSource is not null)
             await StunCancellationTokenSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else

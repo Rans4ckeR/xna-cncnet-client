@@ -122,7 +122,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         public Task CleanAsync()
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             => cncnetPlayerCountCancellationSource is not null ? cncnetPlayerCountCancellationSource.CancelAsync() : Task.CompletedTask;
 #else
         {

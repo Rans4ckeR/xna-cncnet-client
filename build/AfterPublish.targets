@@ -94,7 +94,7 @@
   </Target>
 
   <Target Name="MoveCommonNetCoreBinaries" AfterTargets="Publish" Condition="'$(TargetFrameworkIdentifier)' != '.NETFramework'">
-    <Message Importance="high" Text="Moving common NetCore binaries"/>
+    <Message Importance="high" Text="Moving NetCore common binaries"/>
     <Move SourceFiles="$(PublishDir)Microsoft.Extensions.ObjectPool.dll" DestinationFolder="$(PublishDir)../" />
     <Move SourceFiles="$(PublishDir)System.ServiceModel.Http.dll" DestinationFolder="$(PublishDir)../" />
     <Move SourceFiles="$(PublishDir)System.ServiceModel.Primitives.dll" DestinationFolder="$(PublishDir)../" />
@@ -111,13 +111,5 @@
     <Move Condition="'$(Engine)' == 'WindowsXNA'" SourceFiles="$(PublishDir)clientxna.exe" DestinationFolder="$(PublishDir)../../" />
     <Move Condition="'$(Engine)' == 'WindowsXNA'" SourceFiles="$(PublishDir)clientxna.exe.config" DestinationFolder="$(PublishDir)../../" />
     <Move Condition="'$(Engine)' == 'WindowsXNA'" SourceFiles="$(PublishDir)clientxna.pdb" DestinationFolder="$(PublishDir)../../" />
-  </Target>
-
-  <Target Name="MoveCommonNet7Binaries" AfterTargets="Publish" Condition="$(TargetFramework.Contains('net7.0'))">
-    <Message Importance="high" Text="Moving common .NET 7 binaries"/>
-    <Move SourceFiles="$(PublishDir)System.CodeDom.dll" DestinationFolder="$(PublishDir)../" />
-    <Move SourceFiles="$(PublishDir)System.Diagnostics.DiagnosticSource.dll" DestinationFolder="$(PublishDir)../" />
-    <Move SourceFiles="$(PublishDir)System.Text.Encodings.Web.dll" DestinationFolder="$(PublishDir)../" />
-    <Move SourceFiles="$(PublishDir)System.Text.Json.dll" DestinationFolder="$(PublishDir)../" />
   </Target>
 </Project>

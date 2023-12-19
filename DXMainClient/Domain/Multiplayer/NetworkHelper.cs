@@ -7,17 +7,14 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 #if NETFRAMEWORK
 using ClientCore.Extensions;
+using System.Collections.ObjectModel;
 #else
 using System.Runtime.Versioning;
+using System.Collections.Frozen;
 #endif
 using System.Threading;
 using System.Threading.Tasks;
 using ClientCore;
-#if NET8_0_OR_GREATER
-using System.Collections.Frozen;
-#else
-using System.Collections.ObjectModel;
-#endif
 
 namespace DTAClient.Domain.Multiplayer;
 
@@ -26,7 +23,7 @@ internal static class NetworkHelper
     private const string PingHost = "cncnet.org";
     private const int PingTimeout = 1000;
 
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     private static readonly FrozenSet<AddressFamily> SupportedAddressFamilies = new[]
 #else
     private static readonly IReadOnlyCollection<AddressFamily> SupportedAddressFamilies = new ReadOnlyCollection<AddressFamily>(new[]
@@ -34,7 +31,7 @@ internal static class NetworkHelper
     {
         AddressFamily.InterNetwork,
         AddressFamily.InterNetworkV6
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     }.ToFrozenSet();
 #else
     });
@@ -251,7 +248,7 @@ internal static class NetworkHelper
                 || ipAddress.IsIPv6UniqueLocal
 #endif
                 || ipAddress.IsIPv6LinkLocal,
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
             AddressFamily.InterNetwork => IPNetwork.Parse("10.0.0.0/8").Contains(ipAddress)
                 || IPNetwork.Parse("172.16.0.0/12").Contains(ipAddress)
                 || IPNetwork.Parse("192.168.0.0/16").Contains(ipAddress)
@@ -268,7 +265,7 @@ internal static class NetworkHelper
 #endif
             _ => throw new ArgumentOutOfRangeException(nameof(ipAddress.AddressFamily), ipAddress.AddressFamily, null),
         };
-#if !NET8_0_OR_GREATER
+#if NETFRAMEWORK
 
     private static bool IsInRange(string startIpAddress, string endIpAddress, IPAddress address)
     {

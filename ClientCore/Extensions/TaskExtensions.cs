@@ -9,7 +9,7 @@ namespace ClientCore.Extensions;
 
 public static class TaskExtensions
 {
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
     /// <summary>
     /// Runs a <see cref="Task"/> and guarantees all exceptions are caught and handled even when the <see cref="Task"/> is not directly awaited.
     /// </summary>
@@ -185,8 +185,6 @@ public static class TaskExtensions
             throw whenAllTask.Exception;
         }
     }
-#endif
-#if NETFRAMEWORK
 
     /// <summary>
     /// Runs a <see cref="Task"/> which is cancelled with the given <paramref name="cancellationToken"/>.

@@ -1130,7 +1130,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             if (gameCheckCancellation is not null)
             {
-#if NET8_0_OR_GREATER
+#if !NETFRAMEWORK
                 await gameCheckCancellation.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
 #else
                 gameCheckCancellation.Cancel();
