@@ -264,18 +264,8 @@ namespace DTAConfig.OptionPanels
                 ddClientTheme.Width,
                 ddClientTheme.Height);
 
-#if NETFRAMEWORK
-            foreach (KeyValuePair<string, string> keyValuePair in Translation.GetTranslations())
-            {
-                string translation = keyValuePair.Key;
-                string name = keyValuePair.Value;
-#else
             foreach ((string translation, string name) in Translation.GetTranslations())
-#endif
                 ddTranslation.AddItem(new XNADropDownItem { Text = name, Tag = translation });
-#if NETFRAMEWORK
-            }
-#endif
 
 #if TS
             lblCompatibilityFixes = new XNALabel(WindowManager);
