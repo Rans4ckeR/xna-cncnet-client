@@ -1,7 +1,9 @@
+
 # Discord Rich Presence support in XNA CnCNet client
 
-About Discord Rich Presence
------------------------------------
+
+## About Discord Rich Presence
+
 Discord Rich Presence (DRP) is a useful feature that allows Discord users to show the details about the currently active game or application to other users. With DRP existing players can show their activity to their friends and spread awareness of your mod/game, thus increasing popularity.
 
 ![DEMO](Images/drp-demo.gif)
@@ -10,8 +12,7 @@ The client shows lobby type, name, map/mission name, gamemode, players amount, a
 
 XNA client supports showing DRP information customized to your mod/game, provided you follow the steps below to set up the presence for your mod/game.
 
-How to set up DRP for your mod/game
------------------------------------
+## How to set up DRP for your mod/game
 
 > **Note**
 > You are required to be logged in a Discord account.

@@ -38,6 +38,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildScripts", "BuildScript
 		BuildScripts\README.md = BuildScripts\README.md
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{AA769531-D279-43DB-AF22-9B0391726249}"
+	ProjectSection(SolutionItems) = preProject
+		Docs\DiscordRichPresence.md = Docs\DiscordRichPresence.md
+		Docs\INISystem.md = Docs\INISystem.md
+		Docs\Migration.md = Docs\Migration.md
+		Docs\Translation.md = Docs\Translation.md
+		Docs\Updater.md = Docs\Updater.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		AresUniversalGLDebug|Any CPU = AresUniversalGLDebug|Any CPU
@@ -1014,6 +1023,7 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{797E18AA-775E-4872-A1F9-DC4BD38E92EA} = {0F60E4A3-55C8-4C3F-BFC0-27C597433E8A}
+		{AA769531-D279-43DB-AF22-9B0391726249} = {0F60E4A3-55C8-4C3F-BFC0-27C597433E8A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {524B40FE-44F2-419A-B6D3-F9F0F813101F}

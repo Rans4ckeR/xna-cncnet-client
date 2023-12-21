@@ -1,3 +1,4 @@
+
 # Translation
 
 The client has a built-in support for translations. The translation system is made to allow non-programmers to easily translate mods and games based on XNA CnCNet client to the languages of their choice.

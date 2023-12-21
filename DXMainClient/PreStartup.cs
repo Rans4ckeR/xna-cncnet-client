@@ -51,6 +51,14 @@ namespace DTAClient
         /// <param name="parameters">The client's startup parameters.</param>
         public static void Initialize(StartupParams parameters)
         {
+#if WINFORMS
+#if NETFRAMEWORK
+            Application.EnableVisualStyles();
+#else
+            ApplicationConfiguration.Initialize();
+#endif
+
+#endif
             Translation.InitialUICulture = CultureInfo.CurrentUICulture;
             CultureInfo.CurrentUICulture = new CultureInfo(ProgramConstants.HARDCODED_LOCALE_CODE);
 
@@ -211,20 +219,10 @@ namespace DTAClient
                 ProgramConstants.DisplayErrorAction(null, error, true);
             }
 
-#if WINFORMS
-#if NETFRAMEWORK
-            Application.EnableVisualStyles();
-#else
-            ApplicationConfiguration.Initialize();
-#endif
-#endif
-
             new Startup().Execute();
         }
 
-#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
-#endif
         private static void CheckPermissions()
         {
             if (UserHasDirectoryAccessRights(ProgramConstants.GamePath, FileSystemRights.Modify))
@@ -252,9 +250,7 @@ namespace DTAClient
         /// </summary>
         /// <param name="path">The path to the directory.</param>
         /// <param name="accessRights">The file system rights.</param>
-#if !NETFRAMEWORK
         [SupportedOSPlatform("windows")]
-#endif
         private static bool UserHasDirectoryAccessRights(string path, FileSystemRights accessRights)
         {
             var currentUser = WindowsIdentity.GetCurrent();

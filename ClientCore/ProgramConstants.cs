@@ -144,7 +144,11 @@ namespace ClientCore
         {
             Logger.Log(FormattableString.Invariant($"{(title is null ? null : title + Environment.NewLine + Environment.NewLine)}{error}"));
 #if WINFORMS
+#if NETFRAMEWORK
             MessageBox.Show(error, title, MessageBoxButtons.OK);
+#else
+            TaskDialog.ShowDialog(new() { Caption = title, Heading = error });
+#endif
 #else
             ProcessLauncher.StartShellProcess(LogFileName);
 #endif

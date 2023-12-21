@@ -5,11 +5,11 @@ using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 #if NETFRAMEWORK
 using ClientCore.Extensions;
 using System.Collections.ObjectModel;
 #else
-using System.Runtime.Versioning;
 using System.Collections.Frozen;
 #endif
 using System.Threading;
@@ -55,9 +55,7 @@ internal static class NetworkHelper
         => GetLocalAddresses()
         .Where(IsPrivateIpAddress);
 
-#if !NETFRAMEWORK
     [SupportedOSPlatform("windows")]
-#endif
     public static IEnumerable<UnicastIPAddressInformation> GetWindowsLanUniCastIpAddresses()
         => GetLanUniCastIpAddresses()
         .Where(q => q.SuffixOrigin is not SuffixOrigin.WellKnown);
@@ -105,9 +103,7 @@ internal static class NetworkHelper
         .Select(q => q.GetIPProperties())
         .Where(q => q.GatewayAddresses.Count is not 0);
 
-#if !NETFRAMEWORK
     [SupportedOSPlatform("windows")]
-#endif
     private static IEnumerable<(IPAddress IpAddress, PrefixOrigin PrefixOrigin, SuffixOrigin SuffixOrigin)> GetWindowsPublicIpAddresses()
         => GetUniCastIpAddresses()
         .Where(q => !IsPrivateIpAddress(q.Address))

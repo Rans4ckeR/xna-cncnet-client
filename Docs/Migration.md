@@ -1,5 +1,5 @@
-Migrating from older versions
------------------------------
+
+# Migrating from older versions
 
 ## Migrating from pre-2.8.0.0
 
