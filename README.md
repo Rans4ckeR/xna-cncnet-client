@@ -15,9 +15,9 @@ However, there is no limitation in the client that would prevent incorporating i
 
 ## Development requirements
 
-The client has 2 variants: .NET 4.8 and .NET 8.0.
-
-Each variant has 4 builds: Windows DirectX11, Windows OpenGL, Windows XNA and Universal OpenGL.
+The client has 2 variants: .NET 8.0 and .NET 4.8.
+* Both variants have 3 builds: Windows DirectX11, Windows OpenGL and Windows XNA.
+* .NET 8.0 in addition has a cross-platform Universal OpenGL build.
 * The DirectX11 and OpenGL builds rely on MonoGame.
 * The XNA build relies on Microsoft's XNA Framework 4.0 Refresh.
 
