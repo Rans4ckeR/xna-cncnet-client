@@ -41,8 +41,8 @@
     <PackageReference Include="System.Memory" Version="4.5.5" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="2.3.18" Condition="'!$(Configuration.Contains(Debug))'" />
-    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="2.3.18" Condition="'$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine)" Version="2.3.19" Condition="'!$(Configuration.Contains(Debug))'" />
+    <PackageReference Include="Rampastring.RS.XNAUI.$(Engine).Debug" Version="2.3.19" Condition="'$(Configuration.Contains(Debug))'" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TranslationNotifierGenerator\TranslationNotifierGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
