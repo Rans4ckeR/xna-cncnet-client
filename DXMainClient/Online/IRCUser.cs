@@ -27,7 +27,7 @@ namespace DTAClient.Online
         public string Hostname { get; set; }
         public int GameID { get; set; } = -1;
 
-        public List<string> Channels = new List<string>();
+        public List<string> Channels = [];
 
         public object Clone()
         {

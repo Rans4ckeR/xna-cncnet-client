@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rampastring.XNAUI;
@@ -9,13 +9,16 @@ using DTAClient.Domain.Multiplayer;
 using ClientGUI;
 using Rampastring.Tools;
 using System.IO;
+using System.Threading.Tasks;
 using DTAClient.Domain;
 using Microsoft.Xna.Framework;
 using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
-    public class SkirmishLobby : GameLobbyBase, ISwitchable
+    using System.Globalization;
+
+    internal sealed class SkirmishLobby : GameLobbyBase, ISwitchable
     {
         private const string SETTINGS_PATH = "Client/SkirmishSettings.ini";
 
@@ -110,13 +113,13 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (GameMode.MultiplayerOnly)
             {
-                return String.Format("{0} can only be played on CnCNet and LAN.".L10N("Client:Main:GameModeMultiplayerOnly"),
+                return String.Format(CultureInfo.CurrentCulture, "{0} can only be played on CnCNet and LAN.".L10N("Client:Main:GameModeMultiplayerOnly"),
                     GameMode.UIName);
             }
 
             if (GameMode.MinPlayersOverride > -1 && totalPlayerCount < GameMode.MinPlayersOverride)
             {
-                return String.Format("{0} cannot be played with less than {1} players.".L10N("Client:Main:GameModeInsufficientPlayers"),
+                return String.Format(CultureInfo.CurrentCulture, "{0} cannot be played with less than {1} players.".L10N("Client:Main:GameModeInsufficientPlayers"),
                          GameMode.UIName, GameMode.MinPlayersOverride);
             }
 
@@ -127,7 +130,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (totalPlayerCount < Map.MinPlayers)
             {
-                return String.Format("The selected map cannot be played with less than {0} players.".L10N("Client:Main:MapInsufficientPlayers"),
+                return String.Format(CultureInfo.CurrentCulture, "The selected map cannot be played with less than {0} players.".L10N("Client:Main:MapInsufficientPlayers"),
                     Map.MinPlayers);
             }
 
@@ -135,11 +138,11 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             {
                 if (totalPlayerCount > Map.MaxPlayers)
                 {
-                    return String.Format("The selected map cannot be played with more than {0} players.".L10N("Client:Main:MapTooManyPlayers"),
+                    return String.Format(CultureInfo.CurrentCulture, "The selected map cannot be played with more than {0} players.".L10N("Client:Main:MapTooManyPlayers"),
                         Map.MaxPlayers);
                 }
 
-                IEnumerable<PlayerInfo> concatList = Players.Concat(AIPlayers);
+                List<PlayerInfo> concatList = Players.Concat(AIPlayers).ToList();
 
                 foreach (PlayerInfo pInfo in concatList)
                 {
@@ -165,29 +168,31 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             return null;
         }
 
-        protected override void BtnLaunchGame_LeftClick(object sender, EventArgs e)
+        protected override async ValueTask BtnLaunchGame_LeftClickAsync()
         {
             string error = CheckGameValidity();
 
             if (error == null)
             {
                 SaveSettings();
-                StartGame();
+                await StartGameAsync().ConfigureAwait(false);
                 return;
             }
 
             XNAMessageBox.Show(WindowManager, "Cannot launch game".L10N("Client:Main:LaunchGameErrorTitle"), error);
         }
 
-        protected override void BtnLeaveGame_LeftClick(object sender, EventArgs e)
+        protected override ValueTask BtnLeaveGame_LeftClickAsync()
         {
-            this.Enabled = false;
-            this.Visible = false;
+            Enabled = false;
+            Visible = false;
 
             Exited?.Invoke(this, EventArgs.Empty);
 
             topBar.RemovePrimarySwitchable(this);
             ResetDiscordPresence();
+
+            return default;
         }
 
         private void PlayerSideChanged(object sender, EventArgs e)
@@ -200,7 +205,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (discordHandler == null || Map == null || GameMode == null || !Initialized)
                 return;
 
-            int playerIndex = Players.FindIndex(p => p.Name == ProgramConstants.PLAYERNAME);
+            int playerIndex = Players.FindIndex(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
             if (playerIndex >= MAX_PLAYER_COUNT || playerIndex < 0)
                 return;
 
@@ -225,11 +230,10 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             return StatisticsManager.Instance.GetSkirmishRankForDefaultMap(gameModeMap.Map.UntranslatedName, gameModeMap.Map.MaxPlayers);
         }
 
-        protected override void GameProcessExited()
+        protected override async ValueTask GameProcessExitedAsync()
         {
-            base.GameProcessExited();
-
-            DdGameModeMapFilter_SelectedIndexChanged(null, EventArgs.Empty); // Refresh ranks
+            await base.GameProcessExitedAsync().ConfigureAwait(false);
+            await DdGameModeMapFilter_SelectedIndexChangedAsync().ConfigureAwait(false); // Refresh ranks
 
             RandomSeed = new Random().Next();
         }
@@ -273,7 +277,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 for (int i = 0; i < AIPlayers.Count; i++)
                 {
-                    skirmishSettingsIni.SetStringValue("AIPlayers", i.ToString(), AIPlayers[i].ToString());
+                    skirmishSettingsIni.SetStringValue("AIPlayers", i.ToString(CultureInfo.InvariantCulture), AIPlayers[i].ToString());
                 }
 
                 skirmishSettingsIni.SetStringValue("Settings", "Map", Map.SHA1);
@@ -296,7 +300,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             }
             catch (Exception ex)
             {
-                Logger.Log("Saving skirmish settings failed! Reason: " + ex.Message);
+                ProgramConstants.LogException(ex, "Saving skirmish settings failed!");
             }
         }
 
@@ -317,8 +321,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             if (string.IsNullOrEmpty(gameModeMapFilterName))
                 gameModeMapFilterName = skirmishSettingsIni.GetStringValue("Settings", "GameMode", string.Empty); // legacy
 
-            var gameModeMapFilter = ddGameModeMapFilter.Items.Find(i => i.Text == gameModeMapFilterName)?.Tag as GameModeMapFilter;
-            if (gameModeMapFilter == null || !gameModeMapFilter.Any())
+            if (ddGameModeMapFilter.Items.Find(i => string.Equals(i.Text, gameModeMapFilterName, StringComparison.OrdinalIgnoreCase))?.Tag is not GameModeMapFilter gameModeMapFilter || !gameModeMapFilter.Any())
                 gameModeMapFilter = GetDefaultGameModeMapFilter();
 
             var gameModeMap = gameModeMapFilter.GetGameModeMaps().First();
@@ -331,7 +334,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                 string mapSHA1 = skirmishSettingsIni.GetStringValue("Settings", "Map", string.Empty);
 
-                int gameModeMapIndex = gameModeMapFilter.GetGameModeMaps().FindIndex(gmm => gmm.Map.SHA1 == mapSHA1);
+                int gameModeMapIndex = gameModeMapFilter.GetGameModeMaps().FindIndex(gmm => string.Equals(gmm.Map.SHA1, mapSHA1, StringComparison.OrdinalIgnoreCase));
 
                 if (gameModeMapIndex > -1)
                 {
@@ -362,7 +365,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (keys == null)
             {
-                keys = new List<string>(); // No point skip parsing all settings if only AI info is missing.
+                keys = []; // No point skip parsing all settings if only AI info is missing.
                 //Logger.Log("AI player information doesn't exist in skirmish settings!");
                 //InitDefaultSettings();
                 //return;
@@ -396,7 +399,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                     if (GameMode != null)
                     {
-                        int gameModeMatchIndex = GameMode.ForcedDropDownValues.FindIndex(p => p.Key.Equals(dd.Name));
+                        int gameModeMatchIndex = GameMode.ForcedDropDownValues.FindIndex(p => string.Equals(p.Key, dd.Name, StringComparison.OrdinalIgnoreCase));
                         if (gameModeMatchIndex > -1)
                         {
                             Logger.Log("Dropdown '" + dd.Name + "' has forced value in gamemode - saved settings ignored.");
@@ -406,7 +409,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                     if (Map != null)
                     {
-                        int gameModeMatchIndex = Map.ForcedDropDownValues.FindIndex(p => p.Key.Equals(dd.Name));
+                        int gameModeMatchIndex = Map.ForcedDropDownValues.FindIndex(p => string.Equals(p.Key, dd.Name, StringComparison.OrdinalIgnoreCase));
                         if (gameModeMatchIndex > -1)
                         {
                             Logger.Log("Dropdown '" + dd.Name + "' has forced value in map - saved settings ignored.");
@@ -424,7 +427,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 {
                     if (GameMode != null)
                     {
-                        int gameModeMatchIndex = GameMode.ForcedCheckBoxValues.FindIndex(p => p.Key.Equals(cb.Name));
+                        int gameModeMatchIndex = GameMode.ForcedCheckBoxValues.FindIndex(p => string.Equals(p.Key, cb.Name, StringComparison.OrdinalIgnoreCase));
                         if (gameModeMatchIndex > -1)
                         {
                             Logger.Log("Checkbox '" + cb.Name + "' has forced value in gamemode - saved settings ignored.");
@@ -434,7 +437,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
                     if (Map != null)
                     {
-                        int gameModeMatchIndex = Map.ForcedCheckBoxValues.FindIndex(p => p.Key.Equals(cb.Name));
+                        int gameModeMatchIndex = Map.ForcedCheckBoxValues.FindIndex(p => string.Equals(p.Key, cb.Name, StringComparison.OrdinalIgnoreCase));
                         if (gameModeMatchIndex > -1)
                         {
                             Logger.Log("Checkbox '" + cb.Name + "' has forced value in map - saved settings ignored.");

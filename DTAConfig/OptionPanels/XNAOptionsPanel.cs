@@ -22,7 +22,7 @@ namespace DTAConfig.OptionPanels
             IniSettings = iniSettings;
         }
 
-        private readonly List<IUserSetting> userSettings = new List<IUserSetting>();
+        private readonly List<IUserSetting> userSettings = [];
 
         public override void Initialize()
         {

@@ -1,12 +1,16 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Rampastring.Tools;
 using System.IO;
-using System.Linq;
+#if !NETFRAMEWORK
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
+#endif
 using ClientCore.I18N;
 using ClientCore.Extensions;
+using System.Globalization;
+#if NETFRAMEWORK
+using System.Linq;
+#endif
 
 namespace ClientCore
 {
@@ -15,7 +19,6 @@ namespace ClientCore
         private const string GENERAL = "General";
         private const string AUDIO = "Audio";
         private const string SETTINGS = "Settings";
-        private const string LINKS = "Links";
         private const string TRANSLATIONS = "Translations";
 
         private const string CLIENT_SETTINGS = "DTACnCNetClient.ini";
@@ -53,14 +56,7 @@ namespace ClientCore
         /// <returns>The object of the ClientConfiguration class.</returns>
         public static ClientConfiguration Instance
         {
-            get
-            {
-                if (_instance == null)
-                {
-                    _instance = new ClientConfiguration();
-                }
-                return _instance;
-            }
+            get { return _instance ??= new ClientConfiguration(); }
         }
 
         public void RefreshSettings()
@@ -100,7 +96,7 @@ namespace ClientCore
 
         public string AltUIBackgroundColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "AltUIBackgroundColor", "196,196,196");
 
-        public string WindowBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "WindowBorderColor", "128,128,128"); 
+        public string WindowBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "WindowBorderColor", "128,128,128");
 
         public string PanelBorderColor => DTACnCNetClient_ini.GetStringValue(GENERAL, "PanelBorderColor", "255,255,255");
 
@@ -209,13 +205,13 @@ namespace ClientCore
 
         public string LongGameName => clientDefinitionsIni.GetStringValue(SETTINGS, "LongGameName", "Tiberian Sun");
 
-        public string LongSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "LongSupportURL", "http://www.moddb.com/members/rampastring");
+        public string LongSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "LongSupportURL", $"{Uri.UriSchemeHttps}://www.moddb.com/members/rampastring");
 
         public string ShortSupportURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ShortSupportURL", "www.moddb.com/members/rampastring");
 
-        public string ChangelogURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ChangelogURL", "http://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/change-log");
+        public string ChangelogURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ChangelogURL", $"{Uri.UriSchemeHttps}://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/change-log");
 
-        public string CreditsURL => clientDefinitionsIni.GetStringValue(SETTINGS, "CreditsURL", "http://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/credits#Rampastring");
+        public string CreditsURL => clientDefinitionsIni.GetStringValue(SETTINGS, "CreditsURL", $"{Uri.UriSchemeHttps}://www.moddb.com/mods/the-dawn-of-the-tiberium-age/tutorials/credits#Rampastring");
 
         public string ManualDownloadURL => clientDefinitionsIni.GetStringValue(SETTINGS, "ManualDownloadURL", string.Empty);
 
@@ -237,7 +233,7 @@ namespace ClientCore
 
         public string StatisticsLogFileName => clientDefinitionsIni.GetStringValue(SETTINGS, "StatisticsLogFileName", "DTA.LOG");
 
-        public (string Name, string Path) GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(), ",").Split(',').AsTuple2();
+        public (string Name, string Path) GetThemeInfoFromIndex(int themeIndex) => clientDefinitionsIni.GetStringValue("Themes", themeIndex.ToString(CultureInfo.InvariantCulture), ",").Split(',').AsTuple2();
 
         /// <summary>
         /// Returns the directory path for a theme, or null if the specified
@@ -250,8 +246,8 @@ namespace ClientCore
             var themeSection = clientDefinitionsIni.GetSection("Themes");
             foreach (var key in themeSection.Keys)
             {
-                var (name, path) = key.Value.Split(',');
-                if (name == themeName)
+                (string name, string path) = key.Value.Split(',');
+                if (string.Equals(name, themeName, StringComparison.OrdinalIgnoreCase))
                     return path;
             }
 
@@ -277,23 +273,27 @@ namespace ClientCore
         /// <exception cref="IniParseException">Thrown when the syntax of the list is invalid.</exception>
         private List<TranslationGameFile> ParseTranslationGameFiles()
         {
-            List<TranslationGameFile> gameFiles = new();
+            List<TranslationGameFile> gameFiles = [];
 
             for (int i = 0; clientDefinitionsIni.KeyExists(TRANSLATIONS, $"GameFile{i}"); i++)
             {
                 // the syntax is GameFileX=path/to/source.file,path/to/destination.file[,checked]
                 string value = clientDefinitionsIni.GetStringValue(TRANSLATIONS, $"GameFile{i}", string.Empty);
+#if NETFRAMEWORK
+                string[] parts = value.Split(',').Select(q => q.Trim()).ToArray();
+#else
                 string[] parts = value.Split(',', StringSplitOptions.TrimEntries);
+#endif
 
                 // fail explicitly if the syntax is wrong
                 if (parts.Length is < 2 or > 3
-                    || (parts.Length == 3 && parts[2].ToUpperInvariant() != "CHECKED"))
+                    || (parts.Length == 3 && !string.Equals(parts[2], "CHECKED", StringComparison.OrdinalIgnoreCase)))
                 {
                     throw new IniParseException($"Invalid syntax for value of GameFile{i}! " +
                         $"Expected path/to/source.file,path/to/destination.file[,checked], read {value}.");
                 }
 
-                bool isChecked = parts.Length == 3 && parts[2].ToUpperInvariant() == "CHECKED";
+                bool isChecked = parts.Length == 3 && parts[2].Equals("CHECKED", StringComparison.OrdinalIgnoreCase);
 
                 gameFiles.Add(new(Source: parts[0], Target: parts[1], isChecked));
             }
@@ -337,7 +337,7 @@ namespace ClientCore
         public bool DisplayPlayerCountInTopBar => clientDefinitionsIni.GetBooleanValue(SETTINGS, "DisplayPlayerCountInTopBar", false);
 
         /// <summary>
-        /// The name of the executable in the main game directory that selects 
+        /// The name of the executable in the main game directory that selects
         /// the correct main client executable.
         /// For example, DTA.exe in case of DTA.
         /// </summary>
@@ -382,15 +382,32 @@ namespace ClientCore
 
         public OSVersion GetOperatingSystemVersion()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+#if NETFRAMEWORK
+            if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
-                if (OperatingSystem.IsWindowsVersionAtLeast(6, 3))
-                    return OSVersion.WIN810;
+                Version osVersion = Environment.OSVersion.Version;
 
-                return OSVersion.WIN7;
+                if (osVersion.Major < 5)
+                    return OSVersion.UNKNOWN;
+
+                if (osVersion.Major < 6)
+                    return OSVersion.WINXP;
+
+                if (osVersion.Major == 6 && osVersion.Minor < 1)
+                    return OSVersion.WINVISTA;
+
+                if (osVersion.Major == 6 && osVersion.Minor < 2)
+                    return OSVersion.WIN7;
+
+                return OSVersion.WIN810;
             }
 
-            return OSVersion.UNIX;
+            return ProgramConstants.ISMONO ? OSVersion.UNIX : OSVersion.UNKNOWN;
+#else
+            return RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+                ? OperatingSystem.IsWindowsVersionAtLeast(6, 3) ? OSVersion.WIN810 : OSVersion.WIN7
+                : OSVersion.UNIX;
+#endif
         }
     }
 
@@ -400,7 +417,8 @@ namespace ClientCore
     /// </summary>
     public class ClientConfigurationException : Exception
     {
-        public ClientConfigurationException(string message) : base(message)
+        public ClientConfigurationException(string message, Exception ex = null)
+            : base(message, ex)
         {
         }
     }

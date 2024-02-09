@@ -14,7 +14,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     /// <summary>
     /// A player location indicator for the map preview.
     /// </summary>
-    public class PlayerLocationIndicator : XNAControl
+    internal sealed class PlayerLocationIndicator : XNAControl
     {
         const float TEXTURE_SCALE = 0.25f;
 
@@ -33,7 +33,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private Texture2D hoverTexture;
         private Texture2D usedTexture;
         public Texture2D WaypointTexture { get; set; }
-        public List<PlayerInfo> Players = new List<PlayerInfo>();
+        public List<PlayerInfo> Players = [];
 
         List<MultiplayerColor> mpColors;
 
@@ -68,7 +68,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         private Vector2 textSize;
         private int textXPosition;
 
-        private List<PlayerText> pText = new List<PlayerText>();
+        private List<PlayerText> pText = [];
 
         public override void Initialize()
         {

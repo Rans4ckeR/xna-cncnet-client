@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;

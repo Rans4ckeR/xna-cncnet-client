@@ -7,6 +7,8 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
+    using System.Globalization;
+
     public class TeamStartMappingPanel : XNAPanel
     {
         private readonly int _start;
@@ -29,7 +31,7 @@ namespace DTAClient.DXGUI.Multiplayer
             base.Initialize();
 
             var startLabel = new XNALabel(WindowManager);
-            startLabel.Text = _start.ToString();
+            startLabel.Text = _start.ToString(CultureInfo.InvariantCulture);
             startLabel.ClientRectangle = new Rectangle(0, 0, 10, 22);
             AddChild(startLabel);
 

@@ -1,24 +1,4 @@
-﻿/*********************************************************************
-* Dawn of the Tiberium Age MonoGame/XNA CnCNet Client
-* Expression Parser
-* Copyright (C) Rampastring 2022
-* 
-* The CnCNet Client is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-* 
-* The CnCNet Client is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-* 
-* You should have received a copy of the GNU General Public License
-* along with this program.If not, see<https://www.gnu.org/licenses/>.
-* 
-*********************************************************************/
-
-using ClientCore;
+﻿using ClientCore;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
@@ -39,9 +19,11 @@ namespace ClientGUI
             if (_instance != null)
                 throw new InvalidOperationException("Only one instance of Parser can exist at a time.");
 
-            globalConstants = new Dictionary<string, int>();
-            globalConstants.Add("RESOLUTION_WIDTH", windowManager.RenderResolutionX);
-            globalConstants.Add("RESOLUTION_HEIGHT", windowManager.RenderResolutionY);
+            globalConstants = new Dictionary<string, int>
+            {
+                { "RESOLUTION_WIDTH", windowManager.RenderResolutionX },
+                { "RESOLUTION_HEIGHT", windowManager.RenderResolutionY }
+            };
 
             IniSection parserConstantsSection = ClientConfiguration.Instance.GetParserConstants();
             if (parserConstantsSection != null)
@@ -66,7 +48,7 @@ namespace ClientGUI
 
         private XNAControl GetControl(string controlName)
         {
-            if (controlName == primaryControl.Name)
+            if (string.Equals(controlName, primaryControl.Name, StringComparison.OrdinalIgnoreCase))
                 return primaryControl;
 
             var control = Find(primaryControl.Children, controlName);
@@ -80,7 +62,7 @@ namespace ClientGUI
         {
             foreach (XNAControl child in list)
             {
-                if (child.Name == controlName)
+                if (string.Equals(child.Name, controlName, StringComparison.OrdinalIgnoreCase))
                     return child;
 
                 XNAControl childOfChild = Find(child.Children, controlName);
@@ -252,14 +234,14 @@ namespace ClientGUI
             SkipWhitespace();
             ConsumeChar(')');
 
-            if (paramName == "$ParentControl")
+            if (string.Equals(paramName, "$ParentControl", StringComparison.OrdinalIgnoreCase))
             {
                 if (parsingControl.Parent == null)
                     throw new INIConfigException("$ParentControl used for control that has no parent: " + parsingControl.Name);
 
                 paramName = parsingControl.Parent.Name;
             }
-            else if (paramName == "$Self")
+            else if (string.Equals(paramName, "$Self", StringComparison.OrdinalIgnoreCase))
             {
                 paramName = parsingControl.Name;
             }

@@ -1,31 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace ClientCore.Statistics
 {
     public abstract class GenericStatisticsManager
     {
-        protected List<MatchStatistics> Statistics = new List<MatchStatistics>();
+        protected List<MatchStatistics> Statistics = [];
 
-        protected static string GetStatDatabaseVersion(string scorePath)
+        protected static async ValueTask<string> GetStatDatabaseVersionAsync(string scorePath)
         {
             if (!File.Exists(scorePath))
             {
                 return null;
             }
 
-            using (StreamReader reader = new StreamReader(scorePath))
-            {
-                char[] versionBuffer = new char[4];
-                reader.Read(versionBuffer, 0, versionBuffer.Length);
+            using var reader = new StreamReader(scorePath);
+            char[] versionBuffer = new char[4];
+            await reader.ReadAsync(versionBuffer, 0, versionBuffer.Length).ConfigureAwait(false);
 
-                String s = new String(versionBuffer);
-                return s;
-            }
+            return new string(versionBuffer);
         }
-
-        public abstract void ReadStatistics(string gamePath);
 
         public int GetMatchCount() { return Statistics.Count; }
 

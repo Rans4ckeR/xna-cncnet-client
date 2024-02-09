@@ -8,6 +8,8 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Multiplayer
 {
+    using System.Globalization;
+
     public class GameFiltersPanel : XNAPanel
     {
         private const int minPlayerCount = 2;
@@ -79,7 +81,7 @@ namespace DTAClient.DXGUI.Multiplayer
             );
             for (int i = minPlayerCount; i <= maxPlayerCount; i++)
             {
-                ddMaxPlayerCount.AddItem(i.ToString());
+                ddMaxPlayerCount.AddItem(i.ToString(CultureInfo.CurrentCulture));
             }
 
             var lblMaxPlayerCount = new XNALabel(WindowManager);
@@ -152,7 +154,7 @@ namespace DTAClient.DXGUI.Multiplayer
             userIniSettings.HideLockedGames.Value = chkBoxHideLockedGames.Checked;
             userIniSettings.HidePasswordedGames.Value = chkBoxHidePasswordedGames.Checked;
             userIniSettings.HideIncompatibleGames.Value = chkBoxHideIncompatibleGames.Checked;
-            userIniSettings.MaxPlayerCount.Value = int.Parse(ddMaxPlayerCount.SelectedItem.Text);
+            userIniSettings.MaxPlayerCount.Value = int.Parse(ddMaxPlayerCount.SelectedItem.Text, CultureInfo.InvariantCulture);
             
             UserINISettings.Instance.SaveSettings();
         }
@@ -164,7 +166,7 @@ namespace DTAClient.DXGUI.Multiplayer
             chkBoxHideLockedGames.Checked = userIniSettings.HideLockedGames.Value;
             chkBoxHidePasswordedGames.Checked = userIniSettings.HidePasswordedGames.Value;
             chkBoxHideIncompatibleGames.Checked = userIniSettings.HideIncompatibleGames.Value;
-            ddMaxPlayerCount.SelectedIndex = ddMaxPlayerCount.Items.FindIndex(i => i.Text == userIniSettings.MaxPlayerCount.Value.ToString());
+            ddMaxPlayerCount.SelectedIndex = ddMaxPlayerCount.Items.FindIndex(i => string.Equals(i.Text, userIniSettings.MaxPlayerCount.Value.ToString(CultureInfo.InvariantCulture), StringComparison.OrdinalIgnoreCase));
         }
 
         private void ResetDefaults()

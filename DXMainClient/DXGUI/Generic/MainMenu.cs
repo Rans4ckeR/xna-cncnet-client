@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientGUI;
 using DTAClient.Domain;
 using DTAClient.Domain.Multiplayer.CnCNet;
@@ -20,11 +20,14 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using ClientUpdater;
 using DTAClient.Domain.Multiplayer;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// The main menu of the client.
     /// </summary>
@@ -185,7 +188,7 @@ namespace DTAClient.DXGUI.Generic
             btnLan.IdleTexture = AssetLoader.LoadTexture("MainMenu/lan.png");
             btnLan.HoverTexture = AssetLoader.LoadTexture("MainMenu/lan_c.png");
             btnLan.HoverSoundEffect = new EnhancedSoundEffect("MainMenu/button.wav");
-            btnLan.LeftClick += BtnLan_LeftClick;
+            btnLan.LeftClick += (_, _) => BtnLan_LeftClickAsync().HandleTask();
 
             btnOptions = new XNAClientButton(WindowManager);
             btnOptions.Name = nameof(btnOptions);
@@ -227,7 +230,7 @@ namespace DTAClient.DXGUI.Generic
             btnExit.IdleTexture = AssetLoader.LoadTexture("MainMenu/exitgame.png");
             btnExit.HoverTexture = AssetLoader.LoadTexture("MainMenu/exitgame_c.png");
             btnExit.HoverSoundEffect = new EnhancedSoundEffect("MainMenu/button.wav");
-            btnExit.LeftClick += BtnExit_LeftClick;
+            btnExit.LeftClick += (_, _) => BtnExit_LeftClick();
 
             XNALabel lblCnCNetStatus = new XNALabel(WindowManager);
             lblCnCNetStatus.Name = nameof(lblCnCNetStatus);
@@ -304,7 +307,7 @@ namespace DTAClient.DXGUI.Generic
             cncnetPlayerCountCancellationSource = new CancellationTokenSource();
             CnCNetPlayerCountTask.InitializeService(cncnetPlayerCountCancellationSource);
 
-            WindowManager.GameClosing += WindowManager_GameClosing;
+            WindowManager.GameClosing += (_, _) => CleanAsync().HandleTask();
 
             skirmishLobby.Exited += SkirmishLobby_Exited;
             lanLobby.Exited += LanLobby_Exited;
@@ -314,10 +317,8 @@ namespace DTAClient.DXGUI.Generic
 
             GameProcessLogic.GameProcessStarted += SharedUILogic_GameProcessStarted;
             GameProcessLogic.GameProcessStarting += SharedUILogic_GameProcessStarting;
-
             UserINISettings.Instance.SettingsSaved += SettingsSaved;
-
-            Updater.Restart += Updater_Restart;
+            Updater.Restart += (_, _) => WindowManager.AddCallback(ExitClient);
 
             SetButtonHotkeys(true);
         }
@@ -377,15 +378,9 @@ namespace DTAClient.DXGUI.Generic
             }
             catch (Exception ex)
             {
-                Logger.Log("Refreshing settings failed! Exception message: " + ex.Message);
-                // We don't want to show the dialog when starting a game
-                //XNAMessageBox.Show(WindowManager, "Saving settings failed",
-                //    "Saving settings failed! Error message: " + ex.Message);
+                ProgramConstants.LogException(ex, "Refreshing settings failed!");
             }
         }
-
-        private void Updater_Restart(object sender, EventArgs e) =>
-            WindowManager.AddCallback(new Action(ExitClient), null);
 
         /// <summary>
         /// Applies configuration changes (music playback and volume)
@@ -479,7 +474,7 @@ namespace DTAClient.DXGUI.Generic
 
                 firstRunMessageBox = XNAMessageBox.ShowYesNoDialog(WindowManager,
                     "Initial Installation".L10N("Client:Main:InitialInstallationTitle"),
-                    string.Format(("You have just installed {0}.\n" +
+                    string.Format(CultureInfo.CurrentCulture, ("You have just installed {0}.\n" +
                         "It's highly recommended that you configure your settings before playing.\n" +
                         "Do you want to configure them now?").L10N("Client:Main:InitialInstallationText"),
                     ClientConfiguration.Instance.LocalGame));
@@ -499,8 +494,6 @@ namespace DTAClient.DXGUI.Generic
         private void FirstRunMessageBox_YesClicked(XNAMessageBox messageBox) => optionsWindow.Open();
 
         private void SharedUILogic_GameProcessStarted() => MusicOff();
-
-        private void WindowManager_GameClosing(object sender, EventArgs e) => Clean();
 
         private void SkirmishLobby_Exited(object sender, EventArgs e)
         {
@@ -526,24 +519,32 @@ namespace DTAClient.DXGUI.Generic
                 if (e.PlayerCount == -1)
                     lblCnCNetPlayerCount.Text = "N/A".L10N("Client:Main:N/A");
                 else
-                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString();
+                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString(CultureInfo.CurrentCulture);
             }
         }
 
         /// <summary>
-        /// Attemps to "clean" the client session in a nice way if the user closes the game.
+        /// Attempts to "clean" the client session in a nice way if the user closes the game.
         /// </summary>
-        private void Clean()
+        private async ValueTask CleanAsync()
         {
             Updater.FileIdentifiersUpdated -= Updater_FileIdentifiersUpdated;
 
-            if (cncnetPlayerCountCancellationSource != null) cncnetPlayerCountCancellationSource.Cancel();
-            topBar.Clean();
+#if !NETFRAMEWORK
+            if (cncnetPlayerCountCancellationSource is not null)
+                await cncnetPlayerCountCancellationSource.CancelAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+
+            await topBar.CleanAsync().ConfigureAwait(ConfigureAwaitOptions.None);
+#else
+            cncnetPlayerCountCancellationSource?.Cancel();
+            await topBar.CleanAsync().ConfigureAwait(false);
+#endif
+
             if (UpdateInProgress)
                 Updater.StopUpdate();
 
             if (connectionManager.IsConnected)
-                connectionManager.Disconnect();
+                await connectionManager.DisconnectAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -605,9 +606,8 @@ namespace DTAClient.DXGUI.Generic
             CheckIfFirstRun();
         }
 
-        private void SwitchMainMenuMusicFormat()
+        private static void SwitchMainMenuMusicFormat()
         {
-#if GL || DX
             FileInfo wmaMainMenuMusicFile = SafePath.GetFile(ProgramConstants.GamePath, ProgramConstants.BASE_RESOURCE_PATH,
                 FormattableString.Invariant($"{ClientConfiguration.Instance.MainMenuMusicName}.wma"));
 
@@ -620,10 +620,9 @@ namespace DTAClient.DXGUI.Generic
             if (!wmaBackupMainMenuMusicFile.Exists)
                 wmaMainMenuMusicFile.CopyTo(wmaBackupMainMenuMusicFile.FullName);
 
-#endif
-#if DX
+#if !GL
             wmaBackupMainMenuMusicFile.CopyTo(wmaMainMenuMusicFile.FullName, true);
-#elif GL
+#else
             FileInfo oggMainMenuMusicFile = SafePath.GetFile(ProgramConstants.GamePath, ProgramConstants.BASE_RESOURCE_PATH,
                 FormattableString.Invariant($"{ClientConfiguration.Instance.MainMenuMusicName}.ogg"));
 
@@ -644,8 +643,8 @@ namespace DTAClient.DXGUI.Generic
 
             innerPanel.Show(null); // Darkening
             XNAMessageBox msgBox = new XNAMessageBox(WindowManager, "Update failed".L10N("Client:Main:UpdateFailedTitle"),
-                string.Format(("An error occured while updating. Returned error was: {0}\n\nIf you are connected to the Internet and your firewall isn't blocking\n{1}, and the issue is reproducible, contact us at\n{2} for support.").L10N("Client:Main:UpdateFailedText"),
-                e.Reason, Path.GetFileName(ProgramConstants.StartupExecutable), MainClientConstants.SUPPORT_URL_SHORT), XNAMessageBoxButtons.OK);
+                string.Format(CultureInfo.CurrentCulture, "An error occured while updating. Returned error was: {0}\n\nIf you are connected to the Internet and your firewall isn't blocking\n{1}, and the issue is reproducible, contact us at\n{2} for support.".L10N("Client:Main:UpdateFailedText"),
+                e.Reason, Path.GetFileName(ProgramConstants.StartupExecutable), ProgramConstants.SUPPORT_URL_SHORT), XNAMessageBoxButtons.OK);
             msgBox.OKClickedAction = MsgBox_OKClicked;
             msgBox.Show();
         }
@@ -667,8 +666,8 @@ namespace DTAClient.DXGUI.Generic
         private void UpdateWindow_UpdateCompleted(object sender, EventArgs e)
         {
             innerPanel.Hide();
-            lblUpdateStatus.Text = string.Format("{0} was succesfully updated to v.{1}".L10N("Client:Main:UpdateSuccess"),
-                MainClientConstants.GAME_NAME_SHORT, Updater.GameVersion);
+            lblUpdateStatus.Text = string.Format(CultureInfo.CurrentCulture, "{0} was succesfully updated to v.{1}".L10N("Client:Main:UpdateSuccess"),
+                ProgramConstants.GAME_NAME_SHORT, Updater.GameVersion);
             lblVersion.Text = Updater.GameVersion;
             UpdateInProgress = false;
             lblUpdateStatus.Enabled = true;
@@ -718,7 +717,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         private void Updater_FileIdentifiersUpdated()
-            => WindowManager.AddCallback(new Action(HandleFileIdentifierUpdate), null);
+            => WindowManager.AddCallback(HandleFileIdentifierUpdate);
 
         /// <summary>
         /// Used for displaying the result of an update check in the UI.
@@ -732,7 +731,7 @@ namespace DTAClient.DXGUI.Generic
 
             if (Updater.VersionState == VersionState.UPTODATE)
             {
-                lblUpdateStatus.Text = string.Format("{0} is up to date.".L10N("Client:Main:GameUpToDate"), MainClientConstants.GAME_NAME_SHORT);
+                lblUpdateStatus.Text = string.Format(CultureInfo.CurrentCulture, "{0} is up to date.".L10N("Client:Main:GameUpToDate"), ProgramConstants.GAME_NAME_SHORT);
                 lblUpdateStatus.Enabled = true;
                 lblUpdateStatus.DrawUnderline = false;
             }
@@ -834,15 +833,15 @@ namespace DTAClient.DXGUI.Generic
         private void BtnLoadGame_LeftClick(object sender, EventArgs e)
             => innerPanel.Show(innerPanel.GameLoadingWindow);
 
-        private void BtnLan_LeftClick(object sender, EventArgs e)
+        private async ValueTask BtnLan_LeftClickAsync()
         {
-            lanLobby.Open();
+            await lanLobby.OpenAsync().ConfigureAwait(false);
 
             if (UserINISettings.Instance.StopMusicOnMenu)
                 MusicOff();
 
             if (connectionManager.IsConnected)
-                connectionManager.Disconnect();
+                await connectionManager.DisconnectAsync().ConfigureAwait(false);
 
             topBar.SetLanMode(true);
         }
@@ -864,13 +863,13 @@ namespace DTAClient.DXGUI.Generic
 
         private void BtnCredits_LeftClick(object sender, EventArgs e)
         {
-            ProcessLauncher.StartShellProcess(MainClientConstants.CREDITS_URL);
+            ProcessLauncher.StartShellProcess(ProgramConstants.CREDITS_URL);
         }
 
         private void BtnExtras_LeftClick(object sender, EventArgs e) =>
             innerPanel.Show(innerPanel.ExtrasWindow);
 
-        private void BtnExit_LeftClick(object sender, EventArgs e)
+        private void BtnExit_LeftClick()
         {
 #if WINFORMS
             WindowManager.HideWindow();
@@ -879,7 +878,7 @@ namespace DTAClient.DXGUI.Generic
         }
 
         private void SharedUILogic_GameProcessExited() =>
-            AddCallback(new Action(HandleGameProcessExited), null);
+            AddCallback(HandleGameProcessExited);
 
         private void HandleGameProcessExited()
         {
@@ -941,7 +940,7 @@ namespace DTAClient.DXGUI.Generic
                 }
                 catch (InvalidOperationException ex)
                 {
-                    Logger.Log("Playing main menu music failed! " + ex.Message);
+                    ProgramConstants.LogException(ex, "Playing main menu music failed!");
                 }
             }
         }
@@ -984,7 +983,7 @@ namespace DTAClient.DXGUI.Generic
             if (MediaPlayer.Volume > step)
             {
                 MediaPlayer.Volume -= step;
-                AddCallback(new Action(FadeMusicExit), null);
+                AddCallback(FadeMusicExit);
             }
             else
             {
@@ -998,10 +997,6 @@ namespace DTAClient.DXGUI.Generic
             Logger.Log("Exiting.");
             WindowManager.CloseGame();
             themeSong?.Dispose();
-#if !XNA
-            Thread.Sleep(1000);
-            Environment.Exit(0);
-#endif
         }
 
         public void SwitchOn()
@@ -1036,7 +1031,7 @@ namespace DTAClient.DXGUI.Generic
             }
             catch (Exception ex)
             {
-                Logger.Log("Turning music off failed! Message: " + ex.Message);
+                ProgramConstants.LogException(ex, "Turning music off failed!");
             }
         }
 
@@ -1052,9 +1047,9 @@ namespace DTAClient.DXGUI.Generic
                 MediaState state = MediaPlayer.State;
                 return true;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Logger.Log("Error encountered when checking media player availability. Error message: " + e.Message);
+                ProgramConstants.LogException(ex, "Error encountered when checking media player availability.");
                 return false;
             }
         }

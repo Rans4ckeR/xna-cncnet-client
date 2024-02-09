@@ -10,7 +10,6 @@ using Microsoft.Xna.Framework.Graphics;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using System;
-using ClientGUI;
 using DTAClient.Domain.Multiplayer;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.DXGUI.Multiplayer;
@@ -25,15 +24,15 @@ using Rampastring.XNAUI.XNAControls;
 using MainMenu = DTAClient.DXGUI.Generic.MainMenu;
 #if DX || (GL && WINFORMS)
 using System.Diagnostics;
-using System.IO;
 #endif
 #if WINFORMS
-using System.Windows.Forms;
 using System.IO;
 #endif
 
 namespace DTAClient.DXGUI
 {
+    using System.Globalization;
+
     /// <summary>
     /// The main class for the game. Sets up asset search paths
     /// and initializes components.
@@ -59,7 +58,7 @@ namespace DTAClient.DXGUI
 
             string windowTitle = ClientConfiguration.Instance.WindowTitle;
             Window.Title = string.IsNullOrEmpty(windowTitle) ?
-                string.Format("{0} Client", MainClientConstants.GAME_NAME_SHORT) : windowTitle;
+                string.Format(CultureInfo.CurrentCulture, "{0} Client", ProgramConstants.GAME_NAME_SHORT) : windowTitle;
 
             base.Initialize();
 
@@ -86,41 +85,34 @@ namespace DTAClient.DXGUI
 
                 _ = AssetLoader.LoadTextureUncached("checkBoxClear.png");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex.Message.Contains("DeviceRemoved", StringComparison.OrdinalIgnoreCase))
             {
-                if (ex.Message.Contains("DeviceRemoved"))
+                ProgramConstants.LogException(ex, $"Creating texture on startup failed! Creating {startupFailureFile} file and re-launching client launcher.");
+
+                DirectoryInfo clientDirectory = SafePath.GetDirectory(ProgramConstants.ClientUserFilesPath);
+
+                if (!clientDirectory.Exists)
+                    clientDirectory.Create();
+
+                // Create startup failure file that the launcher can check for this error
+                // and handle it by redirecting the user to another version instead
+                File.WriteAllBytes(SafePath.CombineFilePath(clientDirectory.FullName, startupFailureFile), [1]);
+
+                string launcherExe = ClientConfiguration.Instance.LauncherExe;
+                if (string.IsNullOrEmpty(launcherExe))
                 {
-                    Logger.Log($"Creating texture on startup failed! Creating {startupFailureFile} file and re-launching client launcher.");
+                    // LauncherExe is unspecified, just throw the exception forward
+                    // because we can't handle it
+                    Logger.Log("No LauncherExe= specified in ClientDefinitions.ini! " +
+                        "Forwarding exception to regular exception handler.");
 
-                    DirectoryInfo clientDirectory = SafePath.GetDirectory(ProgramConstants.ClientUserFilesPath);
-
-                    if (!clientDirectory.Exists)
-                        clientDirectory.Create();
-
-                    // Create startup failure file that the launcher can check for this error
-                    // and handle it by redirecting the user to another version instead
-
-                    File.WriteAllBytes(SafePath.CombineFilePath(clientDirectory.FullName, startupFailureFile), new byte[] { 1 });
-
-                    string launcherExe = ClientConfiguration.Instance.LauncherExe;
-                    if (string.IsNullOrEmpty(launcherExe))
-                    {
-                        // LauncherExe is unspecified, just throw the exception forward
-                        // because we can't handle it
-
-                        Logger.Log("No LauncherExe= specified in ClientDefinitions.ini! " +
-                            "Forwarding exception to regular exception handler.");
-
-                        throw;
-                    }
-                    else
-                    {
-                        Logger.Log("Starting " + launcherExe + " and exiting.");
-
-                        Process.Start(SafePath.CombineFilePath(ProgramConstants.GamePath, launcherExe));
-                        Environment.Exit(1);
-                    }
+                    throw;
                 }
+
+                Logger.Log("Starting " + launcherExe + " and exiting.");
+
+                using var _ = Process.Start(SafePath.CombineFilePath(ProgramConstants.GamePath, launcherExe));
+                Environment.Exit(1);
             }
 
 #endif
@@ -172,15 +164,15 @@ namespace DTAClient.DXGUI
 
             if (UserINISettings.Instance.AutoRemoveUnderscoresFromName)
             {
-                while (playerName.EndsWith("_"))
-                    playerName = playerName.Substring(0, playerName.Length - 1);
+                while (playerName.EndsWith('_'))
+                    playerName = playerName[..^1];
             }
 
             if (string.IsNullOrEmpty(playerName))
             {
                 playerName = Environment.UserName;
 
-                playerName = playerName.Substring(playerName.IndexOf("\\") + 1);
+                playerName = playerName[(playerName.IndexOf('\\', StringComparison.OrdinalIgnoreCase) + 1)..];
             }
 
             playerName = Renderer.GetSafeString(NameValidator.GetValidOfflineName(playerName), 0);
@@ -189,8 +181,14 @@ namespace DTAClient.DXGUI
             UserINISettings.Instance.PlayerName.Value = playerName;
 
             IServiceProvider serviceProvider = BuildServiceProvider(wm);
+            CnCNetUserData cncNetUserData = serviceProvider.GetService<CnCNetUserData>();
+
+            cncNetUserData.InitializeAsync().HandleTask();
+
             LoadingScreen ls = serviceProvider.GetService<LoadingScreen>();
+
             wm.AddAndInitializeControl(ls);
+
             ls.ClientRectangle = new Rectangle((wm.RenderResolutionX - ls.Width) / 2,
                 (wm.RenderResolutionY - ls.Height) / 2, ls.Width, ls.Height);
         }
@@ -263,6 +261,8 @@ namespace DTAClient.DXGUI
                     }
                 )
                 .Build();
+
+            windowManager.GameClosing += (_, _) => { host.Dispose(); };
 
             return host.Services.GetService<IServiceProvider>();
         }

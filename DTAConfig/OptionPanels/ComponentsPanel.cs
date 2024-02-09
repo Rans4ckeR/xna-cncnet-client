@@ -1,4 +1,4 @@
-using ClientCore.Extensions;
+﻿using ClientCore.Extensions;
 using ClientCore;
 using ClientGUI;
 using Microsoft.Xna.Framework;
@@ -12,6 +12,8 @@ using ClientUpdater;
 
 namespace DTAConfig.OptionPanels
 {
+    using System.Globalization;
+
     class ComponentsPanel : XNAOptionsPanel
     {
         public ComponentsPanel(WindowManager windowManager, UserINISettings iniSettings)
@@ -19,7 +21,7 @@ namespace DTAConfig.OptionPanels
         {
         }
 
-        List<XNAClientButton> installationButtons = new List<XNAClientButton>();
+        List<XNAClientButton> installationButtons = [];
 
         bool downloadCancelled = false;
 
@@ -42,7 +44,7 @@ namespace DTAConfig.OptionPanels
                 {
                     buttonText = "Uninstall".L10N("Client:DTAConfig:Uninstall");
 
-                    if (c.LocalIdentifier != c.RemoteIdentifier)
+                    if (!string.Equals(c.LocalIdentifier, c.RemoteIdentifier, StringComparison.OrdinalIgnoreCase))
                         buttonText = "Update".L10N("Client:DTAConfig:Update");
                 }
                 else
@@ -113,7 +115,7 @@ namespace DTAConfig.OptionPanels
                     buttonText = "Uninstall".L10N("Client:DTAConfig:Uninstall");
                     buttonEnabled = true;
 
-                    if (c.LocalIdentifier != c.RemoteIdentifier)
+                    if (!string.Equals(c.LocalIdentifier, c.RemoteIdentifier, StringComparison.OrdinalIgnoreCase))
                         buttonText = "Update".L10N("Client:DTAConfig:Update") + $" ({GetSizeString(c.RemoteSize)})";
                 }
                 else
@@ -145,7 +147,7 @@ namespace DTAConfig.OptionPanels
 
             if (localFileInfo.Exists)
             {
-                if (cc.LocalIdentifier == cc.RemoteIdentifier)
+                if (string.Equals(cc.LocalIdentifier, cc.RemoteIdentifier, StringComparison.OrdinalIgnoreCase))
                 {
                     localFileInfo.Delete();
                     btn.Text = "Install".L10N("Client:DTAConfig:Install") + $" ({GetSizeString(cc.RemoteSize)})";
@@ -161,7 +163,7 @@ namespace DTAConfig.OptionPanels
             else
             {
                 var msgBox = new XNAMessageBox(WindowManager, "Confirmation Required".L10N("Client:DTAConfig:UpdateConfirmRequiredTitle"),
-                    string.Format(("To enable {0} the Client will need to download the necessary files to your game directory.\n\n" +
+                    string.Format(CultureInfo.CurrentCulture, ("To enable {0} the Client will need to download the necessary files to your game directory.\n\n" +
                         "This will take an additional {1} of disk space, and the download may take some time\n" +
                         "depending on your Internet connection speed. The size of the download is {2}.\n\n" +
                         "You will not be able to play during the download. Do you wish to continue?").L10N("Client:DTAConfig:UpdateConfirmRequiredText"),
@@ -205,7 +207,7 @@ namespace DTAConfig.OptionPanels
         /// <param name="percentage">The current download progress percentage.</param>
         private void cc_DownloadProgressChanged(CustomComponent c, int percentage)
         {
-            WindowManager.AddCallback(new Action<CustomComponent, int>(HandleDownloadProgressChanged), c, percentage);
+            WindowManager.AddCallback(() => HandleDownloadProgressChanged(c, percentage));
         }
 
         private void HandleDownloadProgressChanged(CustomComponent cc, int percentage)
@@ -227,7 +229,7 @@ namespace DTAConfig.OptionPanels
         /// <param name="success">True if the download succeeded, otherwise false.</param>
         private void cc_DownloadFinished(CustomComponent c, bool success)
         {
-            WindowManager.AddCallback(new Action<CustomComponent, bool>(HandleDownloadFinished), c, success);
+            WindowManager.AddCallback(() => HandleDownloadFinished(c, success));
         }
 
         private void HandleDownloadFinished(CustomComponent cc, bool success)
@@ -243,7 +245,7 @@ namespace DTAConfig.OptionPanels
                 if (!downloadCancelled)
                 {
                     XNAMessageBox.Show(WindowManager, "Optional Component Download Failed".L10N("Client:DTAConfig:OptionalComponentDownloadFailedTitle"),
-                        string.Format(("Download of optional component {0} failed.\n" +
+                        string.Format(CultureInfo.CurrentCulture, ("Download of optional component {0} failed.\n" +
                         "See client.log for details.\n\n" +
                         "If this problem continues, please contact your mod's authors for support.").L10N("Client:DTAConfig:OptionalComponentDownloadFailedText"),
                         cc.GUIName));
@@ -257,7 +259,7 @@ namespace DTAConfig.OptionPanels
             else
             {
                 XNAMessageBox.Show(WindowManager, "Download Completed".L10N("Client:DTAConfig:DownloadCompleteTitle"),
-                    string.Format("Download of optional component {0} completed succesfully.".L10N("Client:DTAConfig:DownloadCompleteText"), cc.GUIName));
+                    string.Format(CultureInfo.CurrentCulture, "Download of optional component {0} completed succesfully.".L10N("Client:DTAConfig:DownloadCompleteText"), cc.GUIName));
                 btn.Text = "Uninstall".L10N("Client:DTAConfig:Uninstall");
             }
         }

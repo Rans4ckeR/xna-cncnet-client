@@ -53,13 +53,13 @@ namespace ClientGUI
 
         protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
         {
-            if (key == "MatchTextureSize" && Conversions.BooleanFromString(value, false))
+            if (string.Equals(key, "MatchTextureSize", StringComparison.OrdinalIgnoreCase) && Conversions.BooleanFromString(value, false))
             {
                 Width = IdleTexture.Width;
                 Height = IdleTexture.Height;
                 return;
             }
-            else if (key == "ToolTip")
+            else if (string.Equals(key, "ToolTip", StringComparison.OrdinalIgnoreCase))
             {
                 ToolTipText = value.FromIniString();
                 return;

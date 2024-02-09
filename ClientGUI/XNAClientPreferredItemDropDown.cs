@@ -19,7 +19,7 @@ namespace ClientGUI
         /// <summary>
         /// Index of the preferred drop-down item.
         /// </summary>
-        public List<int> PreferredItemIndexes { get; set; } = new List<int>();
+        public List<int> PreferredItemIndexes { get; set; } = [];
 
         /// <summary>
         /// Creates a new preferred item drop-down control.
@@ -51,7 +51,6 @@ namespace ClientGUI
                 PreferredItemIndexes.ForEach(i =>
                 {
                     XNADropDownItem preferredItem = Items[i];
-                    string preferredItemOriginalText = preferredItem.Text;
                     preferredItem.Text += " " + PreferredItemLabel;
                 });
 
@@ -60,7 +59,7 @@ namespace ClientGUI
                 PreferredItemIndexes.ForEach(i =>
                 {
                     XNADropDownItem preferredItem = Items[i];
-                    preferredItem.Text = preferredItem.Text.Substring(0, preferredItem.Text.Length - PreferredItemLabel.Length - 1);
+                    preferredItem.Text = preferredItem.Text[..(preferredItem.Text.Length - PreferredItemLabel.Length - 1)];
                 });
             }
             else

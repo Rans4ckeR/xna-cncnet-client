@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientGUI;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
@@ -26,8 +26,8 @@ namespace DTAConfig.Settings
         public bool CheckAvailability { get; set; }
         public bool ResetUnavailableValue { get; set; }
 
-        private List<FileSourceDestinationInfo> enabledFiles = new List<FileSourceDestinationInfo>();
-        private List<FileSourceDestinationInfo> disabledFiles = new List<FileSourceDestinationInfo>();
+        private List<FileSourceDestinationInfo> enabledFiles = [];
+        private List<FileSourceDestinationInfo> disabledFiles = [];
 
         private bool EnabledFilesComplete => enabledFiles.All(f => File.Exists(f.SourcePath));
         private bool DisabledFilesComplete => disabledFiles.All(f => File.Exists(f.SourcePath));

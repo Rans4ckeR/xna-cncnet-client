@@ -14,6 +14,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             GetGameModeMaps = filterAction;
         }
 
-        public bool Any() => GetGameModeMaps().Any();
+        public bool Any() => GetGameModeMaps().Count is not 0;
     }
 }

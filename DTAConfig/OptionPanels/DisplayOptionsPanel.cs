@@ -1,4 +1,4 @@
-using ClientCore.Extensions;
+﻿using ClientCore.Extensions;
 using ClientCore;
 using ClientGUI;
 using Microsoft.Xna.Framework;
@@ -19,6 +19,7 @@ using System.Runtime.Versioning;
 #endif
 using System.IO;
 using ClientCore.I18N;
+using System.Globalization;
 
 namespace DTAConfig.OptionPanels
 {
@@ -209,7 +210,7 @@ namespace DTAConfig.OptionPanels
             foreach (string resolution in recommendedResolutions)
             {
                 string trimmedresolution = resolution.Trim();
-                int index = resolutions.FindIndex(res => res.ToString() == trimmedresolution);
+                int index = resolutions.FindIndex(res => string.Equals(res.ToString(), trimmedresolution, StringComparison.OrdinalIgnoreCase));
                 if (index > -1)
                     ddClientResolution.PreferredItemIndexes.Add(index);
             }
@@ -263,7 +264,7 @@ namespace DTAConfig.OptionPanels
                 ddClientTheme.Width,
                 ddClientTheme.Height);
 
-            foreach (var (translation, name) in Translation.GetTranslations())
+            foreach ((string translation, string name) in Translation.GetTranslations())
                 ddTranslation.AddItem(new XNADropDownItem { Text = name, Tag = translation });
 
 #if TS
@@ -362,7 +363,7 @@ namespace DTAConfig.OptionPanels
 
         private void GetRenderers()
         {
-            renderers = new List<DirectDrawWrapper>();
+            renderers = [];
 
             var renderersIni = new IniFile(SafePath.CombineFilePath(ProgramConstants.GetBaseResourcePath(), RENDERERS_INI));
 
@@ -387,10 +388,10 @@ namespace DTAConfig.OptionPanels
 
             string renderer = UserINISettings.Instance.Renderer;
 
-            selectedRenderer = renderers.Find(r => r.InternalName == renderer);
+            selectedRenderer = renderers.Find(r => string.Equals(r.InternalName, renderer, StringComparison.OrdinalIgnoreCase));
 
             if (selectedRenderer == null)
-                selectedRenderer = renderers.Find(r => r.InternalName == defaultRenderer);
+                selectedRenderer = renderers.Find(r => string.Equals(r.InternalName, defaultRenderer, StringComparison.OrdinalIgnoreCase));
 
             if (selectedRenderer == null)
                 throw new ClientConfigurationException("Missing renderer: " + renderer);
@@ -415,7 +416,7 @@ namespace DTAConfig.OptionPanels
                 string defaultGame = ClientConfiguration.Instance.LocalGame;
 
                 var messageBox = XNAMessageBox.ShowYesNoDialog(WindowManager, "New Compatibility Fix".L10N("Client:DTAConfig:TSFixTitle"),
-                    string.Format("A performance-enhancing compatibility fix for modern Windows versions\n" +
+                    string.Format(CultureInfo.InvariantCulture, "A performance-enhancing compatibility fix for modern Windows versions\n" +
                         "has been included in this version of {0}. Enabling it requires\n" +
                         "administrative priveleges. Would you like to install the compatibility fix?\n\n" +
                         "You'll always be able to install or uninstall the compatibility fix later from the options menu.".L10N("Client:DTAConfig:TSFixText"),
@@ -441,10 +442,13 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Setting TSCompatFixDeclined failed! Returned error: " + ex.Message);
+                    ProgramConstants.LogException(ex, "Setting TSCompatFixDeclined failed!");
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ProgramConstants.LogException(ex);
+            }
         }
 
         [SupportedOSPlatform("windows")]
@@ -478,7 +482,7 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Uninstalling DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
+                    ProgramConstants.LogException(ex, "Uninstalling DTA/TI/TS Compatibility Fix failed.");
                     XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("Client:DTAConfig:TSFixUninstallFailTitle"),
                         "Uninstalling DTA/TI/TS Compatibility Fix failed. Returned error:".L10N("Client:DTAConfig:TSFixUninstallFailText") + " " + ex.Message);
                 }
@@ -506,7 +510,7 @@ namespace DTAConfig.OptionPanels
             }
             catch (Exception ex)
             {
-                Logger.Log("Installing DTA/TI/TS Compatibility Fix failed. Error message: " + ex.Message);
+                ProgramConstants.LogException(ex, "Installing DTA/TI/TS Compatibility Fix failed.");
                 XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("Client:DTAConfig:TSFixInstallFailTitle"),
                     "Installing DTA/TI/TS Compatibility Fix failed. Error message:".L10N("Client:DTAConfig:TSFixInstallFailText") + " " + ex.Message);
             }
@@ -537,7 +541,7 @@ namespace DTAConfig.OptionPanels
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("Uninstalling FinalSun Compatibility Fix failed. Error message: " + ex.Message);
+                    ProgramConstants.LogException(ex, "Uninstalling FinalSun Compatibility Fix failed.");
                     XNAMessageBox.Show(WindowManager, "Uninstalling Compatibility Fix Failed".L10N("Client:DTAConfig:TSFinalSunFixUninstallFailedTitle"),
                         "Uninstalling FinalSun Compatibility Fix failed. Error message:".L10N("Client:DTAConfig:TSFinalSunFixUninstallFailedText") + " " + ex.Message);
                 }
@@ -565,7 +569,7 @@ namespace DTAConfig.OptionPanels
             }
             catch (Exception ex)
             {
-                Logger.Log("Installing FinalSun Compatibility Fix failed. Error message: " + ex.Message);
+                ProgramConstants.LogException(ex, "Installing FinalSun Compatibility Fix failed.");
                 XNAMessageBox.Show(WindowManager, "Installing Compatibility Fix Failed".L10N("Client:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedTitle"),
                     "Installing FinalSun Compatibility Fix failed. Error message:".L10N("Client:DTAConfig:TSFinalSunCompatibilityFixInstalledFailedText") + " " + ex.Message);
             }
@@ -581,7 +585,7 @@ namespace DTAConfig.OptionPanels
                 string nativeRes = Screen.PrimaryScreen.Bounds.Width +
                     "x" + Screen.PrimaryScreen.Bounds.Height;
 
-                int nativeResIndex = ddClientResolution.Items.FindIndex(i => (string)i.Tag == nativeRes);
+                int nativeResIndex = ddClientResolution.Items.FindIndex(i => string.Equals((string)i.Tag, nativeRes, StringComparison.OrdinalIgnoreCase));
                 if (nativeResIndex > -1)
                     ddClientResolution.SelectedIndex = nativeResIndex;
 #endif
@@ -616,7 +620,7 @@ namespace DTAConfig.OptionPanels
         private void LoadRenderer()
         {
             int index = ddRenderer.Items.FindIndex(
-                           r => ((DirectDrawWrapper)r.Tag).InternalName == selectedRenderer.InternalName);
+                           r => string.Equals(((DirectDrawWrapper)r.Tag).InternalName, selectedRenderer.InternalName, StringComparison.OrdinalIgnoreCase));
 
             if (index < 0 && selectedRenderer.Hidden)
             {
@@ -641,7 +645,7 @@ namespace DTAConfig.OptionPanels
             string currentRes = UserINISettings.Instance.IngameScreenWidth.Value +
                 "x" + UserINISettings.Instance.IngameScreenHeight.Value;
 
-            int index = ddIngameResolution.Items.FindIndex(i => i.Text == currentRes);
+            int index = ddIngameResolution.Items.FindIndex(i => string.Equals(i.Text, currentRes, StringComparison.OrdinalIgnoreCase));
 
             ddIngameResolution.SelectedIndex = index > -1 ? index : 0;
 
@@ -683,18 +687,18 @@ namespace DTAConfig.OptionPanels
 
             string currentClientRes = IniSettings.ClientResolutionX.Value + "x" + IniSettings.ClientResolutionY.Value;
 
-            int clientResIndex = ddClientResolution.Items.FindIndex(i => (string)i.Tag == currentClientRes);
+            int clientResIndex = ddClientResolution.Items.FindIndex(i => string.Equals((string)i.Tag, currentClientRes, StringComparison.OrdinalIgnoreCase));
 
             ddClientResolution.SelectedIndex = clientResIndex > -1 ? clientResIndex : 0;
 
             chkBorderlessClient.Checked = UserINISettings.Instance.BorderlessWindowedClient;
 
             int selectedThemeIndex = ddClientTheme.Items.FindIndex(
-                ddi => (string)ddi.Tag == UserINISettings.Instance.ClientTheme);
+                ddi => string.Equals((string)ddi.Tag, UserINISettings.Instance.ClientTheme, StringComparison.OrdinalIgnoreCase));
             ddClientTheme.SelectedIndex = selectedThemeIndex > -1 ? selectedThemeIndex : 0;
 
             int selectedTranslationIndex = ddTranslation.Items.FindIndex(
-                ddi => (string)ddi.Tag == UserINISettings.Instance.Translation);
+                ddi => string.Equals((string)ddi.Tag, UserINISettings.Instance.Translation, StringComparison.OrdinalIgnoreCase));
 
             if (selectedTranslationIndex > -1)
             {
@@ -704,7 +708,7 @@ namespace DTAConfig.OptionPanels
             {
                 string defaultTranslationCode = Translation.GetDefaultTranslationLocaleCode();
                 ddTranslation.SelectedIndex = ddTranslation.Items.FindIndex(
-                    ddi => (string)ddi.Tag == defaultTranslationCode);
+                    ddi => string.Equals((string)ddi.Tag, defaultTranslationCode, StringComparison.OrdinalIgnoreCase));
             }
 
 #if TS
@@ -721,7 +725,7 @@ namespace DTAConfig.OptionPanels
             object tsCompatFixValue = regKey.GetValue("TSCompatFixInstalled", "No");
             string tsCompatFixString = (string)tsCompatFixValue;
 
-            if (tsCompatFixString == "Yes")
+            if (string.Equals(tsCompatFixString, "Yes", StringComparison.OrdinalIgnoreCase))
             {
                 GameCompatFixInstalled = true;
                 btnGameCompatibilityFix.Text = "Disable".L10N("Client:DTAConfig:TSDisable");
@@ -730,7 +734,7 @@ namespace DTAConfig.OptionPanels
             object fsCompatFixValue = regKey.GetValue("FSCompatFixInstalled", "No");
             string fsCompatFixString = (string)fsCompatFixValue;
 
-            if (fsCompatFixString == "Yes")
+            if (string.Equals(fsCompatFixString, "Yes", StringComparison.OrdinalIgnoreCase))
             {
                 FinalSunCompatFixInstalled = true;
                 btnMapEditorCompatibilityFix.Text = "Disable".L10N("Client:DTAConfig:TSDisable");
@@ -738,17 +742,10 @@ namespace DTAConfig.OptionPanels
 
             object tsCompatFixDeclinedValue = regKey.GetValue("TSCompatFixDeclined", "No");
 
-            if (((string)tsCompatFixDeclinedValue) == "Yes")
+            if (string.Equals(((string)tsCompatFixDeclinedValue), "Yes", StringComparison.OrdinalIgnoreCase))
             {
                 GameCompatFixDeclined = true;
             }
-
-            //object fsCompatFixDeclinedValue = regKey.GetValue("FSCompatFixDeclined", "No");
-
-            //if (((string)fsCompatFixDeclinedValue) == "Yes")
-            //{
-            //    FinalSunCompatFixDeclined = true;
-            //}
 #else
             chkBackBufferInVRAM.Checked = UserINISettings.Instance.BackBufferInVRAM;
 #endif
@@ -762,7 +759,7 @@ namespace DTAConfig.OptionPanels
 
             string[] resolution = ddIngameResolution.SelectedItem.Text.Split('x');
 
-            int[] ingameRes = new int[2] { int.Parse(resolution[0]), int.Parse(resolution[1]) };
+            int[] ingameRes = new int[2] { int.Parse(resolution[0], CultureInfo.InvariantCulture), int.Parse(resolution[1], CultureInfo.InvariantCulture) };
 
             IniSettings.IngameScreenWidth.Value = ingameRes[0];
             IniSettings.IngameScreenHeight.Value = ingameRes[1];
@@ -782,7 +779,7 @@ namespace DTAConfig.OptionPanels
 
             string[] clientResolution = ((string)ddClientResolution.SelectedItem.Tag).Split('x');
 
-            int[] clientRes = new int[2] { int.Parse(clientResolution[0]), int.Parse(clientResolution[1]) };
+            int[] clientRes = new int[2] { int.Parse(clientResolution[0], CultureInfo.InvariantCulture), int.Parse(clientResolution[1], CultureInfo.InvariantCulture) };
 
             if (clientRes[0] != IniSettings.ClientResolutionX.Value ||
                 clientRes[1] != IniSettings.ClientResolutionY.Value)
@@ -796,11 +793,11 @@ namespace DTAConfig.OptionPanels
 
             IniSettings.BorderlessWindowedClient.Value = chkBorderlessClient.Checked;
 
-            restartRequired = restartRequired || IniSettings.ClientTheme != (string)ddClientTheme.SelectedItem.Tag;
+            restartRequired = restartRequired || !string.Equals(IniSettings.ClientTheme, (string)ddClientTheme.SelectedItem.Tag, StringComparison.OrdinalIgnoreCase);
 
             IniSettings.ClientTheme.Value = (string)ddClientTheme.SelectedItem.Tag;
 
-            restartRequired = restartRequired || IniSettings.Translation != (string)ddTranslation.SelectedItem.Tag;
+            restartRequired = restartRequired || !string.Equals(IniSettings.Translation, (string)ddTranslation.SelectedItem.Tag, StringComparison.OrdinalIgnoreCase);
 
             IniSettings.Translation.Value = (string)ddTranslation.SelectedItem.Tag;
 
@@ -815,7 +812,7 @@ namespace DTAConfig.OptionPanels
                     string sourceHash = Utilities.CalculateSHA1ForFile(sourcePath);
                     string destinationHash = Utilities.CalculateSHA1ForFile(targetPath);
 
-                    if (sourceHash != destinationHash)
+                    if (!string.Equals(sourceHash, destinationHash, StringComparison.OrdinalIgnoreCase))
                         File.Copy(sourcePath, targetPath, true);
                 }
                 else
@@ -954,9 +951,7 @@ namespace DTAConfig.OptionPanels
 
             public override bool Equals(object obj)
             {
-                var resolution = obj as ScreenResolution;
-
-                if (resolution == null)
+                if (obj is not ScreenResolution resolution)
                     return false;
 
                 return CompareTo(resolution) == 0;

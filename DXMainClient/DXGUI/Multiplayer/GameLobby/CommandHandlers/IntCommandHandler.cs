@@ -16,10 +16,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby.CommandHandlers
             if (message.Length < CommandName.Length + 1)
                 return false;
 
-            if (message.StartsWith(CommandName))
+            if (message.StartsWith(CommandName, StringComparison.OrdinalIgnoreCase))
             {
-                int value;
-                bool success = int.TryParse(message.Substring(CommandName.Length + 1), out value);
+                bool success = int.TryParse(message[(CommandName.Length + 1)..], out int value);
 
                 if (success)
                 {

@@ -1,4 +1,6 @@
-﻿# Instructions on how to construct the UI using INI files.
+﻿
+# Instructions on how to construct the UI using INI files.
+
 *TODO work in progress*
 
 ## Constants
@@ -23,12 +25,14 @@ $X=MY_EXAMPLE_CONSTANT
 _NOTE: Constants can only be used in [dynamic control properties](#dynamic-control-properties)_
 
 ## Control properties
+
 Below lists basic and dynamic control properties. Ordering of properties is important. If there is a property that relies on the size of a control, the properties must set the size of that control first.
 
 > **Note**
 > Multi-line strings use `@` as a line break. To write the real `@` character, use `\@`. Also as INI syntax uses `;` to denote comments, use `\semicolon` to write the real `;` character.
 
 ### Basic Control Properties
+
 Basic control properties cannot use constants.
 
 #### XNAControl
@@ -51,6 +55,7 @@ Basic control properties cannot use constants.
 `RemapColor`  
 
 #### XNAPanel
+
 _(inherits XNAControl)_
 
 `BorderColor`  
@@ -62,11 +67,13 @@ _(inherits XNAControl)_
 `Padding`  
 
 #### XNAExtraPanel
+
 _(inherits XNAPanel)_
 
 `BackgroundTexture`  
 
 #### XNALabel
+
 _(inherits XNAControl)_
 
 `RemapColor`  
@@ -77,6 +84,7 @@ _(inherits XNAControl)_
 `TextShadowDistance`  
 
 #### XNAButton
+
 _(inherits XNAControl)_
 
 `TextColorIdle`  
@@ -91,11 +99,13 @@ _(inherits XNAControl)_
 `TextShadowDistance`  
 
 #### XNAClientButton
+
 _(inherits XNAButton)_
 
 `MatchTextureSize`  
 
 #### XNALinkButton
+
 _(inherits XNAClientButton)_
 
 `URL`  
@@ -103,6 +113,7 @@ _(inherits XNAClientButton)_
 `ToolTip` = `{multi-line string}` tooltip for checkbox
 
 #### XNACheckbox
+
 _(inherits XNAControl)_
 
 `FontIndex`  
@@ -118,6 +129,7 @@ _(inherits XNACheckBox)_
 `ToolTip` = `{multi-line string}` tooltip for checkbox
 
 #### XNADropDown
+
 _(inherits XNAControl)_
 
 `OpenUp`  
@@ -133,11 +145,13 @@ _(inherits XNAControl)_
 `OptionN`  
 
 #### XNAClientDropDown
+
 _(inherits XNADropDown)_
 
 `ToolTip` = `{multi-line string}` tooltip for checkbox 
 
 #### XNATabControl
+
 _(inherits XNAControl)_
 
 `RemapColor`  
@@ -146,11 +160,13 @@ _(inherits XNAControl)_
 `RemoveTabIndexN`  
 
 #### XNATextBox
+
 _(inherits XNAControl)_
 
 `MaximumTextLength`  
 
 ### Basic Control Property Examples
+
 ```
 X=100
 Y=100
@@ -177,6 +193,7 @@ Some controls are only available under specific circumstances
 Following controls are only available as children of `XNAOptionsPanel` and derived controls. These currently use basic control properties only.
 
 ##### SettingCheckBox
+
 _(inherits XNAClientCheckBox)_
 
 `DefaultValue` = `{true/false or yes/no}` default state of the checkbox. Value of `Checked` will be used if it is set and this isn't. Otherwise defaults to `false`.  
@@ -190,6 +207,7 @@ _(inherits XNAClientCheckBox)_
 `ParentCheckBoxRequiredValue` = `{true/false or yes/no}` state required from the parent checkbox for this one to be enabled. Defaults to `true`.  
 
 ##### FileSettingCheckBox
+
 _(inherits XNAClientCheckBox)_
 
 `DefaultValue` = `{true/false or yes/no}` default state of the checkbox. Value of `Checked` will be used if it is set and this isn't. Otherwise defaults to `false`.  
@@ -204,6 +222,7 @@ _(inherits XNAClientCheckBox)_
 `DisabledFileN` = `{comma-separated strings}` files to copy if checkbox is not checked. N starts from 0 and is incremented by 1 until no value is found. Expects 2-3 comma-separated strings in following format: source path relative to game root folder, destination path relative to game root folder and a [file operation option](#appendix-file-operation-options).  
 
 ##### SettingDropDown
+
 _(inherits XNAClientDropDown)_
 
 `Items` = `{comma-separated strings}` comma-separated list of strings to include as items to display on the dropdown control.  
@@ -214,6 +233,7 @@ _(inherits XNAClientDropDown)_
 `RestartRequired` = `{true/false or yes/no}` whether or not this setting requires restarting the client to apply. Defaults to `false`.  
 
 ##### FileSettingDropDown
+
 _(inherits XNAClientDropDown)_
 
 `Items` = `{comma-separated strings}` comma-separated list of strings to include as items to display on the dropdown control.  
@@ -233,6 +253,7 @@ Valid file operation options available for files defined for `FileSettingCheckBo
 - `KeepChanges`: Carries over the destination file with any changes manually made to by caching the file if deleted by disabling the option and then re-enabling it.
 
 ### Dynamic Control Properties
+
 Dynamic Control Properties CAN use constants
 
 These can ONLY be used in parent controls that inherit the `INItializableWindow` class
@@ -244,6 +265,7 @@ These can ONLY be used in parent controls that inherit the `INItializableWindow`
 `$TextAnchor`  
 
 ### Dynamic Control Property Examples
+
 ```
 $X=100
 $X=MY_X_CONSTANT

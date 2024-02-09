@@ -8,16 +8,16 @@ namespace DTAClient.Domain.Multiplayer
     public class CoopMapInfo
     {
         [JsonInclude]
-        public List<CoopHouseInfo> EnemyHouses = new List<CoopHouseInfo>();
+        public List<CoopHouseInfo> EnemyHouses = [];
 
         [JsonInclude]
-        public List<CoopHouseInfo> AllyHouses = new List<CoopHouseInfo>();
+        public List<CoopHouseInfo> AllyHouses = [];
 
         [JsonInclude]
-        public List<int> DisallowedPlayerSides = new List<int>();
+        public List<int> DisallowedPlayerSides = [];
 
         [JsonInclude]
-        public List<int> DisallowedPlayerColors = new List<int>();
+        public List<int> DisallowedPlayerColors = [];
 
         public void SetHouseInfos(IniSection iniSection)
         {

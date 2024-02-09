@@ -38,7 +38,7 @@ namespace DTAConfig.OptionPanels
 
         GameCollection gameCollection;
 
-        List<XNAClientCheckBox> followedGameChks = new List<XNAClientCheckBox>();
+        List<XNAClientCheckBox> followedGameChks = [];
 
         public override void Initialize()
         {
@@ -326,7 +326,7 @@ namespace DTAConfig.OptionPanels
 
             foreach (var chkBox in followedGameChks)
             {
-                if (chkBox.Name == localGame)
+                if (string.Equals(chkBox.Name, localGame, StringComparison.OrdinalIgnoreCase))
                 {
                     chkBox.AllowChecking = false;
                     chkBox.Checked = true;

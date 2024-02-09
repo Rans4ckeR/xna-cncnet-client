@@ -8,6 +8,8 @@ using System;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// A window that asks the user whether they want to update their game.
     /// </summary>
@@ -91,11 +93,11 @@ namespace DTAClient.DXGUI.Generic
 
         public void SetInfo(string version, int updateSize)
         {
-            lblDescription.Text = string.Format(("Version {0} is available for download.\nDo you wish to install it?").L10N("Client:Main:VersionAvailable"), version);
+            lblDescription.Text = string.Format(CultureInfo.CurrentCulture, "Version {0} is available for download.\nDo you wish to install it?".L10N("Client:Main:VersionAvailable"), version);
             if (updateSize >= 1000)
-                lblUpdateSize.Text = string.Format("The size of the update is {0} MB.".L10N("Client:Main:UpdateSizeMB"), updateSize / 1000);
+                lblUpdateSize.Text = string.Format(CultureInfo.CurrentCulture, "The size of the update is {0} MB.".L10N("Client:Main:UpdateSizeMB"), updateSize / 1000);
             else
-                lblUpdateSize.Text = string.Format("The size of the update is {0} KB.".L10N("Client:Main:UpdateSizeKB"), updateSize);
+                lblUpdateSize.Text = string.Format(CultureInfo.CurrentCulture, "The size of the update is {0} KB.".L10N("Client:Main:UpdateSizeKB"), updateSize);
         }
     }
 }

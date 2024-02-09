@@ -4,6 +4,7 @@ using ClientCore.Extensions;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
+using ClientCore;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -24,7 +25,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private XNALabel lblDescription;
         private XNAClientButton btnApply;
 
-        private string originalTunnelAddress;
+        private string originalTunnelHash;
 
         public override void Initialize()
         {
@@ -90,21 +91,22 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
         private void BtnCancel_LeftClick(object sender, EventArgs e) => Disable();
 
         private void LbTunnelList_SelectedIndexChanged(object sender, EventArgs e) =>
-            btnApply.AllowClick = !lbTunnelList.IsTunnelSelected(originalTunnelAddress) && lbTunnelList.IsValidIndexSelected();
+            btnApply.AllowClick = !lbTunnelList.IsTunnelSelected(originalTunnelHash) && lbTunnelList.IsValidIndexSelected();
 
         /// <summary>
         /// Sets the window's description and selects the tunnel server
         /// with the given address.
         /// </summary>
         /// <param name="description">The window description.</param>
-        /// <param name="tunnelAddress">The address of the tunnel server to select.</param>
-        public void Open(string description, string tunnelAddress = null)
+        /// <param name="cnCNetTunnel">The tunnel server to select.</param>
+        public void Open(string description, CnCNetTunnel cnCNetTunnel)
         {
             lblDescription.Text = description;
-            originalTunnelAddress = tunnelAddress;
+            originalTunnelHash = cnCNetTunnel?.Hash;
+            lbTunnelList.CompatibilityFilter = cnCNetTunnel?.Version is ProgramConstants.TUNNEL_VERSION_2;
 
-            if (!string.IsNullOrWhiteSpace(tunnelAddress))
-                lbTunnelList.SelectTunnel(tunnelAddress);
+            if (cnCNetTunnel is not null)
+                lbTunnelList.SelectTunnel(cnCNetTunnel);
             else
                 lbTunnelList.SelectedIndex = -1;
 

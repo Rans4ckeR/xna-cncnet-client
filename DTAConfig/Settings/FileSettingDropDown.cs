@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using Rampastring.Tools;
 using Rampastring.XNAUI;
 using System.Collections.Generic;
@@ -21,7 +21,7 @@ namespace DTAConfig.Settings
             ResetUnavailableValue = resetUnavailableValue;
         }
 
-        private readonly List<List<FileSourceDestinationInfo>> itemFilesList = new List<List<FileSourceDestinationInfo>>();
+        private readonly List<List<FileSourceDestinationInfo>> itemFilesList = [];
 
         public bool CheckAvailability { get; private set; }
         public bool ResetUnavailableValue { get; private set; }
@@ -85,7 +85,7 @@ namespace DTAConfig.Settings
                 return;
 
             if (itemFilesList.Count < itemIndex + 1)
-                itemFilesList.Add(new List<FileSourceDestinationInfo>());
+                itemFilesList.Add([]);
 
             itemFilesList[itemIndex].Add(new FileSourceDestinationInfo(source, destination, options));
         }

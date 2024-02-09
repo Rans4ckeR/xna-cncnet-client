@@ -60,7 +60,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             foreach (KeyValuePair<string, string> objectRemapPair in objectRemapPairs)
             {
                 List<KeyValuePair<string, string>> matchingSectionKVPs =
-                    sectionKeyValuePairs.Where(x => GetObjectID(x.Value, sectionName) == objectRemapPair.Key).ToList();
+                    sectionKeyValuePairs.Where(x => string.Equals(GetObjectID(x.Value, sectionName), objectRemapPair.Key, StringComparison.OrdinalIgnoreCase)).ToList();
 
                 foreach (KeyValuePair<string, string> matchingSectionKVP in matchingSectionKVPs)
                 {
@@ -90,7 +90,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         /// <returns></returns>
         private static string GetObjectID(string value, string sectionName)
         {
-            if (sectionName != "Terrain")
+            if (!string.Equals(sectionName, "Terrain", StringComparison.OrdinalIgnoreCase))
             {
                 string[] splitValue = value.Split(',');
                 if (splitValue.Length < 2) return "N/A";
@@ -110,7 +110,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
         {
             IniSection section = iniFile.GetSection(sectionName);
             if (section == null)
-                return new List<KeyValuePair<string, string>>();
+                return [];
             return section.Keys;
         }
     }

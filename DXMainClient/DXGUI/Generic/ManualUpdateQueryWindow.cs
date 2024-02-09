@@ -2,13 +2,14 @@
 using ClientCore;
 using ClientCore.Extensions;
 using ClientGUI;
-using ClientCore.Extensions;
 using Microsoft.Xna.Framework;
 using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// A window that redirects users to manually download an update.
     /// </summary>
@@ -68,7 +69,7 @@ namespace DTAClient.DXGUI.Generic
         public void SetInfo(string version, string downloadUrl)
         {
             this.downloadUrl = downloadUrl;
-            lblDescription.Text = string.Format(descriptionText, version);
+            lblDescription.Text = string.Format(CultureInfo.CurrentCulture, descriptionText, version);
         }
     }
 }

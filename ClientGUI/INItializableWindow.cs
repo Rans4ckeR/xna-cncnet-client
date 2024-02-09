@@ -43,7 +43,7 @@ namespace ClientGUI
         {
             foreach (XNAControl child in list)
             {
-                if (child.Name == controlName)
+                if (string.Equals(child.Name, controlName, StringComparison.OrdinalIgnoreCase))
                     return (T)child;
 
                 T childOfChild = FindChild<T>(child.Children, controlName);
@@ -126,14 +126,14 @@ namespace ClientGUI
 
             foreach (var kvp in section.Keys)
             {
-                if (!kvp.Key.StartsWith("$CC"))
+                if (!kvp.Key.StartsWith("$CC", StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 string[] parts = kvp.Value.Split(':');
                 if (parts.Length != 2)
                     throw new ClientConfigurationException("Invalid $ExtraControl specified in " + Name + ": " + kvp.Value);
 
-                if (!Children.Any(child => child.Name == parts[0]))
+                if (Children.All(child => !string.Equals(child.Name, parts[0], StringComparison.OrdinalIgnoreCase)))
                 {
                     var control = CreateChildControl(this, kvp.Value);
                     control.Name = parts[0];
@@ -153,7 +153,7 @@ namespace ClientGUI
 
         protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
         {
-            if (key == "HasCloseButton")
+            if (string.Equals(key, "HasCloseButton", StringComparison.OrdinalIgnoreCase))
                 hasCloseButton = iniFile.GetBooleanValue(Name, key, hasCloseButton);
 
             base.ParseControlINIAttribute(iniFile, key, value);
@@ -173,47 +173,47 @@ namespace ClientGUI
 
             foreach (var kvp in section.Keys)
             {
-                if (kvp.Key.StartsWith("$CC"))
+                if (kvp.Key.StartsWith("$CC", StringComparison.OrdinalIgnoreCase))
                 {
                     var child = CreateChildControl(control, kvp.Value);
                     ReadINIForControl(child);
                     child.Initialize();
                 }
-                else if (kvp.Key == "$X")
+                else if (string.Equals(kvp.Key, "$X", StringComparison.OrdinalIgnoreCase))
                 {
                     control.X = Parser.Instance.GetExprValue(
                         Localize(control, kvp.Key, kvp.Value, notify: false), control);
                 }
-                else if (kvp.Key == "$Y")
+                else if (string.Equals(kvp.Key, "$Y", StringComparison.OrdinalIgnoreCase))
                 {
                     control.Y = Parser.Instance.GetExprValue(
                         Localize(control, kvp.Key, kvp.Value, notify: false), control);
                 }
-                else if (kvp.Key == "$Width")
+                else if (string.Equals(kvp.Key, "$Width", StringComparison.OrdinalIgnoreCase))
                 {
                     control.Width = Parser.Instance.GetExprValue(
                         Localize(control, kvp.Key, kvp.Value, notify: false), control);
                 }
-                else if (kvp.Key == "$Height")
+                else if (string.Equals(kvp.Key, "$Height", StringComparison.OrdinalIgnoreCase))
                 {
                     control.Height = Parser.Instance.GetExprValue(
                         Localize(control, kvp.Key, kvp.Value, notify: false), control);
                 }
-                else if (kvp.Key == "$TextAnchor" && control is XNALabel)
+                else if (string.Equals(kvp.Key, "$TextAnchor", StringComparison.OrdinalIgnoreCase) && control is XNALabel)
                 {
                     // TODO refactor these to be more object-oriented
                     ((XNALabel)control).TextAnchor = (LabelTextAnchorInfo)Enum.Parse(typeof(LabelTextAnchorInfo), kvp.Value);
                 }
-                else if (kvp.Key == "$AnchorPoint" && control is XNALabel)
+                else if (string.Equals(kvp.Key, "$AnchorPoint", StringComparison.OrdinalIgnoreCase) && control is XNALabel)
                 {
                     string[] parts = kvp.Value.Split(',');
                     if (parts.Length != 2)
                         throw new FormatException("Invalid format for AnchorPoint: " + kvp.Value);
                     ((XNALabel)control).AnchorPoint = new Vector2(Parser.Instance.GetExprValue(parts[0], control), Parser.Instance.GetExprValue(parts[1], control));
                 }
-                else if (kvp.Key == "$LeftClickAction")
+                else if (string.Equals(kvp.Key, "$LeftClickAction", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (kvp.Value == "Disable")
+                    if (string.Equals(kvp.Value, "Disable", StringComparison.OrdinalIgnoreCase))
                         control.LeftClick += (s, e) => Disable();
                 }
                 else
@@ -248,7 +248,7 @@ namespace ClientGUI
                 string nextControl = childSection.GetStringValue("NextControl", null);
                 if (!string.IsNullOrWhiteSpace(nextControl))
                 {
-                    var otherChild = children.Find(c => c.Name == nextControl);
+                    var otherChild = children.Find(c => string.Equals(c.Name, nextControl, StringComparison.OrdinalIgnoreCase));
                     if (otherChild != null)
                         ((XNATextBox)child).NextControl = otherChild;
                 }
@@ -256,7 +256,7 @@ namespace ClientGUI
                 string previousControl = childSection.GetStringValue("PreviousControl", null);
                 if (!string.IsNullOrWhiteSpace(previousControl))
                 {
-                    var otherChild = children.Find(c => c.Name == previousControl);
+                    var otherChild = children.Find(c => string.Equals(c.Name, previousControl, StringComparison.OrdinalIgnoreCase));
                     if (otherChild != null)
                         ((XNATextBox)child).PreviousControl = otherChild;
                 }

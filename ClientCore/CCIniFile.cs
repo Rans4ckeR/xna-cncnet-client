@@ -1,5 +1,6 @@
 ﻿using Rampastring.Tools;
 using System.IO;
+using System;
 
 namespace ClientCore
 {
@@ -14,7 +15,7 @@ namespace ClientCore
                 if (string.IsNullOrWhiteSpace(baseSectionName))
                     continue;
 
-                var baseSection = Sections.Find(s => s.SectionName == baseSectionName);
+                var baseSection = Sections.Find(s => string.Equals(s.SectionName, baseSectionName, StringComparison.OrdinalIgnoreCase));
                 if (baseSection == null)
                 {
                     Logger.Log($"Base section not found in INI file {path}, section {section.SectionName}, base section name: {baseSectionName}");

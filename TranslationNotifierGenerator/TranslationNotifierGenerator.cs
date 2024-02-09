@@ -35,7 +35,7 @@ namespace TranslationNotifierGenerator
             if (!namespaceName.Split(new char[] { '.' }).All(name => SyntaxFacts.IsValidIdentifier(name)))
                 throw new Exception("The namespace can not contain invalid characters.");
 
-            Dictionary<string, string> translations = new();
+            Dictionary<string, string> translations = [];
             foreach (var tree in compilation.SyntaxTrees)
             {
                 context.CancellationToken.ThrowIfCancellationRequested();
@@ -46,7 +46,7 @@ namespace TranslationNotifierGenerator
                     context.CancellationToken.ThrowIfCancellationRequested();
                     if (memberAccessSyntax == null
                         || !memberAccessSyntax.IsKind(SyntaxKind.SimpleMemberAccessExpression)
-                        || memberAccessSyntax.Name.ToString() != LocalizeMethodName)
+                        || !string.Equals(memberAccessSyntax.Name.ToString(), LocalizeMethodName, StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -65,7 +65,7 @@ namespace TranslationNotifierGenerator
                     var keyNameSyntax = l10nSyntax.ArgumentList.Arguments[0];
                     string keyName = semanticModel.GetConstantValue(keyNameSyntax.Expression).Value?.ToString();
                     Debug.Assert(keyName is null == !keyNameSyntax.Expression.IsKind(SyntaxKind.StringLiteralExpression));
-                    bool keyNameIsPotentiallyForIni = keyName is null || keyName.StartsWith("INI:");
+                    bool keyNameIsPotentiallyForIni = keyName is null || keyName.StartsWith("INI:", StringComparison.OrdinalIgnoreCase);
 
                     var valueTextSyntax = l10nSyntax.Expression as MemberAccessExpressionSyntax;
                     string valueText = semanticModel.GetConstantValue(valueTextSyntax.Expression).Value?.ToString();
@@ -93,9 +93,9 @@ namespace TranslationNotifierGenerator
                     }
 
                     // Check for duplicates.
-                    if (translations.ContainsKey(keyName))
+                    if (translations.TryGetValue(keyName, out string value))
                     {
-                        if (valueText != translations[keyName])
+                        if (!string.Equals(valueText, value, StringComparison.OrdinalIgnoreCase))
                         {
                             context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor(
                                 "CNCNET0003", "Conflict translation items",
@@ -107,7 +107,7 @@ namespace TranslationNotifierGenerator
                     }
 
                     // Avoid trimmable strings
-                    if (valueText.Trim() != valueText)
+                    if (!string.Equals(valueText.Trim(), valueText, StringComparison.OrdinalIgnoreCase))
                     {
                         context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor(
                             "CNCNET0004", "Trimmable translation value",

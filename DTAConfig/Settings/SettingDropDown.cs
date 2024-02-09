@@ -6,6 +6,8 @@ using Rampastring.XNAUI.XNAControls;
 
 namespace DTAConfig.Settings
 {
+    using System;
+
     /// <summary>
     /// Dropdown for toggling options in user settings INI file.
     /// </summary>
@@ -70,7 +72,7 @@ namespace DTAConfig.Settings
             if (string.IsNullOrEmpty(value))
                 return DefaultValue;
 
-            int index = Items.FindIndex(x => (string)x.Tag == value);
+            int index = Items.FindIndex(x => string.Equals((string)x.Tag, value, StringComparison.OrdinalIgnoreCase));
 
             if (index < 0)
                 return DefaultValue;

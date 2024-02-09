@@ -228,9 +228,6 @@ namespace ClientGUI
         /// <summary>
         /// Creates and displays a new message box with the specified caption and description.
         /// </summary>
-        /// <param name="game">The game.</param>
-        /// <param name="caption">The caption/header of the message box.</param>
-        /// <param name="description">The description of the message box.</param>
         public static void Show(WindowManager windowManager, string caption, string description)
         {
             var panel = new DarkeningPanel(windowManager);

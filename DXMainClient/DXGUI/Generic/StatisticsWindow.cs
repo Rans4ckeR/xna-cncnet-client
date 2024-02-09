@@ -11,9 +11,12 @@ using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     public class StatisticsWindow : XNAWindow
     {
         public StatisticsWindow(WindowManager windowManager, MapLoader mapLoader)
@@ -73,7 +76,7 @@ namespace DTAClient.DXGUI.Generic
 
         private StatisticsManager sm;
         private MapLoader mapLoader;
-        private List<int> listedGameIndexes = new List<int>();
+        private List<int> listedGameIndexes = [];
 
         private (string Name, string UIName)[] sides;
 
@@ -154,7 +157,7 @@ namespace DTAClient.DXGUI.Generic
             chkIncludeSpectatedGames.ClientRectangle = new Rectangle(
                 Width - chkIncludeSpectatedGames.Width - 12,
                 cmbGameModeFilter.Bottom + 3,
-                chkIncludeSpectatedGames.Width, 
+                chkIncludeSpectatedGames.Width,
                 chkIncludeSpectatedGames.Height);
             chkIncludeSpectatedGames.CheckedChanged += ChkIncludeSpectatedGames_CheckedChanged;
 
@@ -205,9 +208,9 @@ namespace DTAClient.DXGUI.Generic
             panelGameStatistics.AddChild(lbGameList);
             panelGameStatistics.AddChild(lbGameStatistics);
 
-#endregion
+            #endregion
 
-#region Total statistics
+            #region Total statistics
 
             panelTotalStatistics = new XNAPanel(WindowManager);
             panelTotalStatistics.Name = "panelTotalStatistics";
@@ -388,7 +391,7 @@ namespace DTAClient.DXGUI.Generic
             panelTotalStatistics.AddChild(lblFavouriteSideValue);
             panelTotalStatistics.AddChild(lblAverageAILevelValue);
 
-#endregion
+            #endregion
 
             AddChild(tabControl);
             AddChild(lblFilter);
@@ -413,7 +416,7 @@ namespace DTAClient.DXGUI.Generic
 
             mpColors = MultiplayerColor.LoadColors();
 
-            ReadStatistics();
+            ReadStatisticsAsync().HandleTask();
             ListGameModes();
             ListGames();
 
@@ -476,7 +479,7 @@ namespace DTAClient.DXGUI.Generic
 
             MatchStatistics ms = sm.GetMatchByIndex(listedGameIndexes[lbGameList.SelectedIndex]);
 
-            List<PlayerStatistics> players = new List<PlayerStatistics>();
+            List<PlayerStatistics> players = [];
 
             for (int i = 0; i < ms.GetPlayerCount(); i++)
             {
@@ -492,7 +495,7 @@ namespace DTAClient.DXGUI.Generic
                 PlayerStatistics ps = players[i];
 
                 //List<string> items = new List<string>();
-                List<XNAListBoxItem> items = new List<XNAListBoxItem>();
+                List<XNAListBoxItem> items = [];
 
                 if (ps.Color > -1 && ps.Color < mpColors.Count)
                     textColor = mpColors[ps.Color].XnaColor;
@@ -515,12 +518,12 @@ namespace DTAClient.DXGUI.Generic
                     XNAListBoxItem spectatorItem = new XNAListBoxItem();
                     spectatorItem.Text = "Spectator".L10N("Client:Main:Spectator");
                     spectatorItem.TextColor = textColor;
-                    spectatorItem.Texture = sideTextures[sideTextures.Length - 1];
+                    spectatorItem.Texture = sideTextures[^1];
                     items.Add(spectatorItem);
                     items.Add(new XNAListBoxItem("-", textColor));
                 }
                 else
-                { 
+                {
                     if (!ms.SawCompletion)
                     {
                         // The game wasn't completed - we don't know the stats
@@ -533,10 +536,10 @@ namespace DTAClient.DXGUI.Generic
                     else
                     {
                         // The game was completed and the player was actually playing
-                        items.Add(new XNAListBoxItem(ps.Kills.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Losses.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Economy.ToString(), textColor));
-                        items.Add(new XNAListBoxItem(ps.Score.ToString(), textColor));
+                        items.Add(new XNAListBoxItem(ps.Kills.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Losses.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Economy.ToString(CultureInfo.CurrentCulture), textColor));
+                        items.Add(new XNAListBoxItem(ps.Score.ToString(CultureInfo.CurrentCulture), textColor));
                         items.Add(new XNAListBoxItem(
                             Conversions.BooleanToString(ps.Won, BooleanStringStyle.YESNO), textColor));
                     }
@@ -579,18 +582,14 @@ namespace DTAClient.DXGUI.Generic
 
         #region Statistics reading / game listing code
 
-        private void ReadStatistics()
-        {
-            StatisticsManager sm = StatisticsManager.Instance;
-
-            sm.ReadStatistics(ProgramConstants.GamePath);
-        }
+        private ValueTask ReadStatisticsAsync()
+            => StatisticsManager.Instance.ReadStatisticsAsync(ProgramConstants.GamePath);
 
         private void ListGameModes()
         {
             int gameCount = sm.GetMatchCount();
 
-            List<string> gameModes = new List<string>();
+            List<string> gameModes = [];
 
             cmbGameModeFilter.Items.Clear();
 
@@ -647,18 +646,17 @@ namespace DTAClient.DXGUI.Generic
             {
                 MatchStatistics ms = sm.GetMatchByIndex(gameIndex);
                 string dateTime = ms.DateAndTime.ToShortDateString() + " " + ms.DateAndTime.ToShortTimeString();
-                List<string> info = new List<string>();
-                info.Add(Renderer.GetSafeString(dateTime, lbGameList.FontIndex));
-                info.Add(mapLoader.TranslatedMapNames.ContainsKey(ms.MapName)
-                    ? mapLoader.TranslatedMapNames[ms.MapName]
-                    : ms.MapName);
-                info.Add(ms.GameMode.L10N($"INI:GameModes:{ms.GameMode}:UIName"));
-                if (ms.AverageFPS == 0)
-                    info.Add("-");
-                else
-                    info.Add(ms.AverageFPS.ToString());
-                info.Add(Renderer.GetSafeString(TimeSpan.FromSeconds(ms.LengthInSeconds).ToString(), lbGameList.FontIndex));
-                info.Add(Conversions.BooleanToString(ms.SawCompletion, BooleanStringStyle.YESNO));
+                List<string> info =
+                [
+                    Renderer.GetSafeString(dateTime, lbGameList.FontIndex),
+                    mapLoader.TranslatedMapNames.ContainsKey(ms.MapName)
+                        ? mapLoader.TranslatedMapNames[ms.MapName]
+                        : ms.MapName,
+                    ms.GameMode.L10N($"INI:GameModes:{ms.GameMode}:UIName"),
+                    ms.AverageFPS == 0 ? "-" : ms.AverageFPS.ToString(CultureInfo.CurrentCulture),
+                    Renderer.GetSafeString(TimeSpan.FromSeconds(ms.LengthInSeconds).ToString(), lbGameList.FontIndex),
+                    Conversions.BooleanToString(ms.SawCompletion, BooleanStringStyle.YESNO),
+                ];
                 lbGameList.AddItem(info, true);
             }
         }
@@ -813,7 +811,7 @@ namespace DTAClient.DXGUI.Generic
                 // "All" doesn't have a tag but that doesn't matter since 0 is not checked
                 var gameMode = (string)cmbGameModeFilter.Items[cmbGameModeFilter.SelectedIndex].Tag;
 
-                if (ms.GameMode != gameMode)
+                if (!string.Equals(ms.GameMode, gameMode, StringComparison.OrdinalIgnoreCase))
                     return;
             }
 
@@ -908,32 +906,32 @@ namespace DTAClient.DXGUI.Generic
                 }
             }
 
-            lblGamesStartedValue.Text = gamesStarted.ToString();
-            lblGamesFinishedValue.Text = gamesFinished.ToString();
-            lblWinsValue.Text = wins.ToString();
-            lblLossesValue.Text = gameLosses.ToString();
+            lblGamesStartedValue.Text = gamesStarted.ToString(CultureInfo.CurrentCulture);
+            lblGamesFinishedValue.Text = gamesFinished.ToString(CultureInfo.CurrentCulture);
+            lblWinsValue.Text = wins.ToString(CultureInfo.CurrentCulture);
+            lblLossesValue.Text = gameLosses.ToString(CultureInfo.CurrentCulture);
 
             if (gameLosses > 0)
             {
-                lblWinLossRatioValue.Text = Math.Round(wins / (double)gameLosses, 2).ToString();
+                lblWinLossRatioValue.Text = Math.Round(wins / (double)gameLosses, 2).ToString(CultureInfo.CurrentCulture);
             }
             else
                 lblWinLossRatioValue.Text = "-";
 
             if (gamesStarted > 0)
             {
-                lblAverageGameLengthValue.Text = TimeSpan.FromSeconds((int)timePlayed.TotalSeconds / gamesStarted).ToString();
+                lblAverageGameLengthValue.Text = TimeSpanToString(TimeSpan.FromSeconds((int)timePlayed.TotalSeconds / gamesStarted));
             }
             else
                 lblAverageGameLengthValue.Text = "-";
 
             if (gamesPlayed > 0)
             {
-                lblAverageEnemyCountValue.Text = Math.Round(numEnemies / (double)gamesPlayed, 2).ToString();
-                lblAverageAllyCountValue.Text = Math.Round(numAllies / (double)gamesPlayed, 2).ToString();
-                lblKillsPerGameValue.Text = (totalKills / gamesPlayed).ToString();
-                lblLossesPerGameValue.Text = (totalLosses / gamesPlayed).ToString();
-                lblAverageEconomyValue.Text = (totalEconomy / gamesPlayed).ToString();
+                lblAverageEnemyCountValue.Text = Math.Round(numEnemies / (double)gamesPlayed, 2).ToString(CultureInfo.CurrentCulture);
+                lblAverageAllyCountValue.Text = Math.Round(numAllies / (double)gamesPlayed, 2).ToString(CultureInfo.CurrentCulture);
+                lblKillsPerGameValue.Text = (totalKills / gamesPlayed).ToString(CultureInfo.CurrentCulture);
+                lblLossesPerGameValue.Text = (totalLosses / gamesPlayed).ToString(CultureInfo.CurrentCulture);
+                lblAverageEconomyValue.Text = (totalEconomy / gamesPlayed).ToString(CultureInfo.CurrentCulture);
             }
             else
             {
@@ -946,15 +944,15 @@ namespace DTAClient.DXGUI.Generic
 
             if (totalLosses > 0)
             {
-                lblKillLossRatioValue.Text = Math.Round(totalKills / (double)totalLosses, 2).ToString();
+                lblKillLossRatioValue.Text = Math.Round(totalKills / (double)totalLosses, 2).ToString(CultureInfo.CurrentCulture);
             }
             else
                 lblKillLossRatioValue.Text = "-";
 
-            lblTotalTimePlayedValue.Text = timePlayed.ToString();
-            lblTotalKillsValue.Text = totalKills.ToString();
-            lblTotalLossesValue.Text = totalLosses.ToString();
-            lblTotalScoreValue.Text = totalScore.ToString();
+            lblTotalTimePlayedValue.Text = TimeSpanToString(timePlayed);
+            lblTotalKillsValue.Text = totalKills.ToString(CultureInfo.CurrentCulture);
+            lblTotalLossesValue.Text = totalLosses.ToString(CultureInfo.CurrentCulture);
+            lblTotalScoreValue.Text = totalScore.ToString(CultureInfo.CurrentCulture);
             lblFavouriteSideValue.Text = sides[GetHighestIndex(sideGameCounts)].UIName;
 
             if (numEasyAIs >= numMediumAIs && numEasyAIs >= numHardAIs)
@@ -963,6 +961,13 @@ namespace DTAClient.DXGUI.Generic
                 lblAverageAILevelValue.Text = "Medium".L10N("Client:Main:MediumAI");
             else
                 lblAverageAILevelValue.Text = "Hard".L10N("Client:Main:HardAI");
+        }
+
+        private string TimeSpanToString(TimeSpan timeSpan)
+        {
+            return timeSpan.Days > 0 ?
+                    $"{timeSpan.Days} d {timeSpan.Hours} h {timeSpan.Minutes} m {timeSpan.Seconds} s" :
+                    $"{timeSpan.Hours} h {timeSpan.Minutes} m {timeSpan.Seconds} s";
         }
 
         private PlayerStatistics FindLocalPlayer(MatchStatistics ms)
@@ -997,10 +1002,10 @@ namespace DTAClient.DXGUI.Generic
             return highestIndex;
         }
 
-        private void ClearAllStatistics()
+        private async ValueTask ClearAllStatisticsAsync()
         {
-            StatisticsManager.Instance.ClearDatabase();
-            ReadStatistics();
+            await StatisticsManager.Instance.SaveDatabaseAsync().ConfigureAwait(false);
+            await ReadStatisticsAsync().ConfigureAwait(false);
             ListGameModes();
             ListGames();
         }
@@ -1019,12 +1024,10 @@ namespace DTAClient.DXGUI.Generic
             var msgBox = new XNAMessageBox(WindowManager, "Clear all statistics".L10N("Client:Main:ClearStatisticsTitle"),
                 ("All statistics data will be cleared from the database.\n\nAre you sure you want to continue?").L10N("Client:Main:ClearStatisticsText"), XNAMessageBoxButtons.YesNo);
             msgBox.Show();
-            msgBox.YesClickedAction = ClearStatisticsConfirmation_YesClicked;
+            msgBox.YesClickedAction = _ => ClearStatisticsConfirmation_YesClickedAsync().HandleTask();
         }
 
-        private void ClearStatisticsConfirmation_YesClicked(XNAMessageBox messageBox)
-        {
-            ClearAllStatistics();
-        }
+        private ValueTask ClearStatisticsConfirmation_YesClickedAsync()
+            => ClearAllStatisticsAsync();
     }
 }

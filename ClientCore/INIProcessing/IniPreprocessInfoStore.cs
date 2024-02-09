@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 
 namespace ClientCore.INIProcessing
 {
@@ -34,7 +35,7 @@ namespace ClientCore.INIProcessing
         private const string StoreIniName = "ProcessedIniInfo.ini";
         private const string ProcessedINIsSection = "ProcessedINIs";
 
-        public List<PreprocessedIniInfo> PreprocessedIniInfos { get; } = new List<PreprocessedIniInfo>();
+        public List<PreprocessedIniInfo> PreprocessedIniInfos { get; } = [];
 
         /// <summary>
         /// Loads the preprocessed INI information.
@@ -76,17 +77,17 @@ namespace ClientCore.INIProcessing
         /// <returns>True if the INI file is up-to-date, false if it needs to be processed.</returns>
         public bool IsIniUpToDate(string fileName)
         {
-            PreprocessedIniInfo info = PreprocessedIniInfos.Find(i => i.FileName == fileName);
+            PreprocessedIniInfo info = PreprocessedIniInfos.Find(i => string.Equals(i.FileName, fileName, StringComparison.OrdinalIgnoreCase));
 
             if (info == null)
                 return false;
 
             string processedFileHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, "INI", fileName));
-            if (processedFileHash != info.ProcessedFileHash)
+            if (!string.Equals(processedFileHash, info.ProcessedFileHash, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             string originalFileHash = Utilities.CalculateSHA1ForFile(SafePath.CombineFilePath(ProgramConstants.GamePath, "INI", "Base", fileName));
-            if (originalFileHash != info.OriginalFileHash)
+            if (!string.Equals(originalFileHash, info.OriginalFileHash, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             return true;
@@ -94,7 +95,7 @@ namespace ClientCore.INIProcessing
 
         public void UpsertRecord(string fileName, string originalFileHash, string processedFileHash)
         {
-            var existing = PreprocessedIniInfos.Find(i => i.FileName == fileName);
+            var existing = PreprocessedIniInfos.Find(i => string.Equals(i.FileName, fileName, StringComparison.OrdinalIgnoreCase));
             if (existing == null)
             {
                 PreprocessedIniInfos.Add(new PreprocessedIniInfo(fileName, originalFileHash, processedFileHash));
@@ -118,7 +119,7 @@ namespace ClientCore.INIProcessing
             {
                 PreprocessedIniInfo info = PreprocessedIniInfos[i];
 
-                iniFile.SetStringValue(ProcessedINIsSection, i.ToString(),
+                iniFile.SetStringValue(ProcessedINIsSection, i.ToString(CultureInfo.InvariantCulture),
                     string.Join(",", info.FileName, info.OriginalFileHash, info.ProcessedFileHash));
             }
             iniFile.WriteIniFile();

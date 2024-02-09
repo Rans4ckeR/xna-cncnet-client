@@ -17,6 +17,8 @@ using SixLabors.ImageSharp;
 
 namespace DTAClient.DXGUI
 {
+    using System.Globalization;
+
     /// <summary>
     /// Displays a dialog in the client when a game is in progress.
     /// Also enables power-saving (lowers FPS) while a game is in progress,
@@ -87,15 +89,18 @@ namespace DTAClient.DXGUI
                 if (debugLogFileInfo.Exists)
                     debugLogLastWriteTime = debugLogFileInfo.LastWriteTime;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ProgramConstants.LogException(ex);
+            }
 #endif
         }
 
         private void SharedUILogic_GameProcessStarted()
         {
-
 #if ARES
             debugSnapshotDirectories = GetAllDebugSnapshotDirectories();
+
 #else
             try
             {
@@ -108,7 +113,7 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                Logger.Log("Exception when deleting error log files! Message: " + ex.Message);
+                ProgramConstants.LogException(ex, "Exception when deleting error log files!");
                 deletingLogFilesFailed = true;
             }
 #endif
@@ -129,7 +134,7 @@ namespace DTAClient.DXGUI
 
         private void SharedUILogic_GameProcessExited()
         {
-            AddCallback(new Action(HandleGameProcessExited), null);
+            AddCallback(HandleGameProcessExited);
         }
 
         private void HandleGameProcessExited()
@@ -166,7 +171,7 @@ namespace DTAClient.DXGUI
             DateTime dtn = DateTime.Now;
 
 #if ARES
-            Task.Factory.StartNew(ProcessScreenshots);
+            ProcessScreenshotsAsync().HandleTask();
 
             // TODO: Ares debug log handling should be addressed in Ares DLL itself.
             // For now the following are handled here:
@@ -178,11 +183,11 @@ namespace DTAClient.DXGUI
             string snapshotDirectory = GetNewestDebugSnapshotDirectory();
             bool snapshotCreated = snapshotDirectory != null;
 
-            snapshotDirectory = snapshotDirectory ?? SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "debug", FormattableString.Invariant($"snapshot-{dtn.ToString("yyyyMMdd-HHmmss")}"));
+            snapshotDirectory ??= SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "debug", FormattableString.Invariant($"snapshot-{dtn.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}"));
 
             bool debugLogModified = false;
             FileInfo debugLogFileInfo = SafePath.GetFile(ProgramConstants.GamePath, "debug", "debug.log");
-            DateTime lastWriteTime = new DateTime();
+            DateTime lastWriteTime = default(DateTime);
 
             if (debugLogFileInfo.Exists)
                 lastWriteTime = debugLogFileInfo.LastAccessTime;
@@ -235,7 +240,7 @@ namespace DTAClient.DXGUI
 
                     Logger.Log("The game crashed! Copying " + filename + " file.");
 
-                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
+                    string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture) : "";
 
                     string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
                         timeStamp + Path.GetExtension(filename);
@@ -246,8 +251,9 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                Logger.Log("An error occured while checking for " + filename + " file. Message: " + ex.Message);
+                ProgramConstants.LogException(ex, "An error occurred while checking for " + filename + " file.");
             }
+
             return copied;
         }
 
@@ -277,7 +283,7 @@ namespace DTAClient.DXGUI
 
                         Logger.Log("There was a sync error! Copying file " + filename);
 
-                        string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm") : "";
+                        string timeStamp = dateTime.HasValue ? dateTime.Value.ToString("_yyyy_MM_dd_HH_mm", CultureInfo.InvariantCulture) : "";
 
                         string filenameCopy = Path.GetFileNameWithoutExtension(filename) +
                             timeStamp + Path.GetExtension(filename);
@@ -290,8 +296,9 @@ namespace DTAClient.DXGUI
             }
             catch (Exception ex)
             {
-                Logger.Log("An error occured while checking for SYNCX.TXT files. Message: " + ex.Message);
+                ProgramConstants.LogException(ex, "An error occured while checking for SYNCX.TXT files.");
             }
+
             return copied;
         }
 
@@ -319,7 +326,10 @@ namespace DTAClient.DXGUI
                         {
                             Directory.Delete(directory);
                         }
-                        catch { }
+                        catch (Exception ex)
+                        {
+                            ProgramConstants.LogException(ex);
+                        }
                     }
                 }
             }
@@ -339,7 +349,10 @@ namespace DTAClient.DXGUI
             {
                 directories.AddRange(Directory.GetDirectories(SafePath.CombineDirectoryPath(ProgramConstants.GamePath, "debug"), "snapshot-*"));
             }
-            catch { }
+            catch (Exception ex)
+            {
+                ProgramConstants.LogException(ex);
+            }
 
             return directories;
         }
@@ -347,7 +360,7 @@ namespace DTAClient.DXGUI
         /// <summary>
         /// Converts BMP screenshots to PNG and copies them from game directory to Screenshots sub-directory.
         /// </summary>
-        private void ProcessScreenshots()
+        private static async ValueTask ProcessScreenshotsAsync()
         {
             IEnumerable<FileInfo> files = SafePath.GetDirectory(ProgramConstants.GamePath).EnumerateFiles("SCRN*.bmp");
             DirectoryInfo screenshotsDirectory = SafePath.GetDirectory(ProgramConstants.GamePath, "Screenshots");
@@ -360,7 +373,7 @@ namespace DTAClient.DXGUI
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("ProcessScreenshots: An error occured trying to create Screenshots directory. Message: " + ex.Message);
+                    ProgramConstants.LogException(ex, "ProcessScreenshots: An error occured trying to create Screenshots directory.");
                     return;
                 }
             }
@@ -369,16 +382,31 @@ namespace DTAClient.DXGUI
             {
                 try
                 {
-                    using FileStream stream = file.OpenRead();
-                    using var image = Image.Load(stream);
-                    FileInfo newFile = SafePath.GetFile(screenshotsDirectory.FullName, FormattableString.Invariant($"{Path.GetFileNameWithoutExtension(file.FullName)}.png"));
-                    using FileStream newFileStream = newFile.OpenWrite();
+                    FileStream stream = file.OpenRead();
 
-                    image.SaveAsPng(newFileStream);
+#if NETFRAMEWORK
+                    using (stream)
+#else
+                    await using (stream.ConfigureAwait(false))
+#endif
+                    {
+                        using Image image = await Image.LoadAsync(stream).ConfigureAwait(false);
+                        FileInfo newFile = SafePath.GetFile(screenshotsDirectory.FullName, FormattableString.Invariant($"{Path.GetFileNameWithoutExtension(file.FullName)}.png"));
+                        FileStream newFileStream = newFile.OpenWrite();
+
+#if NETFRAMEWORK
+                        using (newFileStream)
+#else
+                        await using (newFileStream.ConfigureAwait(false))
+#endif
+                        {
+                            await image.SaveAsPngAsync(newFileStream).ConfigureAwait(false);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log("ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(file.FullName) + ".png. Message: " + ex.Message);
+                    ProgramConstants.LogException(ex, "ProcessScreenshots: Error occured when trying to save " + Path.GetFileNameWithoutExtension(file.FullName) + ".png.");
                     continue;
                 }
 

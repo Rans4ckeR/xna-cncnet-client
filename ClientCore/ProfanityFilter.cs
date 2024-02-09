@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 
 namespace ClientCore
 {
+    using System.Globalization;
+
     public class ProfanityFilter
     {
         public IList<string> CensoredWords { get; private set; }
@@ -76,11 +78,11 @@ namespace ClientCore
         private string ToRegexPattern(string wildcardSearch)
         {
             string regexPattern = Regex.Escape(wildcardSearch);
-            regexPattern = regexPattern.Replace(@"\*", ".*?");
-            regexPattern = regexPattern.Replace(@"\?", ".");
-            if (regexPattern.StartsWith(".*?"))
+            regexPattern = regexPattern.Replace(@"\*", ".*?", StringComparison.OrdinalIgnoreCase);
+            regexPattern = regexPattern.Replace(@"\?", ".", StringComparison.OrdinalIgnoreCase);
+            if (regexPattern.StartsWith(".*?", StringComparison.OrdinalIgnoreCase))
             {
-                regexPattern = regexPattern.Substring(3);
+                regexPattern = regexPattern[3..];
                 regexPattern = @"(^\b)*?" + regexPattern;
             }
             regexPattern = @"\b" + regexPattern + @"\b";

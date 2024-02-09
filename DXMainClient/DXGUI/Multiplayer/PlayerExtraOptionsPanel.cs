@@ -143,7 +143,7 @@ namespace DTAClient.DXGUI.Multiplayer
         private void DdTeamMappingPreset_SelectedIndexChanged(object sender, EventArgs e)
         {
             var selectedItem = ddTeamStartMappingPreset.SelectedItem;
-            if (selectedItem?.Text == customPresetName)
+            if (string.Equals(selectedItem?.Text, customPresetName, StringComparison.OrdinalIgnoreCase))
                 return;
 
             var teamStartMappings = selectedItem?.Tag as List<TeamStartMapping>;
@@ -269,7 +269,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         public List<TeamStartMapping> GetTeamStartMappings()
             => chkBoxUseTeamStartMappings.Checked ?
-                teamStartMappingsPanel.GetTeamStartMappings() : new List<TeamStartMapping>();
+                teamStartMappingsPanel.GetTeamStartMappings() : [];
 
         public void EnableControls(bool enable)
         {

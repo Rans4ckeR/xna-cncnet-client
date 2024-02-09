@@ -9,17 +9,20 @@ using DTAClient.Online;
 using ClientGUI;
 using ClientCore;
 using System.Threading;
+using System.Threading.Tasks;
+using ClientCore.Extensions;
 using DTAClient.Domain.Multiplayer.CnCNet;
 using DTAClient.Online.EventArguments;
 using DTAConfig;
-using ClientCore.Extensions;
 
 namespace DTAClient.DXGUI.Generic
 {
+    using System.Globalization;
+
     /// <summary>
     /// A top bar that allows switching between various client windows.
     /// </summary>
-    public class TopBar : XNAPanel
+    internal sealed class TopBar : XNAPanel
     {
         /// <summary>
         /// The number of seconds that the top bar will stay down after it has
@@ -48,7 +51,7 @@ namespace DTAClient.DXGUI.Generic
 
         public SwitchType LastSwitchType { get; private set; }
 
-        private List<ISwitchable> primarySwitches = new List<ISwitchable>();
+        private List<ISwitchable> primarySwitches = [];
         private ISwitchable cncnetLobbySwitch;
         private ISwitchable privateMessageSwitch;
 
@@ -92,7 +95,7 @@ namespace DTAClient.DXGUI.Generic
         public void RemovePrimarySwitchable(ISwitchable switchable)
         {
             primarySwitches.Remove(switchable);
-            btnMainButton.Text = primarySwitches[primarySwitches.Count - 1].GetSwitchName() + " (F2)";
+            btnMainButton.Text = primarySwitches[^1].GetSwitchName() + " (F2)";
         }
 
         public void SetSecondarySwitch(ISwitchable switchable)
@@ -118,11 +121,16 @@ namespace DTAClient.DXGUI.Generic
                 optionsWindow.ToggleMainMenuOnlyOptions(primarySwitches.Count == 1 && !lanMode);
         }
 
-        public void Clean()
+        public Task CleanAsync()
+#if !NETFRAMEWORK
+            => cncnetPlayerCountCancellationSource is not null ? cncnetPlayerCountCancellationSource.CancelAsync() : Task.CompletedTask;
+#else
         {
-            if (cncnetPlayerCountCancellationSource != null)
-                cncnetPlayerCountCancellationSource.Cancel();
+            cncnetPlayerCountCancellationSource?.Cancel();
+
+            return Task.CompletedTask;
         }
+#endif
 
         public override void Initialize()
         {
@@ -172,7 +180,7 @@ namespace DTAClient.DXGUI.Generic
             btnLogout.FontIndex = 1;
             btnLogout.Text = "Log Out".L10N("Client:Main:TopBarLogOut");
             btnLogout.AllowClick = false;
-            btnLogout.LeftClick += BtnLogout_LeftClick;
+            btnLogout.LeftClick += (_, _) => BtnLogout_LeftClickAsync().HandleTask();
 
             btnOptions = new XNAClientButton(WindowManager);
             btnOptions.Name = "btnOptions";
@@ -199,7 +207,7 @@ namespace DTAClient.DXGUI.Generic
                 lblCnCNetStatus = new XNALabel(WindowManager);
                 lblCnCNetStatus.Name = "lblCnCNetStatus";
                 lblCnCNetStatus.FontIndex = 1;
-                lblCnCNetStatus.Text = ClientConfiguration.Instance.LocalGame.ToUpper() + " " + "PLAYERS ONLINE:".L10N("Client:Main:OnlinePlayersNumber");
+                lblCnCNetStatus.Text = ClientConfiguration.Instance.LocalGame.ToUpperInvariant() + " " + "PLAYERS ONLINE:".L10N("Client:Main:OnlinePlayersNumber");
                 lblCnCNetPlayerCount = new XNALabel(WindowManager);
                 lblCnCNetPlayerCount.Name = "lblCnCNetPlayerCount";
                 lblCnCNetPlayerCount.FontIndex = 1;
@@ -248,7 +256,7 @@ namespace DTAClient.DXGUI.Generic
                 if (e.PlayerCount == -1)
                     lblCnCNetPlayerCount.Text = "N/A".L10N("Client:Main:N/A");
                 else
-                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString();
+                    lblCnCNetPlayerCount.Text = e.PlayerCount.ToString(CultureInfo.CurrentCulture);
             }
         }
 
@@ -288,9 +296,9 @@ namespace DTAClient.DXGUI.Generic
             downTime = TimeSpan.FromSeconds(DOWN_TIME_WAIT_SECONDS - EVENT_DOWN_TIME_WAIT_SECONDS);
         }
 
-        private void BtnLogout_LeftClick(object sender, EventArgs e)
+        private async ValueTask BtnLogout_LeftClickAsync()
         {
-            connectionManager.Disconnect();
+            await connectionManager.DisconnectAsync().ConfigureAwait(false);
             LogoutEvent?.Invoke(this, null);
             SwitchToPrimary();
         }
@@ -302,7 +310,7 @@ namespace DTAClient.DXGUI.Generic
             => BtnMainButton_LeftClick(this, EventArgs.Empty);
 
         public ISwitchable GetTopMostPrimarySwitchable()
-            => primarySwitches[primarySwitches.Count - 1];
+            => primarySwitches[^1];
 
         public void SwitchToSecondary()
             => BtnCnCNetLobby_LeftClick(this, EventArgs.Empty);
@@ -310,7 +318,7 @@ namespace DTAClient.DXGUI.Generic
         private void BtnCnCNetLobby_LeftClick(object sender, EventArgs e)
         {
             LastSwitchType = SwitchType.SECONDARY;
-            primarySwitches[primarySwitches.Count - 1].SwitchOff();
+            primarySwitches[^1].SwitchOff();
             cncnetLobbySwitch.SwitchOn();
             privateMessageSwitch.SwitchOff();
 
@@ -324,11 +332,11 @@ namespace DTAClient.DXGUI.Generic
             LastSwitchType = SwitchType.PRIMARY;
             cncnetLobbySwitch.SwitchOff();
             privateMessageSwitch.SwitchOff();
-            primarySwitches[primarySwitches.Count - 1].SwitchOn();
+            primarySwitches[^1].SwitchOn();
 
             // HACK warning
             // TODO: add a way for DarkeningPanel to skip transitions
-            if (((XNAControl)primarySwitches[primarySwitches.Count - 1]).Parent is DarkeningPanel darkeningPanel)
+            if (((XNAControl)primarySwitches[^1]).Parent is DarkeningPanel darkeningPanel)
                 darkeningPanel.Alpha = 1.0f;
         }
 
@@ -443,7 +451,7 @@ namespace DTAClient.DXGUI.Generic
 
             lblTime.Text = Renderer.GetSafeString(dtn.ToLongTimeString(), lblTime.FontIndex);
             string dateText = Renderer.GetSafeString(dtn.ToShortDateString(), lblDate.FontIndex);
-            if (lblDate.Text != dateText)
+            if (!string.Equals(lblDate.Text, dateText, StringComparison.OrdinalIgnoreCase))
                 lblDate.Text = dateText;
 
             base.Update(gameTime);

@@ -13,7 +13,7 @@ namespace ClientGUI
     /// </summary>
     public static class ClientGUICreator
     {
-        private static List<Type> controlTypes = new();
+        private static List<Type> controlTypes = [];
 
         private static IServiceProvider serviceProvider;
 
@@ -23,7 +23,6 @@ namespace ClientGUI
         /// When a control is added as singleton, the same instance will be returned every time one is requested by the control's name.
         /// </summary>
         /// <param name="serviceCollection">Service collection for our dependency injection.</param>
-        /// <param name="controlType">The control type to add.</param>
         /// <returns>IServiceCollection.</returns>
         public static IServiceCollection AddSingletonXnaControl<T>(this IServiceCollection serviceCollection)
         {
@@ -38,7 +37,6 @@ namespace ClientGUI
         /// When a control is added as transient, a new instance will be instantiated every time one is requested by the control's name.
         /// </summary>
         /// <param name="serviceCollection">Service collection for our dependency injection.</param>
-        /// <param name="controlType">The control type to add.</param>
         /// <returns>IServiceCollection.</returns>
         public static IServiceCollection AddTransientXnaControl<T>(this IServiceCollection serviceCollection)
         {
@@ -80,7 +78,7 @@ namespace ClientGUI
         /// <exception cref="Exception">If another control was registered with the same name.</exception>
         private static void ValidateNonDuplicateControlType(Type controlType)
         {
-            if (controlTypes.Any(c => c.Name == controlType.Name))
+            if (controlTypes.Any(c => string.Equals(c.Name, controlType.Name, StringComparison.OrdinalIgnoreCase)))
                 throw new Exception($"A control type with name {controlType.Name} has already been registered.");
         }
 
@@ -96,7 +94,7 @@ namespace ClientGUI
         private static XNAControl GetXnaControl(IServiceProvider provider, string controlTypeName)
         {
             serviceProvider ??= provider;
-            Type controlType = controlTypes.SingleOrDefault(control => control.Name == controlTypeName);
+            Type controlType = controlTypes.SingleOrDefault(control => string.Equals(control.Name, controlTypeName, StringComparison.OrdinalIgnoreCase));
             if (controlType == null)
                 throw new Exception($"Control type {controlTypeName} was not registered with ServiceCollection in GameClass");
 

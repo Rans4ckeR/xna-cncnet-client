@@ -1,4 +1,5 @@
 ﻿using Rampastring.Tools;
+using System.Globalization;
 
 namespace ClientCore.Settings
 {
@@ -26,7 +27,7 @@ namespace ClientCore.Settings
 
         public override string ToString()
         {
-            return Get().ToString();
+            return Get().ToString(CultureInfo.InvariantCulture);
         }
     }
 }

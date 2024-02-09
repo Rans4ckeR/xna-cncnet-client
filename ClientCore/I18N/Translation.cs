@@ -51,12 +51,12 @@ public class Translation : ICloneable
     public string Author { get; private set; } = string.Empty;
 
     /// <summary>Stores the translation values (including default values for missing strings).</summary>
-    private Dictionary<string, string> Values { get; } = new();
+    private Dictionary<string, string> Values { get; } = [];
 
     // public bool IsRightToLeft { get; set; } // TODO
 
     /// <summary>Contains all keys within <see cref="Values"/> with missing translations.</summary>
-    private readonly HashSet<string> MissingKeys = new();
+    private readonly HashSet<string> MissingKeys = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Used to write missing translation table entries to a file.</summary>
     public const string MISSING_KEY_PREFIX = "; ";  // a hack but hey it works
@@ -88,7 +88,12 @@ public class Translation : ICloneable
     public Translation(IniFile ini, string localeCode)
         : this(localeCode)
     {
+#if NETFRAMEWORK
+        if (ini is null)
+            throw new ArgumentNullException(nameof(ini));
+#else
         ArgumentNullException.ThrowIfNull(ini);
+#endif
 
         IniSection metadataSection = ini.GetSection(METADATA_SECTION);
         Name = metadataSection?.GetStringValue(nameof(Name), string.Empty);
@@ -122,7 +127,7 @@ public class Translation : ICloneable
         _culture = other._culture;
         Author = other.Author;
 
-        foreach (var (key, value) in other.Values)
+        foreach ((string key, string value) in other.Values)
             Values.Add(key, value);
     }
 
@@ -143,7 +148,7 @@ public class Translation : ICloneable
     public void AppendValuesFromIniFile(IniFile ini)
     {
         IniSection valuesSection = ini.GetSection(nameof(Values));
-        foreach (var (key, value) in valuesSection.Keys)
+        foreach ((string key, string value) in valuesSection.Keys)
             Values[key] = value.FromIniString();
     }
 
@@ -252,7 +257,7 @@ public class Translation : ICloneable
         ini.AddSection(nameof(Values));
         IniSection translation = ini.GetSection(nameof(Values));
 
-        foreach (var (key, value) in Values.OrderBy(kvp => kvp.Key))
+        foreach ((string key, string value) in Values.OrderBy(kvp => kvp.Key))
         {
             bool valueMissing = MissingKeys.Contains(key);
             if (!saveOnlyMissingValues || valueMissing)
@@ -287,8 +292,8 @@ public class Translation : ICloneable
     /// <returns>The translated value or a default value.</returns>
     public string LookUp(string key, string defaultValue, bool notify = true)
     {
-        if (Values.ContainsKey(key))
-            return Values[key];
+        if (Values.TryGetValue(key, out string value))
+            return value;
 
         if (notify)
             _ = HandleMissing(key, defaultValue);
@@ -309,22 +314,16 @@ public class Translation : ICloneable
         string key = $"{INI_PREFIX}:{CONTROLS_PREFIX}:{control.Parent?.Name ?? GLOBAL_PREFIX}:{control.Name}:{attributeName}";
         string globalKey = $"{INI_PREFIX}:{CONTROLS_PREFIX}:{GLOBAL_PREFIX}:{control.Name}:{attributeName}";
 
-        string result;
-        if (Values.ContainsKey(key))
-        {
-            result = Values[key];
-        }
-        else if (key != globalKey && Values.ContainsKey(globalKey))
-        {
-            result = Values[globalKey];
-        }
-        else
-        {
-            result = defaultValue;
+        if (Values.TryGetValue(key, out string result))
+            return result;
 
-            if (notify)
-                _ = HandleMissing(key, defaultValue);
-        }
+        if (!string.Equals(key, globalKey, StringComparison.OrdinalIgnoreCase) && Values.TryGetValue(globalKey, out result))
+            return result;
+
+        result = defaultValue;
+
+        if (notify)
+            _ = HandleMissing(key, defaultValue);
 
         return result;
     }

@@ -11,6 +11,8 @@ using System.IO;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
+    using System.Globalization;
+
     /// <summary>
     /// A window that allows the user to host a new game on CnCNet.
     /// </summary>
@@ -60,7 +62,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             tbGameName.ClientRectangle = new Rectangle(Width - 150 - UIDesignConstants.EMPTY_SPACE_SIDES -
                 UIDesignConstants.CONTROL_HORIZONTAL_MARGIN, UIDesignConstants.EMPTY_SPACE_TOP +
                 UIDesignConstants.CONTROL_VERTICAL_MARGIN, 150, 21);
-            tbGameName.Text = string.Format("{0}'s Game".L10N("Client:Main:GameOfPlayer"), ProgramConstants.PLAYERNAME);
+            tbGameName.Text = string.Format(CultureInfo.CurrentCulture, "{0}'s Game".L10N("Client:Main:GameOfPlayer"), ProgramConstants.PLAYERNAME);
 
             lblRoomName = new XNALabel(WindowManager);
             lblRoomName.Name = nameof(lblRoomName);
@@ -73,7 +75,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             ddMaxPlayers.ClientRectangle = new Rectangle(tbGameName.X, tbGameName.Bottom + 20,
                 tbGameName.Width, 21);
             for (int i = 8; i > 1; i--)
-                ddMaxPlayers.AddItem(i.ToString());
+                ddMaxPlayers.AddItem(i.ToString(CultureInfo.CurrentCulture));
             ddMaxPlayers.SelectedIndex = 0;
 
             lblMaxPlayers = new XNALabel(WindowManager);
@@ -180,7 +182,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void Instance_SettingsSaved(object sender, EventArgs e)
         {
-            tbGameName.Text = string.Format("{0}'s Game".L10N("Client:Main:GameOfPlayer"), UserINISettings.Instance.PlayerName.Value);
+            tbGameName.Text = string.Format(CultureInfo.CurrentCulture, "{0}'s Game".L10N("Client:Main:GameOfPlayer"), UserINISettings.Instance.PlayerName.Value);
         }
 
         private void BtnCancel_LeftClick(object sender, EventArgs e)
@@ -199,7 +201,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 new IniFile(SafePath.CombineFilePath(ProgramConstants.GamePath, ProgramConstants.SAVED_GAME_SPAWN_INI));
 
             string password = Utilities.CalculateSHA1ForString(
-                spawnSGIni.GetStringValue("Settings", "GameID", string.Empty)).Substring(0, 10);
+                spawnSGIni.GetStringValue("Settings", "GameID", string.Empty))[..10];
 
             GameCreationEventArgs ea = new GameCreationEventArgs(gameName,
                 spawnSGIni.GetIntValue("Settings", "PlayerCount", 2), password,
@@ -210,7 +212,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private void BtnCreateGame_LeftClick(object sender, EventArgs e)
         {
-            string gameName = tbGameName.Text.Replace(";", string.Empty);
+            string gameName = tbGameName.Text.Replace(";", string.Empty, StringComparison.OrdinalIgnoreCase);
 
             if (string.IsNullOrEmpty(gameName))
             {
@@ -230,7 +232,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
 
             GameCreated?.Invoke(this, new GameCreationEventArgs(gameName,
-                int.Parse(ddMaxPlayers.SelectedItem.Text), tbPassword.Text,
+                int.Parse(ddMaxPlayers.SelectedItem.Text, CultureInfo.InvariantCulture), tbPassword.Text,
                 tunnelHandler.Tunnels[lbTunnelList.SelectedIndex]));
         }
 
@@ -273,7 +275,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             IniFile iniFile = new IniFile(savedGameSpawnIniFile.FullName);
 
-            if (iniFile.GetStringValue("Settings", "Name", string.Empty) != ProgramConstants.PLAYERNAME)
+            if (!string.Equals(iniFile.GetStringValue("Settings", "Name", string.Empty), ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             if (!iniFile.GetBooleanValue("Settings", "Host", false))

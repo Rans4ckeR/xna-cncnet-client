@@ -112,7 +112,7 @@ namespace DTAConfig.Settings
 
             foreach (var control in Parent.Children)
             {
-                if (control is XNAClientCheckBox && control.Name == ParentCheckBoxName)
+                if (control is XNAClientCheckBox && string.Equals(control.Name, ParentCheckBoxName, StringComparison.OrdinalIgnoreCase))
                     return control as XNAClientCheckBox;
             }
 

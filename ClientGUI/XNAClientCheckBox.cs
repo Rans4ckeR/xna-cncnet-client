@@ -37,7 +37,7 @@ namespace ClientGUI
 
         protected override void ParseControlINIAttribute(IniFile iniFile, string key, string value)
         {
-            if (key == "ToolTip")
+            if (string.Equals(key, "ToolTip", StringComparison.OrdinalIgnoreCase))
             {
                 ToolTipText = value.FromIniString();
                 return;

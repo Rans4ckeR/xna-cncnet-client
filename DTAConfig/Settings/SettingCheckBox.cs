@@ -72,9 +72,9 @@ namespace DTAConfig.Settings
 
             if (WriteSettingValue)
             {
-                if (value == EnabledSettingValue)
+                if (string.Equals(value, EnabledSettingValue, StringComparison.OrdinalIgnoreCase))
                     Checked = true;
-                else if (value == DisabledSettingValue)
+                else if (string.Equals(value, DisabledSettingValue, StringComparison.OrdinalIgnoreCase))
                     Checked = false;
                 else
                     Checked = DefaultValue;

@@ -12,7 +12,7 @@ namespace DTAClient.Online
     {
         public SortedUserCollection(Func<T, T, int> userComparer)
         {
-            dictionary = new Dictionary<string, LinkedListNode<T>>();
+            dictionary = [];
             linkedList = new LinkedList<T>();
             this.userComparer = userComparer;
         }
@@ -29,7 +29,7 @@ namespace DTAClient.Online
             if (linkedList.Count == 0)
             {
                 var node = linkedList.AddFirst(item);
-                dictionary.Add(username.ToLower(), node);
+                dictionary.Add(username.ToUpperInvariant(), node);
                 return;
             }
 
@@ -39,14 +39,14 @@ namespace DTAClient.Online
                 if (userComparer(currentNode.Value, item) > 0)
                 {
                     var node = linkedList.AddBefore(currentNode, item);
-                    dictionary.Add(username.ToLower(), node);
+                    dictionary.Add(username.ToUpperInvariant(), node);
                     break;
                 }
 
                 if (currentNode.Next == null)
                 {
                     var node = linkedList.AddAfter(currentNode, item);
-                    dictionary.Add(username.ToLower(), node);
+                    dictionary.Add(username.ToUpperInvariant(), node);
                     break;
                 }
 
@@ -56,10 +56,10 @@ namespace DTAClient.Online
 
         public bool Remove(string username)
         {
-            if (dictionary.TryGetValue(username.ToLower(), out var node))
+            if (dictionary.TryGetValue(username.ToUpperInvariant(), out var node))
             {
                 linkedList.Remove(node);
-                dictionary.Remove(username.ToLower());
+                dictionary.Remove(username.ToUpperInvariant());
                 return true;
             }
 
@@ -68,7 +68,7 @@ namespace DTAClient.Online
 
         public T Find(string username)
         {
-            if (dictionary.TryGetValue(username.ToLower(), out var node))
+            if (dictionary.TryGetValue(username.ToUpperInvariant(), out var node))
                 return node.Value;
 
             return default(T);
@@ -76,7 +76,7 @@ namespace DTAClient.Online
 
         public void Reinsert(string username)
         {
-            var existing = Find(username.ToLower());
+            var existing = Find(username.ToUpperInvariant());
             if (existing == null)
                 return;
 

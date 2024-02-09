@@ -1,30 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using Rampastring.Tools;
 
 namespace ClientCore.Statistics.GameParsers
 {
+    using System.Globalization;
+
     public class LogFileStatisticsParser : GenericMatchParser
     {
-        public LogFileStatisticsParser(MatchStatistics ms, bool isLoadedGame) : base(ms)
+        public LogFileStatisticsParser(MatchStatistics ms, bool isLoadedGame)
+            : base(ms)
         {
             this.isLoadedGame = isLoadedGame;
         }
 
-        private string fileName = "DTA.log";
         private string economyString = "Economy"; // RA2/YR do not have economy stat, but a number of built objects.
-        private bool isLoadedGame;
+        private readonly bool isLoadedGame;
 
-        public void ParseStats(string gamepath, string fileName)
+        public async ValueTask ParseStatisticsAsync(string gamepath, string fileName)
         {
-            this.fileName = fileName;
-            if (ClientConfiguration.Instance.UseBuiltStatistic) economyString = "Built";
-            ParseStatistics(gamepath);
-        }
+            if (ClientConfiguration.Instance.UseBuiltStatistic)
+                economyString = "Built";
 
-        protected override void ParseStatistics(string gamepath)
-        {
             FileInfo statisticsFileInfo = SafePath.GetFile(gamepath, fileName);
 
             if (!statisticsFileInfo.Exists)
@@ -37,61 +36,61 @@ namespace ClientCore.Statistics.GameParsers
 
             try
             {
-                using StreamReader reader = new StreamReader(statisticsFileInfo.OpenRead());
+                using var reader = new StreamReader(statisticsFileInfo.OpenRead());
 
                 string line;
 
-                List<PlayerStatistics> takeoverAIs = new List<PlayerStatistics>();
+                List<PlayerStatistics> takeoverAIs = [];
                 PlayerStatistics currentPlayer = null;
 
                 bool sawCompletion = false;
                 int numPlayersFound = 0;
 
-                while ((line = reader.ReadLine()) != null)
+                while ((line = await reader.ReadLineAsync().ConfigureAwait(false)) != null)
                 {
-                    if (line.Contains(": Loser"))
+                    if (line.Contains(": Loser", StringComparison.OrdinalIgnoreCase))
                     {
                         // Player found, game saw completion
                         sawCompletion = true;
-                        string playerName = line.Substring(0, line.Length - 7);
+                        string playerName = line[..^7];
                         currentPlayer = Statistics.GetEmptyPlayerByName(playerName);
 
                         if (isLoadedGame && currentPlayer == null)
-                            currentPlayer = Statistics.Players.Find(p => p.Name == playerName);
+                            currentPlayer = Statistics.Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
                         Logger.Log("Found player " + playerName);
                         numPlayersFound++;
 
-                        if (currentPlayer == null && playerName == "Computer" && numPlayersFound <= Statistics.NumberOfHumanPlayers)
+                        if (currentPlayer == null && string.Equals(playerName, "Computer", StringComparison.OrdinalIgnoreCase) && numPlayersFound <= Statistics.NumberOfHumanPlayers)
                         {
                             // The player has been taken over by an AI during the match
                             Logger.Log("Losing take-over AI found");
                             takeoverAIs.Add(new PlayerStatistics("Computer", false, true, false, 0, 10, 255, 1));
-                            currentPlayer = takeoverAIs[takeoverAIs.Count - 1];
+                            currentPlayer = takeoverAIs[^1];
                         }
 
                         if (currentPlayer != null)
                             currentPlayer.SawEnd = true;
                     }
-                    else if (line.Contains(": Winner"))
+                    else if (line.Contains(": Winner", StringComparison.OrdinalIgnoreCase))
                     {
                         // Player found, game saw completion
                         sawCompletion = true;
-                        string playerName = line.Substring(0, line.Length - 8);
+                        string playerName = line[..^8];
                         currentPlayer = Statistics.GetEmptyPlayerByName(playerName);
 
                         if (isLoadedGame && currentPlayer == null)
-                            currentPlayer = Statistics.Players.Find(p => p.Name == playerName);
+                            currentPlayer = Statistics.Players.Find(p => string.Equals(p.Name, playerName, StringComparison.OrdinalIgnoreCase));
 
                         Logger.Log("Found player " + playerName);
                         numPlayersFound++;
 
-                        if (currentPlayer == null && playerName == "Computer" && numPlayersFound <= Statistics.NumberOfHumanPlayers)
+                        if (currentPlayer == null && string.Equals(playerName, "Computer", StringComparison.OrdinalIgnoreCase) && numPlayersFound <= Statistics.NumberOfHumanPlayers)
                         {
                             // The player has been taken over by an AI during the match
                             Logger.Log("Winning take-over AI found");
                             takeoverAIs.Add(new PlayerStatistics("Computer", false, true, false, 0, 10, 255, 1));
-                            currentPlayer = takeoverAIs[takeoverAIs.Count - 1];
+                            currentPlayer = takeoverAIs[^1];
                         }
 
                         if (currentPlayer != null)
@@ -100,26 +99,26 @@ namespace ClientCore.Statistics.GameParsers
                             currentPlayer.Won = true;
                         }
                     }
-                    else if (line.Contains("Game loop finished. Average FPS"))
+                    else if (line.Contains("Game loop finished. Average FPS", StringComparison.OrdinalIgnoreCase))
                     {
                         // Game loop finished. Average FPS = <integer>
-                        string fpsString = line.Substring(34);
-                        Statistics.AverageFPS = Int32.Parse(fpsString);
+                        string fpsString = line[34..];
+                        Statistics.AverageFPS = Int32.Parse(fpsString, CultureInfo.InvariantCulture);
                     }
 
                     if (currentPlayer == null || line.Length < 1)
                         continue;
 
-                    line = line.Substring(1);
+                    line = line[1..];
 
-                    if (line.StartsWith("Lost = "))
-                        currentPlayer.Losses = Int32.Parse(line.Substring(7));
-                    else if (line.StartsWith("Kills = "))
-                        currentPlayer.Kills = Int32.Parse(line.Substring(8));
-                    else if (line.StartsWith("Score = "))
-                        currentPlayer.Score = Int32.Parse(line.Substring(8));
-                    else if (line.StartsWith(economyString + " = "))
-                        currentPlayer.Economy = Int32.Parse(line.Substring(economyString.Length + 2));
+                    if (line.StartsWith("Lost = ", StringComparison.OrdinalIgnoreCase))
+                        currentPlayer.Losses = Int32.Parse(line[7..], CultureInfo.InvariantCulture);
+                    else if (line.StartsWith("Kills = ", StringComparison.OrdinalIgnoreCase))
+                        currentPlayer.Kills = Int32.Parse(line[8..], CultureInfo.InvariantCulture);
+                    else if (line.StartsWith("Score = ", StringComparison.OrdinalIgnoreCase))
+                        currentPlayer.Score = Int32.Parse(line[8..], CultureInfo.InvariantCulture);
+                    else if (line.StartsWith(economyString + " = ", StringComparison.OrdinalIgnoreCase))
+                        currentPlayer.Economy = Int32.Parse(line[(economyString.Length + 2)..], CultureInfo.InvariantCulture);
                 }
 
                 // Check empty players for take-over by AIs
@@ -150,7 +149,7 @@ namespace ClientCore.Statistics.GameParsers
             }
             catch (Exception ex)
             {
-                Logger.Log("DTAStatisticsParser: Error parsing statistics from match! Message: " + ex.Message);
+                ProgramConstants.LogException(ex, "DTAStatisticsParser: Error parsing statistics from match!");
             }
         }
     }

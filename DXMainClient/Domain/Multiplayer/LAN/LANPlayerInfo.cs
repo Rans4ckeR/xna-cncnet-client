@@ -1,54 +1,51 @@
 ﻿using ClientCore;
 using Microsoft.Xna.Framework;
-using Rampastring.Tools;
-using Rampastring.XNAUI;
 using System;
-using System.Collections.Generic;
+using System.Buffers;
 using System.Net;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+#if NETFRAMEWORK
+using System.Runtime.InteropServices;
+using Windows.Win32.Networking.WinSock;
+#endif
 
 namespace DTAClient.Domain.Multiplayer.LAN
 {
-    public class LANPlayerInfo : PlayerInfo
+    using ClientCore.Extensions;
+
+    internal sealed class LANPlayerInfo : PlayerInfo
     {
         public LANPlayerInfo(Encoding encoding)
         {
             this.encoding = encoding;
-            Port = PORT;
+            Port = ProgramConstants.LAN_INGAME_PORT;
         }
 
         public event EventHandler<NetworkMessageEventArgs> MessageReceived;
         public event EventHandler ConnectionLost;
-        public event EventHandler PlayerPinged;
 
-        private const int PORT = 1234;
-        private const int LOBBY_PORT = 1233;
         private const double SEND_PING_TIMEOUT = 10.0;
         private const double DROP_TIMEOUT = 20.0;
-        private const int LAN_PING_TIMEOUT = 1000;
+        private const int SEND_TIMEOUT = 1000;
 
         public TimeSpan TimeSinceLastReceivedMessage { get; set; }
         public TimeSpan TimeSinceLastSentMessage { get; set; }
 
-        public TcpClient TcpClient { get; private set; }
+        public Socket TcpClient { get; private set; }
 
-        NetworkStream networkStream;
+        private readonly Encoding encoding;
 
-        Encoding encoding;
+        private string overMessage = string.Empty;
 
-        string overMessage = string.Empty;
-
-        public void SetClient(TcpClient client)
+        public void SetClient(Socket client)
         {
             if (TcpClient != null)
                 throw new InvalidOperationException("TcpClient has already been set for this LANPlayerInfo!");
 
             TcpClient = client;
-            TcpClient.SendTimeout = 1000;
-            networkStream = client.GetStream();
         }
 
         /// <summary>
@@ -56,14 +53,14 @@ namespace DTAClient.Domain.Multiplayer.LAN
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         /// <returns>True if the player is still considered connected, otherwise false.</returns>
-        public bool Update(GameTime gameTime)
+        public async Task<bool> UpdateAsync(GameTime gameTime)
         {
             TimeSinceLastReceivedMessage += gameTime.ElapsedGameTime;
             TimeSinceLastSentMessage += gameTime.ElapsedGameTime;
 
             if (TimeSinceLastSentMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT)
                 || TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(SEND_PING_TIMEOUT))
-                SendMessage("PING");
+                await SendMessageAsync(LANCommands.PING, default).ConfigureAwait(false);
 
             if (TimeSinceLastReceivedMessage > TimeSpan.FromSeconds(DROP_TIMEOUT))
                 return false;
@@ -71,12 +68,12 @@ namespace DTAClient.Domain.Multiplayer.LAN
             return true;
         }
 
-        public override string IPAddress
+        public override IPAddress IPAddress
         {
             get
             {
                 if (TcpClient != null)
-                    return ((IPEndPoint)TcpClient.Client.RemoteEndPoint).Address.ToString();
+                    return ((IPEndPoint)TcpClient.RemoteEndPoint).Address.MapToIPv4();
 
                 return base.IPAddress;
             }
@@ -84,7 +81,6 @@ namespace DTAClient.Domain.Multiplayer.LAN
             set
             {
                 base.IPAddress = value;
-                //throw new InvalidOperationException("Cannot set LANPlayerInfo's IPAddress!");
             }
         }
 
@@ -92,96 +88,108 @@ namespace DTAClient.Domain.Multiplayer.LAN
         /// Sends a message to the player over the network.
         /// </summary>
         /// <param name="message">The message to send.</param>
-        public void SendMessage(string message)
+        public async ValueTask SendMessageAsync(string message, CancellationToken cancellationToken)
         {
-            byte[] buffer;
+            message += ProgramConstants.LAN_MESSAGE_SEPARATOR;
 
-            buffer = encoding.GetBytes(message + ProgramConstants.LAN_MESSAGE_SEPARATOR);
+            using var timeoutCancellationTokenSource = new CancellationTokenSource(SEND_TIMEOUT);
+            using var linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(timeoutCancellationTokenSource.Token, cancellationToken);
+
+#if NETFRAMEWORK
+            byte[] buffer1 = encoding.GetBytes(message);
+            var buffer = new ArraySegment<byte>(buffer1);
 
             try
             {
-                networkStream.Write(buffer, 0, buffer.Length);
-                networkStream.Flush();
-            }
-            catch
+                await TcpClient.SendAsync(buffer, SocketFlags.None).WithCancellation(linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#else
+            const int charSize = sizeof(char);
+            int bufferSize = message.Length * charSize;
+            using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(bufferSize);
+            Memory<byte> buffer = memoryOwner.Memory[..bufferSize];
+            int bytes = encoding.GetBytes(message.AsSpan(), buffer.Span);
+
+            buffer = buffer[..bytes];
+
+            try
             {
-                Logger.Log("Sending message to " + ToString() + " failed!");
+                await TcpClient.SendAsync(buffer, linkedCancellationTokenSource.Token).ConfigureAwait(false);
+#endif
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception ex)
+            {
+                ProgramConstants.LogException(ex, "Sending message to " + ToString() + " failed!");
             }
 
             TimeSinceLastSentMessage = TimeSpan.Zero;
         }
 
         public override string ToString()
-        {
-            return Name + " (" + IPAddress + ")";
-        }
+            => Name + " (" + IPAddress + ")";
 
         /// <summary>
-        /// Starts receiving messages from the player asynchronously.
+        /// Starts receiving messages from the player.
         /// </summary>
-        public void StartReceiveLoop()
+        public async ValueTask StartReceiveLoopAsync(CancellationToken cancellationToken)
         {
-            Thread thread = new Thread(ReceiveMessages);
-            thread.Start();
-        }
+            using IMemoryOwner<byte> memoryOwner = MemoryPool<byte>.Shared.Rent(4096);
 
-        /// <summary>
-        /// Receives messages sent by the client,
-        /// and hands them over to another class via an event.
-        /// </summary>
-        private void ReceiveMessages()
-        {
-            byte[] message = new byte[1024];
-
-            string msg = String.Empty;
-
-            int bytesRead = 0;
-
-            NetworkStream ns = TcpClient.GetStream();
-
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                bytesRead = 0;
+                int bytesRead = 0;
+                Memory<byte> message = memoryOwner.Memory[..4096];
+
+#if NETFRAMEWORK
+                if (!MemoryMarshal.TryGetArray(message, out ArraySegment<byte> buffer))
+                    throw new();
 
                 try
                 {
-                    //blocks until a client sends a message
-                    bytesRead = ns.Read(message, 0, message.Length);
+                    bytesRead = await TcpClient.ReceiveAsync(buffer, SocketFlags.None).WithCancellation(cancellationToken).ConfigureAwait(false);
+                }
+                catch (SocketException ex) when (ex.ErrorCode is (int)WSA_ERROR.WSA_OPERATION_ABORTED)
+                {
+                    break;
+                }
+#else
+                try
+                {
+                    bytesRead = await TcpClient.ReceiveAsync(message, cancellationToken).ConfigureAwait(false);
+                }
+#endif
+                catch (OperationCanceledException)
+                {
                 }
                 catch (Exception ex)
                 {
-                    //a socket error has occured
-                    Logger.Log("Socket error with client " + Name + "; removing. Message: " + ex.Message);
-                    ConnectionLost?.Invoke(this, EventArgs.Empty);
-                    break;
+                    ProgramConstants.LogException(ex, "Connection error with client " + Name + "; removing.");
                 }
 
                 if (bytesRead > 0)
                 {
-                    msg = encoding.GetString(message, 0, bytesRead);
+#if NETFRAMEWORK
+                    string msg = encoding.GetString(message.ToArray(), 0, bytesRead);
+#else
+                    string msg = encoding.GetString(message.Span[..bytesRead]);
+#endif
 
                     msg = overMessage + msg;
-                    List<string> commands = new List<string>();
 
                     while (true)
                     {
-                        int index = msg.IndexOf(ProgramConstants.LAN_MESSAGE_SEPARATOR);
+                        int index = msg.IndexOf(ProgramConstants.LAN_MESSAGE_SEPARATOR, StringComparison.OrdinalIgnoreCase);
 
                         if (index == -1)
                         {
                             overMessage = msg;
                             break;
                         }
-                        else
-                        {
-                            commands.Add(msg.Substring(0, index));
-                            msg = msg.Substring(index + 1);
-                        }
-                    }
 
-                    foreach (string cmd in commands)
-                    {
-                        MessageReceived?.Invoke(this, new NetworkMessageEventArgs(cmd));
+                        MessageReceived?.Invoke(this, new NetworkMessageEventArgs(msg[..index]));
+                        msg = msg[(index + 1)..];
                     }
 
                     continue;
@@ -189,25 +197,6 @@ namespace DTAClient.Domain.Multiplayer.LAN
 
                 ConnectionLost?.Invoke(this, EventArgs.Empty);
                 break;
-            }
-        }
-
-        public void UpdatePing(WindowManager wm)
-        {
-            using (Ping p = new Ping())
-            {
-                try
-                {
-                    PingReply reply = p.Send(System.Net.IPAddress.Parse(IPAddress), LAN_PING_TIMEOUT);
-                    if (reply.Status == IPStatus.Success)
-                        Ping = Convert.ToInt32(reply.RoundtripTime);
-
-                    wm.AddCallback(PlayerPinged, this, EventArgs.Empty);
-                }
-                catch (PingException ex)
-                {
-                    Logger.Log($"Caught an exception when pinging {Name} LAN player: {ex.Message}");
-                }
             }
         }
     }

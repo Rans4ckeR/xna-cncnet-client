@@ -10,11 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using ClientGUI;
 using ClientCore.Extensions;
+using ClientGUI;
 
 namespace DTAClient.DXGUI.Multiplayer.GameLobby
 {
+    using System.Globalization;
+
     struct ExtraMapPreviewTexture
     {
         public Texture2D Texture;
@@ -32,12 +34,9 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
     /// <summary>
     /// The picture box for displaying the map preview.
     /// </summary>
-    public class MapPreviewBox : XNAPanel
+    internal sealed class MapPreviewBox : XNAPanel
     {
         private const int MAX_STARTING_LOCATIONS = 8;
-
-        public delegate void LocalStartingLocationSelectedEventHandler(object sender,
-            LocalStartingLocationEventArgs e);
 
         public event EventHandler<LocalStartingLocationEventArgs> LocalStartingLocationSelected;
 
@@ -48,7 +47,6 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
             FontIndex = 1;
         }
-
 
         public void SetFields(List<PlayerInfo> players, List<PlayerInfo> aiPlayers, List<MultiplayerColor> mpColors, string[] sides, IniFile gameOptionsIni)
         {
@@ -81,7 +79,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
                 indicator.AngularVelocity = angularVelocity;
                 indicator.HoverRemapColor = hoverRemapColor;
                 indicator.ReversedAngularVelocity = reservedAngularVelocity;
-                indicator.WaypointTexture = AssetLoader.LoadTexture(string.Format("slocindicator{0}.png", i + 1));
+                indicator.WaypointTexture = AssetLoader.LoadTexture(string.Format(CultureInfo.InvariantCulture, "slocindicator{0}.png", i + 1));
                 indicator.Tag = i;
                 indicator.LeftClick += Indicator_LeftClick;
                 indicator.RightClick += Indicator_RightClick;
@@ -95,9 +93,8 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
             AddChild(briefingBox);
             briefingBox.Disable();
 
-            ClientRectangleUpdated += (s, e) => UpdateMap();
+            ClientRectangleUpdated += (_, _) => UpdateMap();
         }
-
 
         private GameModeMap _gameModeMap;
         public GameModeMap GameModeMap
@@ -223,7 +220,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             base.Initialize();
 
-            ClientRectangleUpdated += (s, e) => UpdateMap();
+            ClientRectangleUpdated += (_, _) => UpdateMap();
 
             RightClick += MapPreviewBox_RightClick;
 
@@ -358,7 +355,7 @@ namespace DTAClient.DXGUI.Multiplayer.GameLobby
 
             if (!EnableContextMenu)
             {
-                PlayerInfo pInfo = players.Find(p => p.Name == ProgramConstants.PLAYERNAME);
+                PlayerInfo pInfo = players.Find(p => string.Equals(p.Name, ProgramConstants.PLAYERNAME, StringComparison.OrdinalIgnoreCase));
 
                 if (pInfo.StartingLocation == (int)indicator.Tag + 1)
                 {

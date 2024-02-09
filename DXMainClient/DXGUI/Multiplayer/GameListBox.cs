@@ -33,7 +33,7 @@ namespace DTAClient.DXGUI.Multiplayer
 
         private int loadedGameTextWidth;
 
-        public List<GenericHostedGame> HostedGames = new();
+        public List<GenericHostedGame> HostedGames = [];
 
         public double GameLifetime { get; set; } = 35.0;
 
@@ -129,7 +129,7 @@ namespace DTAClient.DXGUI.Multiplayer
                 HostedGames
                     .OrderBy(hg => hg.Locked)
                     .ThenBy(hg => string.Equals(hg.Game.InternalName, localGameIdentifier, StringComparison.CurrentCultureIgnoreCase))
-                    .ThenBy(hg => hg.GameVersion != ProgramConstants.GAME_VERSION)
+                    .ThenBy(hg => !string.Equals(hg.GameVersion, ProgramConstants.GAME_VERSION, StringComparison.OrdinalIgnoreCase))
                     .ThenBy(hg => hg.Passworded);
 
             switch ((SortDirection)UserINISettings.Instance.SortState.Value)
@@ -234,10 +234,8 @@ namespace DTAClient.DXGUI.Multiplayer
             lbItem.Text = Renderer.GetStringWithLimitedWidth(Renderer.GetSafeString(
                 hg.RoomName, FontIndex), FontIndex, maxTextWidth);
 
-            if (hg.Game.InternalName != localGameIdentifier.ToLower())
+            if (!string.Equals(hg.Game.InternalName, localGameIdentifier, StringComparison.OrdinalIgnoreCase))
                 lbItem.TextColor = UISettings.ActiveSettings.TextColor;
-            //else // made unnecessary by new Rampastring.XNAUI
-            //    lbItem.TextColor = UISettings.ActiveSettings.AltColor;
 
             if (hg.Incompatible || hg.Locked)
             {

@@ -8,7 +8,7 @@ namespace DTAClient.Online
     /// as to whether the message should be ignored, independent from any GUI. This will then forward valid private message
     /// events to other consumers.
     /// </summary>
-    public class PrivateMessageHandler
+    internal sealed class PrivateMessageHandler
     {
         private readonly CnCNetUserData _cncnetUserData;
         private readonly CnCNetManager _connectionManager;
@@ -31,7 +31,7 @@ namespace DTAClient.Online
 
         private void _PrivateMessageReceived(object sender, CnCNetPrivateMessageEventArgs e)
         {
-            IRCUser iu = _connectionManager.UserList.Find(u => u.Name == e.Sender);
+            IRCUser iu = _connectionManager.UserList.Find(u => string.Equals(u.Name, e.Sender, StringComparison.OrdinalIgnoreCase));
 
             // We don't accept PMs from people who we don't share any channels with
             if (iu == null)

@@ -6,6 +6,8 @@ using Rampastring.XNAUI;
 using Rampastring.XNAUI.XNAControls;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using ClientCore;
 
 namespace DTAClient.DXGUI.Multiplayer.CnCNet
 {
@@ -14,18 +16,19 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
     /// </summary>
     class TunnelListBox : XNAMultiColumnListBox
     {
-        public TunnelListBox(WindowManager windowManager, TunnelHandler tunnelHandler) : base(windowManager)
+        public TunnelListBox(WindowManager windowManager, TunnelHandler tunnelHandler)
+            : base(windowManager)
         {
             this.tunnelHandler = tunnelHandler;
 
-            tunnelHandler.TunnelsRefreshed += TunnelHandler_TunnelsRefreshed;
+            tunnelHandler.TunnelsRefreshed += (_, _) => TunnelHandler_TunnelsRefreshed();
             tunnelHandler.TunnelPinged += TunnelHandler_TunnelPinged;
 
             SelectedIndexChanged += TunnelListBox_SelectedIndexChanged;
 
             int headerHeight = (int)Renderer.GetTextDimensions("Name", HeaderFontIndex).Y;
 
-            Width = 466;
+            Width = 230 + 70 + 76 + 90 + 90 + 90 + 90;
             Height = LineHeight * 12 + headerHeight + 3;
             PanelBackgroundDrawMode = PanelBackgroundImageDrawMode.STRETCHED;
             BackgroundTexture = AssetLoader.CreateTexture(new Color(0, 0, 0, 128), 1, 1);
@@ -33,6 +36,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             AddColumn("Official".L10N("Client:Main:OfficialHeader"), 70);
             AddColumn("Ping".L10N("Client:Main:PingHeader"), 76);
             AddColumn("Players".L10N("Client:Main:PlayersHeader"), 90);
+            AddColumn("Password".L10N("Client:Main:PasswordHeader"), 90);
+            AddColumn("Version".L10N("Client:Main:VersionHeader"), 90);
+            AddColumn("Compatible".L10N("Client:Main:CompatibleHeader"), 90);
             AllowRightClickUnselect = false;
             AllowKeyboardInput = true;
         }
@@ -41,37 +47,48 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
         private readonly TunnelHandler tunnelHandler;
 
-        private int bestTunnelIndex = 0;
+        private int bestTunnelIndex;
         private int lowestTunnelRating = int.MaxValue;
 
         private bool isManuallySelectedTunnel;
-        private string manuallySelectedTunnelAddress;
+        private string manuallySelectedTunnelHash;
+        private bool compatibilityFilter;
 
+        public bool CompatibilityFilter
+        {
+            get => compatibilityFilter;
+            set
+            {
+                compatibilityFilter = value;
+
+                TunnelHandler_TunnelsRefreshed();
+            }
+        }
 
         /// <summary>
         /// Selects a tunnel from the list with the given address.
         /// </summary>
-        /// <param name="address">The address of the tunnel server to select.</param>
-        public void SelectTunnel(string address)
+        /// <param name="cnCNetTunnel">The tunnel server to select.</param>
+        public void SelectTunnel(CnCNetTunnel cnCNetTunnel)
         {
-            int index = tunnelHandler.Tunnels.FindIndex(t => t.Address == address);
+            int index = tunnelHandler.Tunnels.FindIndex(t => t == cnCNetTunnel);
             if (index > -1)
             {
                 SelectedIndex = index;
                 isManuallySelectedTunnel = true;
-                manuallySelectedTunnelAddress = address;
+                manuallySelectedTunnelHash = cnCNetTunnel.Hash;
             }
         }
 
         /// <summary>
         /// Gets whether or not a tunnel from the list with the given address is selected.
         /// </summary>
-        /// <param name="address">The address of the tunnel server</param>
+        /// <param name="hash">The hash of the tunnel server</param>
         /// <returns>True if tunnel with given address is selected, otherwise false.</returns>
-        public bool IsTunnelSelected(string address) =>
-            tunnelHandler.Tunnels.FindIndex(t => t.Address == address) == SelectedIndex;
+        public bool IsTunnelSelected(string hash) =>
+            tunnelHandler.Tunnels.FindIndex(t => t.Hash.Equals(hash, StringComparison.OrdinalIgnoreCase)) == SelectedIndex;
 
-        private void TunnelHandler_TunnelsRefreshed(object sender, EventArgs e)
+        private void TunnelHandler_TunnelsRefreshed()
         {
             ClearItems();
 
@@ -79,17 +96,23 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
 
             foreach (CnCNetTunnel tunnel in tunnelHandler.Tunnels)
             {
-                List<string> info = new List<string>();
+                List<string> info = [];
+                bool compatible = !tunnel.RequiresPassword && ((tunnel.Version is ProgramConstants.TUNNEL_VERSION_3 && !CompatibilityFilter) || (tunnel.Version is ProgramConstants.TUNNEL_VERSION_2 && UserINISettings.Instance.UseLegacyTunnels));
 
                 info.Add(tunnel.Name);
                 info.Add(Conversions.BooleanToString(tunnel.Official, BooleanStringStyle.YESNO));
+
                 if (tunnel.PingInMs < 0)
                     info.Add("Unknown".L10N("Client:Main:UnknownPing"));
                 else
                     info.Add(tunnel.PingInMs + " ms");
-                info.Add(tunnel.Clients + " / " + tunnel.MaxClients);
 
-                AddItem(info, true);
+                info.Add(tunnel.Clients + " / " + tunnel.MaxClients);
+                info.Add(Conversions.BooleanToString(tunnel.RequiresPassword, BooleanStringStyle.YESNO));
+                info.Add(tunnel.Version.ToString(CultureInfo.InvariantCulture));
+                info.Add(Conversions.BooleanToString(compatible, BooleanStringStyle.YESNO));
+
+                AddItem(info, compatible);
 
                 if ((tunnel.Official || tunnel.Recommended) && tunnel.PingInMs > -1)
                 {
@@ -113,7 +136,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 }
                 else
                 {
-                    int manuallySelectedIndex = tunnelHandler.Tunnels.FindIndex(t => t.Address == manuallySelectedTunnelAddress);
+                    int manuallySelectedIndex = tunnelHandler.Tunnels.FindIndex(t => t.Hash.Equals(manuallySelectedTunnelHash, StringComparison.OrdinalIgnoreCase));
 
                     if (manuallySelectedIndex == -1)
                     {
@@ -121,7 +144,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                         isManuallySelectedTunnel = false;
                     }
                     else
+                    {
                         SelectedIndex = manuallySelectedIndex;
+                    }
                 }
             }
 
@@ -134,7 +159,9 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             CnCNetTunnel tunnel = tunnelHandler.Tunnels[tunnelIndex];
 
             if (tunnel.PingInMs == -1)
+            {
                 lbItem.Text = "Unknown".L10N("Client:Main:UnknownPing");
+            }
             else
             {
                 lbItem.Text = tunnel.PingInMs + " ms";
@@ -152,7 +179,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
             }
         }
 
-        private int GetTunnelRating(CnCNetTunnel tunnel)
+        private static int GetTunnelRating(CnCNetTunnel tunnel)
         {
             double usageRatio = (double)tunnel.Clients / tunnel.MaxClients;
 
@@ -170,7 +197,7 @@ namespace DTAClient.DXGUI.Multiplayer.CnCNet
                 return;
 
             isManuallySelectedTunnel = true;
-            manuallySelectedTunnelAddress = tunnelHandler.Tunnels[SelectedIndex].Address;
+            manuallySelectedTunnelHash = tunnelHandler.Tunnels[SelectedIndex].Hash;
         }
     }
 }

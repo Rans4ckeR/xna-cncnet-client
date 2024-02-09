@@ -6,21 +6,20 @@ namespace DTAClient.Domain.Multiplayer
     /// <summary>
     /// A helper class for setting up alliances in spawn.ini.
     /// </summary>
-    public static class AllianceHolder
+    internal static class AllianceHolder
     {
         public static void WriteInfoToSpawnIni(
             List<PlayerInfo> players,
-            List<PlayerInfo> aiPlayers, 
+            List<PlayerInfo> aiPlayers,
             List<int> multiCmbIndexes,
             List<PlayerHouseInfo> playerHouseInfos,
             List<TeamStartMapping> teamStartMappings,
-            IniFile spawnIni
-        )
+            IniFile spawnIni)
         {
-            List<int> team1MultiMemberIds = new List<int>();
-            List<int> team2MultiMemberIds = new List<int>();
-            List<int> team3MultiMemberIds = new List<int>();
-            List<int> team4MultiMemberIds = new List<int>();
+            List<int> team1MultiMemberIds = [];
+            List<int> team2MultiMemberIds = [];
+            List<int> team3MultiMemberIds = [];
+            List<int> team4MultiMemberIds = [];
 
             for (int pId = 0; pId < players.Count; pId++)
             {
@@ -57,7 +56,6 @@ namespace DTAClient.Domain.Multiplayer
                 int teamId = aiPlayers[aiId].TeamId;
                 if (teamId <= 0)
                     teamId = teamStartMappings?.Find(sa => sa.StartingWaypoint == phi.StartingWaypoint)?.TeamId ?? 0;
-
 
                 if (teamId > 0)
                 {

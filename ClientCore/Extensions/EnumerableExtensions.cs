@@ -20,7 +20,7 @@ public static class EnumerableExtensions
         {
             int index = list.IndexOf(item);
             int column = (index / maxPerColumn);
-            List<T> columnList = matrix.Count <= column ? new List<T>() : matrix[column];
+            List<T> columnList = matrix.Count <= column ? [] : matrix[column];
             if (columnList.Count == 0)
                 matrix.Add(columnList);
 
